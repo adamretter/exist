@@ -753,6 +753,23 @@ public class CachingFilterInputStreamTest {
         assertArrayEquals(testData, consumeInputStream(cfis2));
     }
 
+    @Test
+    public void constructed_from_CachingFilterInputStream_consumed() throws InstantiationException, IllegalAccessException, IOException {
+
+        final byte[] testData = generateRandomData(_12KB);
+        final InputStream is = new ByteArrayInputStream(testData);
+
+        //first CachingFilterInputStream
+        final CachingFilterInputStream cfis1 = new CachingFilterInputStream(getNewCache(), is);
+
+        assertArrayEquals(testData, consumeInputStream(cfis1));
+
+        //second CachingFilterInputStream wraps first CachingFilterInputStream
+        final CachingFilterInputStream cfis2 = new CachingFilterInputStream(getNewCache(), cfis1);
+
+        assertArrayEquals(testData, consumeInputStream(cfis2));
+    }
+
     private byte[] consumeInputStream(final InputStream is) throws IOException {
         final ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try {
