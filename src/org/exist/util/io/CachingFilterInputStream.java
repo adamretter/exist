@@ -78,8 +78,8 @@ public class CachingFilterInputStream extends FilterInputStream {
         this.srcClosed = cfis.srcClosed;
         this.srcOffset = 0;
         this.mark = 0;
-        this.useCache = false;
-        this.cacheOffset = 0;
+        this.useCache = cfis.cacheOffset > 0;
+        this.cacheOffset = cfis.cacheOffset;
     }
 
     /**
