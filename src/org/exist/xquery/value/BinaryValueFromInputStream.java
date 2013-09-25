@@ -4,12 +4,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import org.apache.log4j.Logger;
-import org.exist.util.io.CachingFilterInputStream;
-import org.exist.util.io.FilterInputStreamCache;
-import org.exist.util.io.FilterInputStreamCacheFactory;
-import org.exist.util.io.FilterInputStreamCacheFactory.FilterInputStreamCacheConfiguration;
 import org.exist.xquery.XPathException;
 import org.exist.xquery.XQueryContext;
+import uk.org.adamretter.restream.CachingFilterInputStream;
+import uk.org.adamretter.restream.FilterInputStreamCache;
+import uk.org.adamretter.restream.FilterInputStreamCacheFactory;
+import uk.org.adamretter.restream.FilterInputStreamCacheFactory.FilterInputStreamCacheConfiguration;
 
 /**
  * Representation of an XSD binary value e.g. (xs:base64Binary or xs:hexBinary)

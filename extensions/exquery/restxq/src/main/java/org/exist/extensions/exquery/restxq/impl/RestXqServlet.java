@@ -39,11 +39,11 @@ import org.exist.http.servlets.AbstractExistHttpServlet;
 import org.exist.security.Subject;
 import org.exist.storage.DBBroker;
 import org.exist.util.Configuration;
-import org.exist.util.io.FilterInputStreamCacheFactory.FilterInputStreamCacheConfiguration;
 import org.exquery.http.HttpRequest;
 import org.exquery.restxq.RestXqService;
 import org.exquery.restxq.RestXqServiceException;
 import org.exquery.restxq.RestXqServiceRegistry;
+import uk.org.adamretter.restream.FilterInputStreamCacheFactory.FilterInputStreamCacheConfiguration;
 
 /**
  *

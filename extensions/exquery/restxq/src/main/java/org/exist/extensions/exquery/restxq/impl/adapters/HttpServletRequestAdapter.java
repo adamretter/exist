@@ -33,12 +33,12 @@ import java.io.Reader;
 import java.util.*;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
-import org.exist.util.io.CachingFilterInputStream;
-import org.exist.util.io.FilterInputStreamCache;
-import org.exist.util.io.FilterInputStreamCacheFactory;
-import org.exist.util.io.FilterInputStreamCacheFactory.FilterInputStreamCacheConfiguration;
 import org.exquery.http.HttpMethod;
 import org.exquery.http.HttpRequest;
+import uk.org.adamretter.restream.CachingFilterInputStream;
+import uk.org.adamretter.restream.FilterInputStreamCache;
+import uk.org.adamretter.restream.FilterInputStreamCacheFactory;
+import uk.org.adamretter.restream.FilterInputStreamCacheFactory.FilterInputStreamCacheConfiguration;
 
 /**
  *

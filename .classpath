@@ -31,6 +31,7 @@
 	<classpathentry kind="src" path="tools/ircbot/src"/>
 	<classpathentry kind="src" path="tools/requestlog/src"/>
 	<classpathentry kind="src" path="extensions/commands/src"/>
+	<classpathentry kind="lib" path="lib/core/restream-1.0-SNAPSHOT.jar"/>
 	<classpathentry kind="lib" path="lib/core/pkg-repo.jar"/>
 	<classpathentry kind="lib" path="lib/core/jEdit-syntax.jar"/>
 	<classpathentry kind="lib" path="lib/core/cglib-nodep-2.2.jar"/>

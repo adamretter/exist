@@ -93,7 +93,6 @@ import org.exist.util.MimeTable;
 import org.exist.util.MimeType;
 import org.exist.util.VirtualTempFile;
 import org.exist.util.VirtualTempFileInputSource;
-import org.exist.util.io.FilterInputStreamCacheFactory.FilterInputStreamCacheConfiguration;
 import org.exist.util.serializer.SAXSerializer;
 import org.exist.util.serializer.SerializerPool;
 import org.exist.util.serializer.json.*;
@@ -121,6 +120,7 @@ import org.xml.sax.SAXParseException;
 import org.xml.sax.XMLReader;
 import org.xml.sax.helpers.AttributesImpl;
 import org.xml.sax.helpers.XMLFilterImpl;
+import uk.org.adamretter.restream.FilterInputStreamCacheFactory.FilterInputStreamCacheConfiguration;
 /**
  *
  * @author wolf

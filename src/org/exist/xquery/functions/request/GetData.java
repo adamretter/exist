@@ -35,16 +35,16 @@ import org.exist.memtree.MemTreeBuilder;
 import org.exist.util.Configuration;
 import org.exist.util.MimeTable;
 import org.exist.util.MimeType;
-import org.exist.util.io.CachingFilterInputStream;
-import org.exist.util.io.FilterInputStreamCache;
-import org.exist.util.io.FilterInputStreamCacheFactory;
-import org.exist.util.io.FilterInputStreamCacheFactory.FilterInputStreamCacheConfiguration;
 import org.exist.xquery.*;
 import org.exist.xquery.value.*;
 import org.w3c.dom.Document;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 import org.xml.sax.XMLReader;
+import uk.org.adamretter.restream.CachingFilterInputStream;
+import uk.org.adamretter.restream.FilterInputStreamCache;
+import uk.org.adamretter.restream.FilterInputStreamCacheFactory;
+import uk.org.adamretter.restream.FilterInputStreamCacheFactory.FilterInputStreamCacheConfiguration;
 
 
 /**

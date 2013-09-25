@@ -77,11 +77,11 @@ import org.apache.commons.httpclient.UsernamePasswordCredentials;
 import org.apache.commons.httpclient.auth.AuthScope;
 import org.apache.commons.io.input.CloseShieldInputStream;
 import org.exist.util.Configuration;
-import org.exist.util.io.CachingFilterInputStream;
-import org.exist.util.io.FilterInputStreamCache;
-import org.exist.util.io.FilterInputStreamCacheFactory;
 import org.exist.xquery.value.BinaryValue;
 import org.exist.xquery.value.BinaryValueFromInputStream;
+import uk.org.adamretter.restream.CachingFilterInputStream;
+import uk.org.adamretter.restream.FilterInputStreamCache;
+import uk.org.adamretter.restream.FilterInputStreamCacheFactory;
 
 
 /**
