@@ -21,7 +21,7 @@ package org.exist.collections;
 
 import org.exist.Indexer;
 import org.exist.Namespaces;
-import org.exist.collections.triggers.DocumentTriggers;
+import org.exist.collections.triggers.DocumentTriggersGroup;
 import org.exist.dom.persistent.DocumentImpl;
 import org.exist.security.Permission;
 import org.exist.storage.DBBroker;
@@ -46,7 +46,7 @@ public class IndexInfo {
 
     private Indexer indexer;
     private DOMStreamer streamer;
-    private DocumentTriggers docTriggers;
+    private DocumentTriggersGroup docTriggers;
     private boolean creating = false;
     private Permission oldDocPermissions = null;
     private CollectionConfiguration collectionConfig;
@@ -61,12 +61,12 @@ public class IndexInfo {
     }
 
     //XXX: make protected
-    public void setTriggers(DocumentTriggers triggersVisitor) {
+    public void setTriggers(final DocumentTriggersGroup triggersVisitor) {
         this.docTriggers = triggersVisitor;
     }
 
     //XXX: make protected
-    public DocumentTriggers getTriggers() {
+    public DocumentTriggersGroup getTriggers() {
         return docTriggers;
     }
 

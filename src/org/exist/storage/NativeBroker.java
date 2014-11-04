@@ -38,12 +38,10 @@ import org.exist.dom.persistent.TextImpl;
 import org.exist.EXistException;
 import org.exist.Indexer;
 import org.exist.backup.RawDataBackup;
+import org.exist.collections.*;
 import org.exist.collections.Collection;
 import org.exist.collections.Collection.CollectionEntry;
 import org.exist.collections.Collection.SubCollectionEntry;
-import org.exist.collections.CollectionCache;
-import org.exist.collections.CollectionConfigurationException;
-import org.exist.collections.CollectionConfigurationManager;
 import org.exist.collections.triggers.*;
 import org.exist.fulltext.FTIndex;
 import org.exist.fulltext.FTIndexWorker;
@@ -686,7 +684,10 @@ public class NativeBroker extends DBBroker {
                         LOG.debug("Creating root collection '" + XmldbURI.ROOT_COLLECTION_URI + "'");
                     }
 
-                    final CollectionTrigger trigger = new CollectionTriggers(this);
+                    //just database triggers
+                    //TODO (AR) this could be improved by maintaining a single TriggerGroup for GlobalDocumentTriggers, then we would not need to call 'new'
+                    final CollectionTrigger trigger = new CollectionTriggersGroup(TriggerFactory.toLazyCollectionTriggers(null, pool.getGlobalCollectionTriggers()));
+
                     trigger.beforeCreateCollection(this, transaction, XmldbURI.ROOT_COLLECTION_URI);
 
                     current = new Collection(this, XmldbURI.ROOT_COLLECTION_URI);
@@ -755,7 +756,8 @@ public class NativeBroker extends DBBroker {
                             LOG.debug("Creating collection '" + path + "'...");
                         }
 
-                        final CollectionTrigger trigger = new CollectionTriggers(this, current);
+                        final CollectionTriggersGroup trigger = TriggerFactory.getCollectionTriggers(this, current);
+
                         trigger.beforeCreateCollection(this, transaction, path);
 
                         sub = new Collection(this, path);
@@ -1063,13 +1065,15 @@ public class NativeBroker extends DBBroker {
                 final XmldbURI parentName = collection.getParentURI();
                 final Collection parent = parentName == null ? collection : getCollection(parentName);
 
-                final CollectionTrigger trigger = new CollectionTriggers(this, parent);
+                final CollectionTriggersGroup trigger = TriggerFactory.getCollectionTriggers(this, parent);
                 trigger.beforeCopyCollection(this, transaction, collection, dstURI);
 
                 //atomically check all permissions in the tree to ensure a copy operation will succeed before starting copying
                 checkPermissionsForCopy(collection, destination.getURI(), newName);
 
-                final DocumentTrigger docTrigger = new DocumentTriggers(this);
+                //just database triggers
+                //TODO (AR) this could be improved by maintaining a single TriggerGroup for GlobalDocumentTriggers, then we would not need to call 'new'
+                final DocumentTrigger docTrigger = new DocumentTriggersGroup(TriggerFactory.toLazyDocumentTriggers(parent.getConfiguration(this).getSourceCollectionURI(), pool.getGlobalDocumentTriggers()));
 
                 final Collection newCollection = doCopyCollection(transaction, docTrigger, collection, destination, newName);
 
@@ -1234,7 +1238,7 @@ public class NativeBroker extends DBBroker {
             final XmldbURI srcURI = collection.getURI();
             final XmldbURI dstURI = destination.getURI().append(newName);
 
-            final CollectionTrigger trigger = new CollectionTriggers(this, parent);
+            final CollectionTrigger trigger = TriggerFactory.getCollectionTriggers(this, parent);
             trigger.beforeMoveCollection(this, transaction, collection, dstURI);
 
             // sourceDir must be known in advance, because once moveCollectionRecursive
@@ -1419,7 +1423,7 @@ public class NativeBroker extends DBBroker {
 
             pool.getProcessMonitor().startJob(ProcessMonitor.ACTION_REMOVE_COLLECTION, collection.getURI());
 
-            final CollectionTrigger colTrigger = new CollectionTriggers(this, parent);
+            final CollectionTrigger colTrigger = TriggerFactory.getCollectionTriggers(this, parent);
 
             colTrigger.beforeDeleteCollection(this, transaction, collection);
 
@@ -1530,7 +1534,7 @@ public class NativeBroker extends DBBroker {
                     LOG.debug("Removing resources in '" + collName + "'...");
                 }
 
-                final DocumentTrigger docTrigger = new DocumentTriggers(this, collection);
+                final DocumentTrigger docTrigger = TriggerFactory.getDocumentTriggers(this, collection);
 
                 for(final Iterator<DocumentImpl> i = collection.iterator(this); i.hasNext(); ) {
                     final DocumentImpl doc = i.next();
@@ -2001,7 +2005,7 @@ public class NativeBroker extends DBBroker {
 
     public void storeMetadata(final Txn transaction, final DocumentImpl doc) throws TriggerException {
         final Collection col = doc.getCollection();
-        final DocumentTrigger trigger = new DocumentTriggers(this, col);
+        final DocumentTrigger trigger = TriggerFactory.getDocumentTriggers(this, col);
 
         trigger.beforeUpdateDocumentMetadata(this, transaction, doc);
 
@@ -2054,7 +2058,7 @@ public class NativeBroker extends DBBroker {
     @Deprecated
     @Override
     public void storeBinaryResource(final Txn transaction, final BinaryDocument blob, final byte[] data)
-        throws IOException {
+    throws IOException {
         blob.setPage(Page.NO_PAGE);
         final File binFile = getCollectionFile(fsDir, blob.getURI(), true);
         File backupFile = null;
@@ -2428,7 +2432,7 @@ public class NativeBroker extends DBBroker {
                 final XmldbURI newURI = destination.getURI().append(newName);
                 final XmldbURI oldUri = doc.getURI();
 
-                final DocumentTrigger trigger = new DocumentTriggers(this, collection);
+                final DocumentTrigger trigger = TriggerFactory.getDocumentTriggers(this, collection);
 
                 if(oldDoc == null) {
                     if(!destination.getPermissionsNoLock().validate(getSubject(), Permission.WRITE)) {
@@ -2573,7 +2577,7 @@ public class NativeBroker extends DBBroker {
                 );
             }
 
-            final DocumentTrigger trigger = new DocumentTriggers(this, collection);
+            final DocumentTrigger trigger = TriggerFactory.getDocumentTriggers(this, collection);
 
             // check if the move would overwrite a collection
             //TODO : resolve URIs : destination.getURI().resolve(newName)
@@ -2658,7 +2662,9 @@ public class NativeBroker extends DBBroker {
                     " (" + document.getDocId() + ") ...");
             }
 
-            final DocumentTrigger trigger = new DocumentTriggers(this);
+            //just database triggers
+            //TODO (AR) this could be improved by maintaining a single TriggerGroup for GlobalDocumentTriggers, then we would not need to call 'new'
+            final DocumentTrigger trigger = new DocumentTriggersGroup(TriggerFactory.toLazyDocumentTriggers(document.getCollection().getConfiguration(this).getSourceCollectionURI(), pool.getGlobalDocumentTriggers()));
 
             if(freeDocId) {
                 trigger.beforeDeleteDocument(this, transaction, document);

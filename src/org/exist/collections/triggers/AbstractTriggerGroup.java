@@ -19,20 +19,32 @@
  */
 package org.exist.collections.triggers;
 
+import org.exist.storage.DBBroker;
+
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
 /**
+ * A group of related Triggers
  *
- * @author aretter
+ * @author Adam Retter <adam.retter@googlemail.com>
  */
-public class DocumentTriggerProxy extends AbstractTriggerProxy<DocumentTrigger> {
+public abstract class AbstractTriggerGroup<L extends LazyTrigger> implements Trigger {
 
-    public DocumentTriggerProxy(Class<? extends DocumentTrigger> clazz) {
-        super(clazz);
+    private final List<L> triggers;
+    private Map<String, List<? extends Object>> parameters = Collections.EMPTY_MAP;
+
+    public AbstractTriggerGroup(final List<L> triggers) {
+        this.triggers = triggers;
     }
-    
-    public DocumentTriggerProxy(Class<? extends DocumentTrigger> clazz, Map<String, List<? extends Object>> parameters) {
-        super(clazz, parameters);
+
+    protected final List<L> getTriggers() {
+        return triggers;
+    }
+
+    @Override
+    public void configure(final DBBroker broker, final org.exist.collections.Collection col, final Map<String, List<? extends Object>> parameters) throws TriggerException {
+        this.parameters = parameters;
     }
 }

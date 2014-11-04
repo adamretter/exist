@@ -20,17 +20,12 @@
 package org.exist.collections;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
 import org.apache.log4j.Logger;
-import org.exist.collections.triggers.CollectionTrigger;
-import org.exist.collections.triggers.CollectionTriggerProxy;
-import org.exist.collections.triggers.DocumentTrigger;
-import org.exist.collections.triggers.DocumentTriggerProxy;
-import org.exist.collections.triggers.Trigger;
-import org.exist.collections.triggers.TriggerException;
-import org.exist.collections.triggers.TriggerProxy;
+import org.exist.collections.triggers.*;
 import org.exist.config.annotation.ConfigurationClass;
 import org.exist.security.Account;
 import org.exist.security.Permission;
@@ -78,8 +73,8 @@ public class CollectionConfiguration {
 
     private static final Logger LOG = Logger.getLogger(CollectionConfiguration.class);
 
-    private List<TriggerProxy<? extends CollectionTrigger>> colTriggers = new ArrayList<TriggerProxy<? extends CollectionTrigger>>();
-    private List<TriggerProxy<? extends DocumentTrigger>> docTriggers = new ArrayList<TriggerProxy<? extends DocumentTrigger>>();
+    private CollectionTriggersGroup colTriggers = CollectionTriggersGroup.EMPTY;
+    private DocumentTriggersGroup docTriggers = DocumentTriggersGroup.EMPTY;
 
     private IndexSpec indexSpec = null;
 
@@ -94,10 +89,15 @@ public class CollectionConfiguration {
 
     private XMLReaderObjectFactory.VALIDATION_SETTING validationMode=XMLReaderObjectFactory.VALIDATION_SETTING.UNKNOWN;
 
-    private BrokerPool pool;
+    private final BrokerPool pool;
 
-    public CollectionConfiguration(BrokerPool pool) {
+    public CollectionConfiguration(final BrokerPool pool) {
         this.pool = pool;
+    }
+
+    public CollectionConfiguration(final BrokerPool pool, final DocumentTriggersGroup docTriggers) {
+        this.pool = pool;
+        this.docTriggers = docTriggers;
     }
 
     /**
@@ -131,19 +131,20 @@ public class CollectionConfiguration {
                 "' in configuration document. Got '" + root.getNamespaceURI() + "'", checkOnly);
             return;
         }
+
+        final List<LazyDocumentTrigger> lazyDocTriggers = new ArrayList<>();
+        lazyDocTriggers.addAll(TriggerFactory.toLazyDocumentTriggers(srcCollectionURI, broker.getBrokerPool().getGlobalDocumentTriggers()));
+
+        final List<LazyCollectionTrigger> lazyColTriggers = new ArrayList<>();
+        lazyColTriggers.addAll(TriggerFactory.toLazyCollectionTriggers(srcCollectionURI, broker.getBrokerPool().getGlobalCollectionTriggers()));
+
         final NodeList childNodes = root.getChildNodes();
         Node node;
         for (int i = 0; i < childNodes.getLength(); i++) {
             node = childNodes.item(i);
             if (NAMESPACE.equals(node.getNamespaceURI())) {
                 if (TRIGGERS_ELEMENT.equals(node.getLocalName())) {
-                    final NodeList triggers = node.getChildNodes();
-                    for(int j = 0; j < triggers.getLength(); j++) {
-                        node = triggers.item(j);
-                        if(node.getNodeType() == Node.ELEMENT_NODE && node.getLocalName().equals(TRIGGER_ELEMENT)) {
-                            configureTrigger((Element)node, srcCollectionURI, checkOnly);
-                        }
-                    }
+                    configureTriggers(node.getChildNodes(), srcCollectionURI, checkOnly, lazyDocTriggers, lazyColTriggers);
                 } else if (INDEX_ELEMENT.equals(node.getLocalName())) {
                     final Element elem = (Element) node;
                     try {
@@ -243,6 +244,15 @@ public class CollectionConfiguration {
                         node.getNamespaceURI() + "' in configuration document", checkOnly);
             }
         }
+
+
+        if(lazyDocTriggers.size() > 0) {
+            this.docTriggers = new DocumentTriggersGroup(lazyDocTriggers);
+        }
+
+        if(lazyColTriggers.size() > 0) {
+            this.colTriggers = new CollectionTriggersGroup(lazyColTriggers);
+        }
     }
 
     private void throwOrLog(String message, boolean throwExceptions) throws CollectionConfigurationException {
@@ -288,7 +298,16 @@ public class CollectionConfiguration {
         return indexSpec;
     }
 
-    private void configureTrigger(Element triggerElement, XmldbURI collectionConfigurationURI, boolean testOnly) throws CollectionConfigurationException {
+    private void configureTriggers(final NodeList triggers, final XmldbURI collectionConfigurationURI, final boolean checkOnly, final List<LazyDocumentTrigger> lazyDocTriggers, final List<LazyCollectionTrigger> lazyColTriggers) throws CollectionConfigurationException {
+        for(int j = 0; j < triggers.getLength(); j++) {
+            final Node node = triggers.item(j);
+            if(node.getNodeType() == Node.ELEMENT_NODE && node.getLocalName().equals(TRIGGER_ELEMENT)) {
+                configureTrigger((Element)node, collectionConfigurationURI, checkOnly, lazyDocTriggers, lazyColTriggers);
+            }
+        }
+    }
+
+    private void configureTrigger(final Element triggerElement, final XmldbURI collectionConfigurationURI, final boolean testOnly, final List<LazyDocumentTrigger> docTriggers, final List<LazyCollectionTrigger> colTriggers) throws CollectionConfigurationException {
 
         //TODO : rely on schema-driven validation -pb
 
@@ -303,16 +322,16 @@ public class CollectionConfiguration {
             final NodeList nlParameter = triggerElement.getElementsByTagNameNS(NAMESPACE, PARAMETER_ELEMENT);
             final Map<String, List<? extends Object>> parameters = ParametersExtractor.extract(nlParameter);
 
-            boolean added = false;
+            boolean added = false; //NOTE: A trigger class may implement both DocumentTrigger and CollectionTrigger
             if(DocumentTrigger.class.isAssignableFrom(clazz)) {
-                docTriggers.add(new DocumentTriggerProxy((Class<? extends DocumentTrigger>)clazz, parameters)); //collectionConfigurationURI, parameters));
+                docTriggers.add(new LazyDocumentTrigger(collectionConfigurationURI, (Class<? extends DocumentTrigger>) clazz, parameters));
                 added = true;
             }
-            
+
             if(CollectionTrigger.class.isAssignableFrom(clazz)) {
-                colTriggers.add(new CollectionTriggerProxy((Class<? extends CollectionTrigger>)clazz, parameters)); //collectionConfigurationURI, parameters));
+                colTriggers.add(new LazyCollectionTrigger(collectionConfigurationURI, (Class<? extends CollectionTrigger>) clazz, parameters));
                 added = true;
-            } 
+            }
             
             if(!added) {
                 throw new TriggerException("Unknown Trigger class type: " + clazz.getName());
@@ -332,12 +351,26 @@ public class CollectionConfiguration {
             }
         }
     }
-    
-    public List<TriggerProxy<? extends CollectionTrigger>> collectionTriggers() {
+
+    /**
+     * Returns a group of lazily instantiated
+     * Collection Triggers for this collection
+     *
+     * @return The Group of Collection Triggers, or null if there are no
+     *   collection triggers for this collection
+     */
+    public CollectionTriggersGroup collectionTriggers() {
         return colTriggers;
     }
 
-    public List<TriggerProxy<? extends DocumentTrigger>> documentTriggers() {
+    /**
+     * Returns a group of lazily instantiated
+     * Document Triggers for this collection
+     *
+     * @return The Group of Document Triggers, or null if there are no
+     *   doument triggers for this collection
+     */
+    public DocumentTriggersGroup documentTriggers() {
         return docTriggers;
     }
 

@@ -1,10 +1,7 @@
 package org.exist.util;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
+import java.util.*;
+
 import org.w3c.dom.Element;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
@@ -32,7 +29,7 @@ public class ParametersExtractor {
         final Map<String, List<? extends Object>> result;
 
         if(parameters == null || !parameters.getLocalName().equals(PARAMETERS_ELEMENT_NAME)) {
-            result = new HashMap<String, List<? extends Object>>(0);
+            result = Collections.EMPTY_MAP;
         } else {
 
             final String namespace = parameters.getNamespaceURI();
@@ -48,16 +45,12 @@ public class ParametersExtractor {
      * @param nlParameter A NodeList of "parameter" elements
      */
     public static Map<String, List<? extends Object>> extract(final NodeList nlParameter) {
-
         final Map<String, List<? extends Object>> result;
-
         if(nlParameter == null || nlParameter.getLength() == 0) {
-            result = new HashMap<String, List<? extends Object>>(0);
+            result = Collections.EMPTY_MAP;
         } else {
             result = extractParameters(nlParameter);
         }
-
-
         return result;
     }
 

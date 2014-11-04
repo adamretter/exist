@@ -27,12 +27,13 @@ import org.apache.log4j.Logger;
 import org.exist.EXistException;
 import org.exist.collections.Collection;
 import org.exist.collections.triggers.DocumentTrigger;
-import org.exist.collections.triggers.DocumentTriggers;
 import org.exist.collections.triggers.TriggerException;
+import org.exist.collections.triggers.TriggerFactory;
 import org.exist.dom.persistent.DefaultDocumentSet;
 import org.exist.dom.persistent.DocumentImpl;
 import org.exist.dom.persistent.DocumentSet;
 import org.exist.dom.persistent.MutableDocumentSet;
+
 import org.exist.dom.persistent.NodeProxy;
 import org.exist.dom.persistent.StoredNode;
 import org.exist.dom.memtree.DocumentBuilderReceiver;
@@ -296,13 +297,13 @@ public abstract class Modification extends AbstractExpression
 	private void prepareTrigger(Txn transaction, DocumentImpl doc) throws TriggerException {
 
 	    final Collection col = doc.getCollection();
-            final DBBroker broker = context.getBroker();
-            
-            final DocumentTrigger trigger = new DocumentTriggers(broker, col);
-            
-            //prepare the trigger
-            trigger.beforeUpdateDocument(context.getBroker(), transaction, doc);
-            triggers.put(doc.getDocId(), trigger);
+		final DBBroker broker = context.getBroker();
+
+		final DocumentTrigger trigger = TriggerFactory.getDocumentTriggers(broker, col);
+
+		//prepare the trigger
+		trigger.beforeUpdateDocument(context.getBroker(), transaction, doc);
+		triggers.put(doc.getDocId(), trigger);
 	}
 	
 	/** Fires the finish function for UPDATE_DOCUMENT_EVENT for the documents trigger

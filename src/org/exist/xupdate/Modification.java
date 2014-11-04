@@ -32,12 +32,14 @@ import org.apache.log4j.Logger;
 import org.exist.EXistException;
 import org.exist.collections.Collection;
 import org.exist.collections.triggers.DocumentTrigger;
-import org.exist.collections.triggers.DocumentTriggers;
 import org.exist.collections.triggers.TriggerException;
+import org.exist.collections.triggers.TriggerFactory;
+
 import org.exist.dom.persistent.DefaultDocumentSet;
 import org.exist.dom.persistent.DocumentImpl;
 import org.exist.dom.persistent.DocumentSet;
 import org.exist.dom.persistent.MutableDocumentSet;
+
 import org.exist.dom.persistent.NodeSet;
 import org.exist.dom.persistent.StoredNode;
 import org.exist.security.PermissionDeniedException;
@@ -310,14 +312,12 @@ public abstract class Modification {
 	 * 
 	 * @throws TriggerException 
 	 */
-	private void prepareTrigger(Txn transaction, DocumentImpl doc) throws TriggerException {
+	private void prepareTrigger(final Txn transaction, final DocumentImpl doc) throws TriggerException {
             
 	    final Collection col = doc.getCollection();
-	        
-            final DocumentTrigger trigger = new DocumentTriggers(broker, col);
-            
-            trigger.beforeUpdateDocument(broker, transaction, doc);
-            triggers.put(doc.getDocId(), trigger);
+		final DocumentTrigger trigger = TriggerFactory.getDocumentTriggers(broker, col);
+		trigger.beforeUpdateDocument(broker, transaction, doc);
+		triggers.put(doc.getDocId(), trigger);
 	}
 	
 	/** 
@@ -330,8 +330,9 @@ public abstract class Modification {
 	 */
 	private void finishTrigger(Txn transaction, DocumentImpl doc) throws TriggerException {
         final DocumentTrigger trigger = triggers.get(doc.getDocId());
-        if(trigger != null)
-            {trigger.afterUpdateDocument(broker, transaction, doc);}
+        if(trigger != null) {
+			trigger.afterUpdateDocument(broker, transaction, doc);
+		}
 	}
 	
 	public String toString() {

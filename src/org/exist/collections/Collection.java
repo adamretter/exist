@@ -1107,8 +1107,8 @@ public class Collection extends Observable implements Comparable<Collection>, Ca
                     confMgr.invalidate(getURI(), broker.getBrokerPool());
                 }
             }
-            
-            DocumentTriggers trigger = new DocumentTriggers(broker, null, this, useTriggers ? getConfiguration(broker) : null);
+
+            final DocumentTrigger trigger = getDocumentTriggers(broker, useTriggers);
             
             trigger.beforeDeleteDocument(broker, transaction, doc);
             
@@ -1168,8 +1168,8 @@ public class Collection extends Observable implements Comparable<Collection>, Ca
             }
             
             doc.getUpdateLock().acquire(Lock.WRITE_LOCK);
-            
-            DocumentTriggers trigger = new DocumentTriggers(broker, null, this, isTriggersEnabled() ? getConfiguration(broker) : null);
+
+            final DocumentTrigger trigger = getDocumentTriggers(broker, isTriggersEnabled());
 
             trigger.beforeDeleteDocument(broker, transaction, doc);
 
@@ -1621,8 +1621,10 @@ public class Collection extends Observable implements Comparable<Collection>, Ca
                 //confMgr.invalidateAll(getURI());
                 setCollectionConfigEnabled(false);
             }
-            
-            final DocumentTriggers trigger = new DocumentTriggers(broker, indexer, this, isTriggersEnabled() ? config : null);
+
+            final DocumentTriggersGroup trigger = getDocumentTriggers(broker, isTriggersEnabled());
+            trigger.setIndexer(indexer);
+
             trigger.setValidating(true);
             
             info.setTriggers(trigger);
@@ -1693,6 +1695,21 @@ public class Collection extends Observable implements Comparable<Collection>, Ca
             
             db.getProcessMonitor().endJob();
         }
+    }
+
+    private DocumentTriggersGroup getDocumentTriggers(final DBBroker broker, final boolean useCollectionTriggers) {
+        final DocumentTriggersGroup trigger;
+        if(useCollectionTriggers) {
+            //potentially all triggers
+            return TriggerFactory.getDocumentTriggers(broker, this);
+        } else {
+            //just database triggers
+
+            //TODO (AR) this could be improved by maintaining a single TriggerGroup for GlobalDocumentTriggers, then we would not need to call 'new'
+            trigger = new DocumentTriggersGroup(TriggerFactory.toLazyDocumentTriggers(null, broker.getBrokerPool().getGlobalDocumentTriggers()));
+        }
+
+        return trigger;
     }
 
     private void checkConfigurationDocument(final Txn transaction, final DBBroker broker, final XmldbURI docUri) throws EXistException, PermissionDeniedException, LockException {
@@ -1875,8 +1892,8 @@ public class Collection extends Observable implements Comparable<Collection>, Ca
                 metadata.setLastModified(modified.getTime());
             }
             blob.setContentLength(size);
-            
-            final DocumentTriggers trigger = new DocumentTriggers(broker, null, this, isTriggersEnabled() ? getConfiguration(broker) : null);
+
+            final DocumentTrigger trigger = getDocumentTriggers(broker, isTriggersEnabled());
             
             if (oldDoc == null) {
                 trigger.beforeCreateDocument(broker, transaction, blob.getURI());

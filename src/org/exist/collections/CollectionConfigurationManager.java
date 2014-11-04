@@ -21,6 +21,10 @@ package org.exist.collections;
 
 import org.apache.log4j.Logger;
 import org.exist.EXistException;
+import org.exist.collections.triggers.DocumentTrigger;
+import org.exist.collections.triggers.DocumentTriggersGroup;
+import org.exist.collections.triggers.LazyDocumentTrigger;
+import org.exist.config.ConfigurationDocumentTrigger;
 import org.exist.dom.persistent.DocumentImpl;
 import org.exist.dom.memtree.SAXAdapter;
 import org.exist.security.PermissionDeniedException;
@@ -323,7 +327,7 @@ public class CollectionConfigurationManager {
         if (conf != null) {
             return conf;
         }
-        
+
         return latch.write(new Callable<CollectionConfiguration>() {
             @Override
             public CollectionConfiguration call() {
@@ -334,7 +338,17 @@ public class CollectionConfigurationManager {
                     return conf;
                 }
 
-                conf = new CollectionConfiguration(broker.getBrokerPool());
+                if(path.equals(XmldbURI.CONFIG_COLLECTION_URI.append(XmldbURI.SYSTEM_COLLECTION_URI))) {
+
+                    /* the /db/system/config/db/system collection must be initialised with the ConfigurationDocumentTrigger */
+
+                    final List<LazyDocumentTrigger> initialTriggers = new ArrayList<>();
+                    initialTriggers.add(new LazyDocumentTrigger(XmldbURI.CONFIG_COLLECTION_URI.append(XmldbURI.SYSTEM_COLLECTION_URI), ConfigurationDocumentTrigger.class));
+                    conf = new CollectionConfiguration(broker.getBrokerPool(), new DocumentTriggersGroup(initialTriggers));
+                } else {
+                    conf = new CollectionConfiguration(broker.getBrokerPool());
+                }
+
                 configurations.put(path, conf);
 
                 return conf;

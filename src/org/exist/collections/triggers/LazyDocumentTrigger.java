@@ -19,18 +19,24 @@
  */
 package org.exist.collections.triggers;
 
+import org.exist.xmldb.XmldbURI;
+
 import java.util.List;
-import org.apache.log4j.Logger;
+import java.util.Map;
 
 /**
+ * A Lazily instantiated Document Trigger
+ * This class is just a DocumentTrigger specialisation of the LazyTrigger
  *
- * @author aretter
+ * @author Adam Retter <adam.retter@googlemail.com>
  */
-public class CollectionTriggersVisitor extends AbstractTriggersVisitor<CollectionTrigger> {
+public class LazyDocumentTrigger extends AbstractLazyTrigger<DocumentTrigger> {
 
-    protected Logger LOG = Logger.getLogger(getClass());
+    public LazyDocumentTrigger(final XmldbURI configuredCollection, final Class<? extends DocumentTrigger> clazz) {
+        super(configuredCollection, clazz);
+    }
     
-    public CollectionTriggersVisitor(List<CollectionTrigger> triggers) {
-        super(triggers);
+    public LazyDocumentTrigger(final XmldbURI configuredCollection, final Class<? extends DocumentTrigger> clazz, Map<String, List<? extends Object>> parameters) {
+        super(configuredCollection, clazz, parameters);
     }
 }

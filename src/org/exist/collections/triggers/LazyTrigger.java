@@ -19,29 +19,20 @@
  */
 package org.exist.collections.triggers;
 
-import java.util.List;
-import java.util.Map;
 
 import org.exist.collections.Collection;
 import org.exist.storage.DBBroker;
 
 /**
+ * Interface for getting
+ * a handle on a Trigger that
+ * is lazily instantiated
  *
- * @author aretter
+ * @author Adam Retter <adam.retter@googlemail.com>
  */
-public abstract class AbstractTriggersVisitor<T extends Trigger> implements TriggersVisitor<T> {
+public interface LazyTrigger<T extends Trigger> {
 
-    private List<T> triggers;
-    
-    public AbstractTriggersVisitor(List<T> triggers) {
-        this.triggers = triggers;
-    }
-    
-    @Override
-    public void configure(DBBroker broker, Collection parent, Map<String, List<? extends Object>> parameters) throws TriggerException {
-    }
-    
-    public List<T> getTriggers() throws TriggerException {
-        return triggers;
-    }
+    T get() throws TriggerException;
+
 }
+

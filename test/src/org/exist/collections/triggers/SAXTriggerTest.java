@@ -91,7 +91,7 @@ public class SAXTriggerTest {
 
         BrokerPool db = BrokerPool.getInstance();
 
-        db.registerDocumentTrigger(AnotherTrigger.class);
+        db.registerGlobalDocumentTrigger(AnotherTrigger.class);
 
         DBBroker broker = null;
 
@@ -124,7 +124,7 @@ public class SAXTriggerTest {
 
         BrokerPool db = BrokerPool.getInstance();
 
-        db.registerDocumentTrigger(StoreTrigger.class);
+        db.registerGlobalDocumentTrigger(StoreTrigger.class);
 
         DBBroker broker = null;
 

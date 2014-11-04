@@ -19,15 +19,14 @@
  */
 package org.exist.collections.triggers;
 
-import java.util.List;
-
 /**
+ * ThreadLocal<Boolean> with an initialValue of Boolean.FALSE
  *
- * @author aretter
+ * @author Adam Retter <adam.retter@googlemail.com>
  */
-public class DocumentTriggersVisitor extends AbstractTriggersVisitor<DocumentTrigger> {
-
-    public DocumentTriggersVisitor(List<DocumentTrigger> triggers) {
-        super(triggers);
+public class ThreadLocalBoolean extends ThreadLocal<Boolean> {
+    @Override
+    protected Boolean initialValue() {
+        return Boolean.FALSE;
     }
 }

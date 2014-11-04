@@ -1,6 +1,6 @@
 /*
  *  eXist Open Source Native XML Database
- *  Copyright (C) 2011-2012 The eXist Project
+ *  Copyright (C) 2011-2014 The eXist Project
  *  http://exist-db.org
  *
  *  This program is free software; you can redistribute it and/or
@@ -21,14 +21,25 @@
  */
 package org.exist.collections.triggers;
 
+import org.exist.xmldb.XmldbURI;
+
 import java.util.List;
+import java.util.Map;
 
 /**
+ * A Lazily instantiated Collection Trigger
+ * This class is just a CollectionTrigger specialisation of the LazyTrigger
  *
- * @author aretter
+ * @author Adam Retter <adam.retter@googlemail.com>
  */
-public interface TriggersVisitor<T extends Trigger> extends Trigger {
+public class LazyCollectionTrigger extends AbstractLazyTrigger<CollectionTrigger> {
     
-    public List<T> getTriggers() throws TriggerException;
-
+    public LazyCollectionTrigger(final XmldbURI configuredCollection, final Class<? extends CollectionTrigger> clazz){
+        super(configuredCollection, clazz);
+    }
+    
+    public LazyCollectionTrigger(final XmldbURI configuredCollection, final Class<? extends CollectionTrigger> clazz, final Map<String, List<? extends Object>> parameters) {
+        super(configuredCollection, clazz, parameters);
+    }
 }
+

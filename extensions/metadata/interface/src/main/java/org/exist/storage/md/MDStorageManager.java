@@ -94,8 +94,8 @@ public class MDStorageManager implements Plug, BackupHandler, RestoreHandler {
 		
 		inject(db, md);
 
-        db.registerDocumentTrigger(DocumentEvents.class);
-        db.registerCollectionTrigger(CollectionEvents.class);
+        db.registerGlobalDocumentTrigger(DocumentEvents.class);
+        db.registerGlobalCollectionTrigger(CollectionEvents.class);
 		
 		Map<String, Class<?>> map = (Map<String, Class<?>>) db.getConfiguration().getProperty(XQueryContext.PROPERTY_BUILT_IN_MODULES);
         map.put(

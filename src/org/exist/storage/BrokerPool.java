@@ -974,7 +974,7 @@ public class BrokerPool implements Database {
                             //initialize configurations watcher trigger
                             if(!exportOnly) {
                                 try {
-                                    initialiseTriggersForCollections(broker, XmldbURI.SYSTEM_COLLECTION_URI);
+                                    initialiseSystemCollectionConfig(broker);
                                 } catch(final PermissionDeniedException pde) {
                                     //XXX: do not catch exception!
                                     LOG.error(pde.getMessage(), pde);
@@ -1151,16 +1151,13 @@ public class BrokerPool implements Database {
         initialiseSystemCollection(broker, XmldbURI.SYSTEM_COLLECTION_URI, Permission.DEFAULT_SYSTEM_COLLECTION_PERM);
     }
 
-    private void initialiseTriggersForCollections(final DBBroker broker, final XmldbURI uri) throws EXistException, PermissionDeniedException {
-        final Collection collection = broker.getCollection(uri);
+    private void initialiseSystemCollectionConfig(final DBBroker broker) throws EXistException, PermissionDeniedException {
+        final Collection collection = broker.getCollection(XmldbURI.SYSTEM_COLLECTION_URI);
 
         //initialize configurations watcher trigger
         if(collection != null) {
             final CollectionConfigurationManager manager = getConfigurationManager();
-            final CollectionConfiguration collConf = manager.getOrCreateCollectionConfiguration(broker, collection);
-
-            final DocumentTriggerProxy triggerProxy = new DocumentTriggerProxy(ConfigurationDocumentTrigger.class); //, collection.getURI());
-            collConf.documentTriggers().add(triggerProxy);
+            manager.getOrCreateCollectionConfiguration(broker, collection);
         }
     }
 
@@ -2153,27 +2150,27 @@ public class BrokerPool implements Database {
         return new File((String) conf.getProperty(BrokerPool.PROPERTY_DATA_DIR));
     }
 
-    private final List<TriggerProxy<? extends DocumentTrigger>> documentTriggers = new ArrayList<>();
-    private final List<TriggerProxy<? extends CollectionTrigger>> collectionTriggers = new ArrayList<>();
+    private final List<Class<? extends DocumentTrigger>> globalDocumentTriggers = new ArrayList<>();
+    private final List<Class<? extends CollectionTrigger>> globalCollectionTriggers = new ArrayList<>();
 
     @Override
-    public List<TriggerProxy<? extends DocumentTrigger>> getDocumentTriggers() {
-        return documentTriggers;
+    public List<Class<? extends DocumentTrigger>> getGlobalDocumentTriggers() {
+        return globalDocumentTriggers;
     }
 
     @Override
-    public List<TriggerProxy<? extends CollectionTrigger>> getCollectionTriggers() {
-        return collectionTriggers;
+    public List<Class<? extends CollectionTrigger>> getGlobalCollectionTriggers() {
+        return globalCollectionTriggers;
     }
 
     @Override
-    public void registerDocumentTrigger(final Class<? extends DocumentTrigger> clazz) {
-        documentTriggers.add(new DocumentTriggerProxy(clazz));
+    public void registerGlobalDocumentTrigger(final Class<? extends DocumentTrigger> clazz) {
+        globalDocumentTriggers.add(clazz);
     }
 
     @Override
-    public void registerCollectionTrigger(final Class<? extends CollectionTrigger> clazz) {
-        collectionTriggers.add(new CollectionTriggerProxy(clazz));
+    public void registerGlobalCollectionTrigger(final Class<? extends CollectionTrigger> clazz) {
+        globalCollectionTriggers.add(clazz);
     }
 
     public PluginsManager getPluginsManager() {
