@@ -24,6 +24,7 @@ import java.util.Hashtable;
 
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.sax.SAXTransformerFactory;
+import net.sf.saxon.lib.FeatureKeys;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -135,6 +136,14 @@ public class TransformerFactoryAllocator {
                 }
                 //Fallback to system default
                 factory = (SAXTransformerFactory) TransformerFactory.newInstance();
+            }
+        }
+        
+        if(factory instanceof net.sf.saxon.TransformerFactoryImpl) {
+            factory.setAttribute(FeatureKeys.SOURCE_PARSER_CLASS, "org.exist.validation.resolver.eXistXMLCatalogResolver");
+            factory.setAttribute(FeatureKeys.STYLE_PARSER_CLASS, "org.exist.validation.resolver.eXistXMLCatalogResolver");
+            if(LOG.isDebugEnabled()) {
+                LOG.debug("Configured Saxon to use org.exist.validation.resolver.eXistXMLCatalogResolver for its sourceParserClass");
             }
         }
 
