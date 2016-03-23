@@ -37,6 +37,7 @@ import org.w3c.dom.Element;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Path;
+import java.util.concurrent.locks.Lock;
 
 /**
  */
@@ -83,19 +84,37 @@ public class NGramIndex extends AbstractIndex implements RawBackupSupport {
 
     @Override
     public void close() throws DBException {
-        LOG.debug("SYNC NGRAM");
-        db.close();
+        LOG.debug("CLOSE NGRAM");
+        final Lock writeLock = db.getLock().writeLock();
+        writeLock.lock();
+        try {
+            db.close();
+        } finally {
+            writeLock.unlock();
+        }
     }
 
     @Override
     public void sync() throws DBException {
         LOG.debug("SYNC NGRAM");
-        db.flush();
+        final Lock writeLock = db.getLock().writeLock();
+        writeLock.lock();
+        try {
+            db.flush();
+        } finally {
+            writeLock.unlock();
+        }
     }
 
     @Override
     public void remove() throws DBException {
-        db.closeAndRemove();
+        final Lock writeLock = db.getLock().writeLock();
+        writeLock.lock();
+        try {
+            db.closeAndRemove();
+        } finally {
+            writeLock.unlock();
+        }
     }
 
     @Override

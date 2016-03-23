@@ -72,10 +72,27 @@ public class CollectionStore extends BFile {
     public boolean flush() throws DBException {
         boolean flushed = false;
         if (!BrokerPool.FORCE_CORRUPTION) {
-            flushed = flushed | dataCache.flush();
-            flushed = flushed | super.flush();
+            final Lock writeLock = getLock().writeLock();
+            writeLock.lock();
+            try {
+                flushed = flushed | dataCache.flush();
+                flushed = flushed | super.flush();
+            } finally {
+                writeLock.unlock();
+            }
         }
         return flushed;
+    }
+
+    @Override
+    public void close() throws DBException {
+        final Lock writeLock = getLock().writeLock();
+        writeLock.lock();
+        try {
+            super.close();
+        } finally {
+            writeLock.unlock();
+        }
     }
 
     public void freeResourceId(final int id) {

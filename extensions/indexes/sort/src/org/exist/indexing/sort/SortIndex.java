@@ -55,7 +55,13 @@ public class SortIndex extends AbstractIndex implements RawBackupSupport {
 
     @Override
     public void close() throws DBException {
-        btree.close();
+        final Lock writeLock = btree.getLock().writeLock();
+        writeLock.lock();
+        try {
+            btree.close();
+        } finally {
+            writeLock.unlock();
+        }
         btree = null;
     }
 
@@ -79,7 +85,13 @@ public class SortIndex extends AbstractIndex implements RawBackupSupport {
 
     @Override
     public void remove() throws DBException {
-        btree.closeAndRemove();
+        final Lock writeLock = btree.getLock().writeLock();
+        writeLock.lock();
+        try {
+            btree.closeAndRemove();
+        } finally {
+            writeLock.unlock();
+        }
     }
 
     @Override

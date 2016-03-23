@@ -49,7 +49,7 @@ public class NativeStructuralIndex extends AbstractIndex implements RawBackupSup
     public static final byte STRUCTURAL_INDEX_ID = 1;
 
     /** The datastore for this node index */
-    protected BTreeStore btree;
+    protected volatile BTreeStore btree;
 
     protected SymbolTable symbols;
 
@@ -78,7 +78,14 @@ public class NativeStructuralIndex extends AbstractIndex implements RawBackupSup
 
     @Override
     public void close() throws DBException {
-        btree.close();
+        final Lock writeLock = btree.getLock().writeLock();
+        writeLock.lock();
+        try {
+            btree.close();
+        } finally {
+            writeLock.unlock();
+        }
+
         btree = null;
     }
 
@@ -102,7 +109,13 @@ public class NativeStructuralIndex extends AbstractIndex implements RawBackupSup
 
     @Override
     public void remove() throws DBException {
-        btree.closeAndRemove();
+        final Lock writeLock = btree.getLock().writeLock();
+        writeLock.lock();
+        try {
+            btree.closeAndRemove();
+        } finally {
+            writeLock.unlock();
+        }
     }
 
     @Override

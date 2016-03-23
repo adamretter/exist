@@ -3659,7 +3659,18 @@ public class NativeBroker extends DBBroker {
         try {
             flush();
             sync(Sync.MAJOR);
-            domDb.close();
+            new DOMTransaction(this, domDb, Lock.WRITE_LOCK) {
+                @Override
+                public Object start() throws ReadOnlyException {
+                    try {
+                        domDb.close();
+                    } catch(final DBException e) {
+                        LOG.error("Unable to close DOM", e);
+                    }
+                    return null;
+                }
+            }.run();
+
             collectionsDb.close();
             notifyClose();
         } catch(final Exception e) {

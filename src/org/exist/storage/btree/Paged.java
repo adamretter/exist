@@ -153,20 +153,6 @@ public abstract class Paged implements AutoCloseable {
         return readOnly;
     }
 
-    /**
-     * Close the underlying files.
-     *
-     * @throws DBException
-     */
-    @Override
-    public void close() throws DBException {
-        try {
-            raf.close();
-        } catch (final IOException e) {
-            throw new DBException("an error occurred while closing database file: " + e.getMessage());
-        }
-    }
-
     public boolean create() throws DBException {
         try {
             fileHeader.write();
@@ -247,6 +233,20 @@ public abstract class Paged implements AutoCloseable {
      */
     public FileHeader getFileHeader() {
         return fileHeader;
+    }
+
+    /**
+     * Close the underlying files.
+     *
+     * @throws DBException
+     */
+    @Override
+    public void close() throws DBException {
+        try {
+            raf.close();
+        } catch (final IOException e) {
+            throw new DBException("an error occurred while closing database file: " + e.getMessage());
+        }
     }
 
     /**
