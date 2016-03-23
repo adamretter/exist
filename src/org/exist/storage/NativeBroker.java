@@ -505,15 +505,23 @@ public class NativeBroker extends DBBroker {
     @Override
     public void backupToArchive(final RawDataBackup backup) throws IOException, EXistException {
         for(final byte i : ALL_STORAGE_FILES) {
-            final Paged paged = getStorage(i);
-            if(paged == null) {
+            final BTree btree = getStorage(i);
+            if(btree == null) {
                 LOG.warn("Storage file is null: " + i);
                 continue;
             }
-            try(final OutputStream os = backup.newEntry(FileUtils.fileName(paged.getFile()))) {
-                paged.backupToStream(os);
-            } finally {
-                backup.closeEntry();
+            try(final OutputStream os = backup.newEntry(FileUtils.fileName(btree.getFile()))) {
+                final java.util.concurrent.locks.Lock readLock = btree.getLock().readLock();
+                readLock.lock();
+                try {
+                    try {
+                        btree.backupToStream(os);
+                    } finally {
+                        backup.closeEntry();
+                    }
+                } finally {
+                    readLock.unlock();
+                }
             }
         }
         pool.getSymbols().backupToArchive(backup);

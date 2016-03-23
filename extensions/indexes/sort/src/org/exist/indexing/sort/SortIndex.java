@@ -107,10 +107,17 @@ public class SortIndex extends AbstractIndex implements RawBackupSupport {
     @Override
     public void backupToArchive(final RawDataBackup backup) throws IOException {
         try (final OutputStream os = backup.newEntry(FileUtils.fileName(btree.getFile()))) {
-            btree.backupToStream(os);
-        } finally {
-            backup.closeEntry();
+            final Lock readLock = btree.getLock().readLock();
+            readLock.lock();
+            try {
+                try {
+                    btree.backupToStream(os);
+                } finally {
+                    backup.closeEntry();
+                }
+            } finally {
+                readLock.unlock();
+            }
         }
-    }
-
+	}
 }

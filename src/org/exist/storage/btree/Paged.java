@@ -322,15 +322,6 @@ public abstract class Paged implements AutoCloseable {
         return new Page(pageNum);
     }
 
-    /**
-     * Gets the opened attribute of the Paged object
-     *
-     * @return The opened value
-     */
-    public boolean isOpened() {
-        return true;
-    }
-
     public boolean open(final short expectedVersion) throws DBException {
         try {
             if (exists()) {

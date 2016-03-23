@@ -397,8 +397,13 @@ public class SymbolTable implements BrokerPoolService {
     }
 
     public void backupToArchive(final RawDataBackup backup) throws IOException {
-        final OutputStream os = backup.newEntry(FileUtils.fileName(getFile()));
-        backupSymbolsTo(os);
+        try(final OutputStream os = backup.newEntry(FileUtils.fileName(getFile()))) {
+            try {
+                backupSymbolsTo(os);
+            } finally {
+                backup.closeEntry();
+            }
+        }
     }
 
     public void flush() throws EXistException {

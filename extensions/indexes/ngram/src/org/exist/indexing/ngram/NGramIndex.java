@@ -139,9 +139,17 @@ public class NGramIndex extends AbstractIndex implements RawBackupSupport {
     @Override
     public void backupToArchive(RawDataBackup backup) throws IOException {
         try(final OutputStream os = backup.newEntry(FileUtils.fileName(db.getFile()))) {
-            db.backupToStream(os);
-        } finally {
-            backup.closeEntry();
+            final Lock readLock = db.getLock().readLock();
+            readLock.lock();
+            try {
+                try {
+                    db.backupToStream(os);
+                } finally {
+                    backup.closeEntry();
+                }
+            } finally {
+                readLock.unlock();
+            }
         }
     }
 }
