@@ -31,13 +31,13 @@ import org.exist.storage.btree.BTree;
 import org.exist.storage.btree.BTreeException;
 import org.exist.storage.btree.Paged;
 import org.exist.storage.btree.Value;
-import org.exist.storage.lock.Lock;
 import org.exist.util.ByteConversion;
 import org.exist.util.FileUtils;
 import org.exist.util.LockException;
 import org.exist.util.sanity.SanityCheck;
 
 import java.io.IOException;
+import java.util.concurrent.locks.Lock;
 
 /**
  * An iterator that walks through the raw node data items in a document. The class
@@ -74,9 +74,9 @@ public class RawNodeIterator implements IRawNodeIterator {
 
     @Override
     public final void seek(final NodeHandle node) throws IOException {
-        final Lock lock = db.getLock();
+        final Lock readLock = db.getLock().readLock();
+        readLock.lock();
         try {
-            lock.acquire(Lock.READ_LOCK);
             RecordPos rec = null;
             if (StorageAddress.hasAddress(node.getInternalAddress()))
                 {rec = db.findRecord(node.getInternalAddress());}
@@ -94,25 +94,17 @@ public class RawNodeIterator implements IRawNodeIterator {
             //Position the stream at the very beginning of the record
             offset = rec.offset - DOMFile.LENGTH_TID;
             page = rec.getPage();
-        } catch (final LockException e) {
-            throw new IOException("Exception while scanning document: " + e.getMessage());
         } finally {
-            lock.release(Lock.READ_LOCK);
+            readLock.unlock();
         }
     }
 
     @Override
     public Value next() {
         Value nextValue = null;
-        final Lock lock = db.getLock();
+        final Lock readLock = db.getLock().readLock();
+        readLock.lock();
         try {
-            try {
-                lock.acquire(Lock.READ_LOCK);
-            } catch (final LockException e) {
-                LOG.error("Failed to acquire read lock on " + FileUtils.fileName(db.getFile()));
-                //TODO : throw exception here ? -pb
-                return null;
-            }
             db.setOwnerObject(broker);
             long backLink = 0;
             do {
@@ -199,7 +191,7 @@ public class RawNodeIterator implements IRawNodeIterator {
             } while (nextValue == null);
             return nextValue;
         } finally {
-            lock.release(Lock.READ_LOCK);
+            readLock.unlock();
         }
     }
 

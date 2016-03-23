@@ -24,10 +24,11 @@ package org.exist.storage.dom;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.exist.dom.persistent.DocumentImpl;
-import org.exist.storage.lock.Lock;
 import org.exist.util.FileUtils;
 import org.exist.util.LockException;
 import org.exist.util.ReadOnlyException;
+
+import java.util.concurrent.locks.Lock;
 
 /**
  * DOMTransaction controls access to the DOM file
@@ -54,7 +55,7 @@ public abstract class DOMTransaction {
     public DOMTransaction(Object owner, DOMFile file) {
         this.ownerObject = owner;
         this.file = file;
-        this.mode = Lock.READ_LOCK;
+        this.mode = org.exist.storage.lock.Lock.READ_LOCK;
     }
 
     /**
@@ -96,23 +97,23 @@ public abstract class DOMTransaction {
      * @return an <code>Object</code> value
      */
     public Object run() {
-        final Lock lock = file.getLock();
+        final Lock lock;
+        if(mode == org.exist.storage.lock.Lock.READ_LOCK) {
+            lock = file.getLock().readLock();
+        } else {
+            lock = file.getLock().writeLock();
+        }
+
+        lock.lock();
         try {
-            // try to acquire a lock on the file
-            try {
-                lock.acquire( mode );
-            } catch( final LockException e ) {
-                LOG.error("Failed to acquire read lock on " + FileUtils.fileName(file.getFile()), e);
-                return null;
-            }
             file.setOwnerObject(ownerObject);
             file.setCurrentDocument(document);
             return start();
         } catch(final ReadOnlyException e) {
             LOG.error(e.getMessage(), e);
+            return null;
         } finally {
-            lock.release(mode);
+            lock.unlock();
         }
-        return null;
     }
 }

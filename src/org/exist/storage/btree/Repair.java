@@ -6,13 +6,13 @@ import org.exist.indexing.StructuralIndex;
 import org.exist.storage.BrokerPool;
 import org.exist.storage.DBBroker;
 import org.exist.storage.NativeBroker;
-import org.exist.storage.lock.Lock;
 import org.exist.storage.structural.NativeStructuralIndexWorker;
 import org.exist.util.Configuration;
 import org.exist.util.DatabaseConfigurationException;
 import org.exist.util.FileUtils;
 
 import java.util.Optional;
+import java.util.concurrent.locks.Lock;
 
 
 /**
@@ -52,15 +52,15 @@ public class Repair {
                 System.console().printf("Unkown index: %s\n", id);
                 return;
             }
-            final Lock lock = btree.getLock();
+            final Lock writeLock = btree.getLock().writeLock();
+            writeLock.lock();
             try {
-                lock.acquire(Lock.WRITE_LOCK);
 
                 System.console().printf("Rebuilding %15s ...", FileUtils.fileName(btree.getFile()));
                 btree.rebuild();
                 System.out.println("Done");
             } finally {
-                lock.release(Lock.WRITE_LOCK);
+                writeLock.unlock();
             }
 
         } catch (Exception e) {

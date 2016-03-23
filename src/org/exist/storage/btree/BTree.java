@@ -92,6 +92,8 @@ import java.io.*;
 import java.nio.file.Path;
 import java.text.NumberFormat;
 import java.util.*;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
 /**
@@ -106,7 +108,7 @@ import java.util.stream.Collectors;
  *  Both, branch and leaf nodes are represented by the inner class 
  *  {@link org.exist.storage.btree.BTree.BTreeNode}.
  */
-public class BTree extends Paged implements Lockable {
+public class BTree extends Paged {
 
     protected final static Logger LOGSTATS = LogManager.getLogger( NativeBroker.EXIST_STATISTICS_LOGGER );
     
@@ -161,6 +163,8 @@ public class BTree extends Paged implements Lockable {
 
     private double splitFactor = -1;
 
+    protected final ReentrantReadWriteLock lock = new ReentrantReadWriteLock(true);
+
     protected BTree(final BrokerPool pool, final byte fileId, final boolean recoveryEnabled,
             final DefaultCacheManager cacheManager) throws DBException {
         super(pool);
@@ -192,6 +196,10 @@ public class BTree extends Paged implements Lockable {
     @Override
     public short getFileVersion() {
         return -1;
+    }
+
+    public ReadWriteLock getLock() {
+        return lock;
     }
 
     public boolean create(final short fixedKeyLen) throws DBException {
@@ -227,16 +235,6 @@ public class BTree extends Paged implements Lockable {
     public void closeAndRemove() {
         super.closeAndRemove();
         cacheManager.deregisterCache(cache);
-    }
-
-    /**
-     * Get the active Lock object for this file.
-     *
-     * @see org.exist.util.Lockable#getLock()
-     */
-    @Override
-    public Lock getLock() {
-        return null;
     }
 
     protected void initCache() {

@@ -53,8 +53,6 @@ public class HasIndex extends BasicFunction {
             return BooleanValue.valueOf(index.hasIndex(id));
         } catch (final EXistException e) {
             throw new XPathException(this, e.getMessage(), e);
-        } catch (final LockException e) {
-            throw new XPathException(this, "Caught lock error while searching index. Giving up.", e);
         }
     }
 }

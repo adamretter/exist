@@ -5,7 +5,6 @@ import org.exist.dom.QName;
 import org.exist.dom.persistent.NodeProxy;
 import org.exist.indexing.sort.SortIndex;
 import org.exist.indexing.sort.SortIndexWorker;
-import org.exist.util.LockException;
 import org.exist.xquery.*;
 import org.exist.xquery.value.*;
 
@@ -42,8 +41,6 @@ public class GetIndex extends BasicFunction {
             pos = index.getIndex(id, node);
         } catch (final EXistException e) {
             throw new XPathException(this, e.getMessage(), e);
-        } catch (final LockException e) {
-            throw new XPathException(this, "Caught lock error while searching index. Giving up.", e);
         }
         return pos < 0 ? Sequence.EMPTY_SEQUENCE : new IntegerValue(pos, Type.LONG);
     }

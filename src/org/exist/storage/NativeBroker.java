@@ -821,9 +821,9 @@ public class NativeBroker extends DBBroker {
         final Pattern p = Pattern.compile(regexp);
         final Matcher m = p.matcher("");
 
-        final Lock lock = collectionsDb.getLock();
+        final java.util.concurrent.locks.Lock readLock = collectionsDb.getLock().readLock();
+        readLock.lock();
         try {
-            lock.acquire(Lock.READ_LOCK);
 
             //TODO write a regexp lookup for key data in BTree.query
             //final IndexQuery idxQuery = new IndexQuery(IndexQuery.REGEXP, regexp);
@@ -844,14 +844,11 @@ public class NativeBroker extends DBBroker {
         } catch(final UnsupportedEncodingException e) {
             //LOG.error("Unable to encode '" + uri + "' in UTF-8");
             //return null;
-        } catch(final LockException e) {
-            LOG.warn("Failed to acquire lock on " + FileUtils.fileName(collectionsDb.getFile()));
-            //return null;
         } catch(final TerminatedException | IOException | BTreeException e) {
             LOG.error(e.getMessage(), e);
             //return null;
         } finally {
-            lock.release(Lock.READ_LOCK);
+            readLock.unlock();
         }
 
         return collections;
@@ -867,9 +864,9 @@ public class NativeBroker extends DBBroker {
         synchronized(collectionsCache) {
             collection = collectionsCache.get(uri);
             if(collection == null) {
-                final Lock lock = collectionsDb.getLock();
+                final java.util.concurrent.locks.Lock readLock = collectionsDb.getLock().readLock();
+                readLock.lock();
                 try {
-                    lock.acquire(Lock.READ_LOCK);
 
                     final Value key = new CollectionStore.CollectionKey(uri.toString());
                     final VariableByteInput is = collectionsDb.getAsStream(key);
@@ -883,12 +880,10 @@ public class NativeBroker extends DBBroker {
 
                 } catch(final UnsupportedEncodingException e) {
                     LOG.error("Unable to encode '" + uri + "' in UTF-8");
-                } catch(final LockException e) {
-                    LOG.warn("Failed to acquire lock on " + FileUtils.fileName(collectionsDb.getFile()));
                 } catch(final IOException e) {
                     LOG.error(e.getMessage(), e);
                 } finally {
-                    lock.release(Lock.READ_LOCK);
+                    readLock.unlock();
                 }
             } else {
 
@@ -920,10 +915,10 @@ public class NativeBroker extends DBBroker {
         synchronized(collectionsCache) {
             collection = collectionsCache.get(uri);
             if(collection == null) {
-                final Lock lock = collectionsDb.getLock();
+                final java.util.concurrent.locks.Lock readLock = collectionsDb.getLock().readLock();
+                readLock.lock();
                 try {
-                    lock.acquire(Lock.READ_LOCK);
-                    VariableByteInput is;
+                    final VariableByteInput is;
                     if(address == BFile.UNKNOWN_ADDRESS) {
                         final Value key = new CollectionStore.CollectionKey(uri.toString());
                         is = collectionsDb.getAsStream(key);
@@ -943,13 +938,13 @@ public class NativeBroker extends DBBroker {
                     LOG.error("Unable to encode '" + uri + "' in UTF-8");
                     return null;
                 } catch(final LockException e) {
-                    LOG.warn("Failed to acquire lock on " + FileUtils.fileName(collectionsDb.getFile()));
+                    LOG.warn("Failed to acquire lock on " + uri);
                     return null;
                 } catch(final IOException e) {
                     LOG.error(e.getMessage(), e);
                     return null;
                 } finally {
-                    lock.release(Lock.READ_LOCK);
+                    readLock.unlock();
                 }
             } else {
                 if(!collection.getURI().equalsInternal(uri)) {
@@ -1070,10 +1065,10 @@ public class NativeBroker extends DBBroker {
 
         final CollectionCache collectionsCache = pool.getCollectionsCache();
         synchronized(collectionsCache) {
-            final Lock lock = collectionsDb.getLock();
+            final java.util.concurrent.locks.Lock writeLock = collectionsDb.getLock().writeLock();
+            writeLock.lock();
             try {
                 pool.getProcessMonitor().startJob(ProcessMonitor.ACTION_COPY_COLLECTION, collection.getURI());
-                lock.acquire(Lock.WRITE_LOCK);
 
                 //recheck here because now under 'synchronized(collectionsCache)'
                 if(isSubCollection(collection, destination)) {
@@ -1095,8 +1090,8 @@ public class NativeBroker extends DBBroker {
 
                 trigger.afterCopyCollection(this, transaction, newCollection, srcURI);
             } finally {
-                lock.release(Lock.WRITE_LOCK);
                 pool.getProcessMonitor().endJob();
+                writeLock.unlock();
             }
         }
     }
@@ -1378,9 +1373,9 @@ public class NativeBroker extends DBBroker {
                 }
             }
 
-            final Lock lock = collectionsDb.getLock();
+            final java.util.concurrent.locks.Lock writeLock = collectionsDb.getLock().writeLock();
+            writeLock.lock();
             try {
-                lock.acquire(Lock.WRITE_LOCK);
                 collectionsCache.remove(collection);
                 final Value key = new CollectionStore.CollectionKey(uri.toString());
                 collectionsDb.remove(transaction, key);
@@ -1398,7 +1393,7 @@ public class NativeBroker extends DBBroker {
                 //} catch (ReadOnlyException e) {
                 //throw new PermissionDeniedException(DATABASE_IS_READ_ONLY);
             } finally {
-                lock.release(Lock.WRITE_LOCK);
+                writeLock.unlock();
             }
 
             if(fireTrigger) {
@@ -1545,15 +1540,15 @@ public class NativeBroker extends DBBroker {
                 }
 
                 //Update current state
-                final Lock lock = collectionsDb.getLock();
+                final java.util.concurrent.locks.Lock writeLock = collectionsDb.getLock().writeLock();
+                writeLock.lock();
                 try {
-                    lock.acquire(Lock.WRITE_LOCK);
                     // remove the metadata of all documents in the collection
                     final Value docKey = new CollectionStore.DocumentKey(collection.getId());
                     final IndexQuery query = new IndexQuery(IndexQuery.TRUNC_RIGHT, docKey);
                     collectionsDb.removeAll(transaction, query);
                     // if this is not the root collection remove it...
-                    if(!isRoot) {
+                    if (!isRoot) {
                         final Value key = new CollectionStore.CollectionKey(collName);
                         //... from the disk
                         collectionsDb.remove(transaction, key);
@@ -1567,16 +1562,13 @@ public class NativeBroker extends DBBroker {
                         //and its id well never be made available
                         saveCollection(transaction, collection);
                     }
-                } catch(final LockException e) {
-                    LOG.warn("Failed to acquire lock on '" + FileUtils.fileName(collectionsDb.getFile()) + "'");
-                }
-                //catch(ReadOnlyException e) {
-                //throw new PermissionDeniedException(DATABASE_IS_READ_ONLY);
-                //}
-                catch(final BTreeException | IOException e) {
+                    //catch(ReadOnlyException e) {
+                    //throw new PermissionDeniedException(DATABASE_IS_READ_ONLY);
+                    //}
+                } catch(final BTreeException | IOException e) {
                     LOG.warn("Exception while removing collection: " + e.getMessage(), e);
                 } finally {
-                    lock.release(Lock.WRITE_LOCK);
+                    writeLock.unlock();
                 }
 
                 //Remove child resources
@@ -1699,9 +1691,9 @@ public class NativeBroker extends DBBroker {
 
         pool.getCollectionsCache().add(collection);
 
-        final Lock lock = collectionsDb.getLock();
+        final java.util.concurrent.locks.Lock writeLock = collectionsDb.getLock().writeLock();
+        writeLock.lock();
         try {
-            lock.acquire(Lock.WRITE_LOCK);
 
             if(collection.getId() == Collection.UNKNOWN_COLLECTION_ID) {
                 collection.setId(getNextCollectionId(transaction));
@@ -1721,9 +1713,9 @@ public class NativeBroker extends DBBroker {
         } catch(final ReadOnlyException e) {
             LOG.warn(DATABASE_IS_READ_ONLY);
         } catch(final LockException e) {
-            LOG.warn("Failed to acquire lock on " + FileUtils.fileName(collectionsDb.getFile()), e);
+            LOG.warn("Failed to acquire lock on " + collection.getURI().toString(), e);
         } finally {
-            lock.release(Lock.WRITE_LOCK);
+            writeLock.unlock();
         }
     }
 
@@ -1738,9 +1730,9 @@ public class NativeBroker extends DBBroker {
         if(nextCollectionId != Collection.UNKNOWN_COLLECTION_ID) {
             return nextCollectionId;
         }
-        final Lock lock = collectionsDb.getLock();
+        final java.util.concurrent.locks.Lock writeLock = collectionsDb.getLock().writeLock();
+        writeLock.lock();
         try {
-            lock.acquire(Lock.WRITE_LOCK);
             final Value key = new CollectionStore.CollectionKey(CollectionStore.NEXT_COLLECTION_ID_KEY);
             final Value data = collectionsDb.get(key);
             if(data != null) {
@@ -1751,12 +1743,8 @@ public class NativeBroker extends DBBroker {
             ByteConversion.intToByte(nextCollectionId, d, OFFSET_COLLECTION_ID);
             collectionsDb.put(transaction, key, d, true);
             return nextCollectionId;
-        } catch(final LockException e) {
-            LOG.warn("Failed to acquire lock on " + FileUtils.fileName(collectionsDb.getFile()), e);
-            return Collection.UNKNOWN_COLLECTION_ID;
-            //TODO : rethrow ? -pb
         } finally {
-            lock.release(Lock.WRITE_LOCK);
+            writeLock.unlock();
         }
     }
 
@@ -1962,9 +1950,9 @@ public class NativeBroker extends DBBroker {
     @Override
     public DocumentImpl getResourceById(final int collectionId, final byte resourceType, final int documentId) throws PermissionDeniedException {
         XmldbURI uri = null;
-        final Lock lock = collectionsDb.getLock();
+        final java.util.concurrent.locks.Lock readLock = collectionsDb.getLock().readLock();
+        readLock.lock();
         try {
-            lock.acquire(Lock.READ_LOCK);
             //final VariableByteOutputStream os = new VariableByteOutputStream(8);
             //doc.write(os);
             //Value key = new CollectionStore.DocumentKey(doc.getCollection().getId(), doc.getResourceType(), doc.getDocId());
@@ -2008,14 +1996,11 @@ public class NativeBroker extends DBBroker {
         } catch(final BTreeException bte) {
             LOG.error("Problem reading btree", bte);
             return null;
-        } catch(final LockException e) {
-            LOG.error("Failed to acquire lock on " + FileUtils.fileName(collectionsDb.getFile()));
-            return null;
         } catch(final IOException e) {
             LOG.error("IOException while reading resource data", e);
             return null;
         } finally {
-            lock.release(Lock.READ_LOCK);
+            readLock.unlock();
         }
 
         return getResource(uri, Permission.READ);
@@ -2026,23 +2011,19 @@ public class NativeBroker extends DBBroker {
      */
     @Override
     public void storeXMLResource(final Txn transaction, final DocumentImpl doc) {
-
-
-        final Lock lock = collectionsDb.getLock();
+        final java.util.concurrent.locks.Lock writeLock = collectionsDb.getLock().writeLock();
+        writeLock.lock();
         try {
-            lock.acquire(Lock.WRITE_LOCK);
             final VariableByteOutputStream os = new VariableByteOutputStream(8);
             doc.write(os);
             final Value key = new CollectionStore.DocumentKey(doc.getCollection().getId(), doc.getResourceType(), doc.getDocId());
             collectionsDb.put(transaction, key, os.data(), true);
             //} catch (ReadOnlyException e) {
             //LOG.warn(DATABASE_IS_READ_ONLY);
-        } catch(final LockException e) {
-            LOG.warn("Failed to acquire lock on " + FileUtils.fileName(collectionsDb.getFile()));
         } catch(final IOException e) {
             LOG.warn("IOException while writing document data", e);
         } finally {
-            lock.release(Lock.WRITE_LOCK);
+            writeLock.unlock();
         }
     }
 
@@ -2287,27 +2268,25 @@ public class NativeBroker extends DBBroker {
     //TODO : consider a better cooperation with Collection -pb
     @Override
     public void getCollectionResources(final Collection.InternalAccess collectionInternalAccess) {
-        final Lock lock = collectionsDb.getLock();
+        final java.util.concurrent.locks.Lock readLock = collectionsDb.getLock().readLock();
+        readLock.lock();
         try {
-            lock.acquire(Lock.READ_LOCK);
             final Value key = new CollectionStore.DocumentKey(collectionInternalAccess.getId());
             final IndexQuery query = new IndexQuery(IndexQuery.TRUNC_RIGHT, key);
 
             collectionsDb.query(query, new DocumentCallback(collectionInternalAccess));
-        } catch(final LockException e) {
-            LOG.warn("Failed to acquire lock on " + FileUtils.fileName(collectionsDb.getFile()));
         } catch(final IOException | BTreeException | TerminatedException e) {
             LOG.warn("Exception while reading document data", e);
         } finally {
-            lock.release(Lock.READ_LOCK);
+            readLock.unlock();
         }
     }
 
     @Override
     public void getResourcesFailsafe(final BTreeCallback callback, final boolean fullScan) throws TerminatedException {
-        final Lock lock = collectionsDb.getLock();
+        final java.util.concurrent.locks.Lock readLock = collectionsDb.getLock().readLock();
+        readLock.lock();
         try {
-            lock.acquire(Lock.READ_LOCK);
             final Value key = new CollectionStore.DocumentKey();
             final IndexQuery query = new IndexQuery(IndexQuery.TRUNC_RIGHT, key);
             if(fullScan) {
@@ -2315,29 +2294,25 @@ public class NativeBroker extends DBBroker {
             } else {
                 collectionsDb.query(query, callback);
             }
-        } catch(final LockException e) {
-            LOG.warn("Failed to acquire lock on " + FileUtils.fileName(collectionsDb.getFile()));
         } catch(final IOException | BTreeException e) {
             LOG.warn("Exception while reading document data", e);
         } finally {
-            lock.release(Lock.READ_LOCK);
+            readLock.unlock();
         }
     }
 
     @Override
     public void getCollectionsFailsafe(final BTreeCallback callback) throws TerminatedException {
-        final Lock lock = collectionsDb.getLock();
+        final java.util.concurrent.locks.Lock readLock = collectionsDb.getLock().readLock();
+        readLock.lock();
         try {
-            lock.acquire(Lock.READ_LOCK);
             final Value key = new CollectionStore.CollectionKey();
             final IndexQuery query = new IndexQuery(IndexQuery.TRUNC_RIGHT, key);
             collectionsDb.query(query, callback);
-        } catch(final LockException e) {
-            LOG.warn("Failed to acquire lock on " + FileUtils.fileName(collectionsDb.getFile()));
         } catch(final IOException | BTreeException e) {
             LOG.warn("Exception while reading document data", e);
         } finally {
-            lock.release(Lock.READ_LOCK);
+            readLock.unlock();
         }
     }
 
@@ -2397,20 +2372,18 @@ public class NativeBroker extends DBBroker {
     //TODO : consider a better cooperation with Collection -pb
     @Override
     public void getResourceMetadata(final DocumentImpl document) {
-        final Lock lock = collectionsDb.getLock();
+        final java.util.concurrent.locks.Lock readLock = collectionsDb.getLock().readLock();
+        readLock.lock();
         try {
-            lock.acquire(Lock.READ_LOCK);
             final Value key = new CollectionStore.DocumentKey(document.getCollection().getId(), document.getResourceType(), document.getDocId());
             final VariableByteInput is = collectionsDb.getAsStream(key);
             if(is != null) {
                 document.readDocumentMeta(is);
             }
-        } catch(final LockException e) {
-            LOG.warn("Failed to acquire lock on " + FileUtils.fileName(collectionsDb.getFile()));
         } catch(final IOException e) {
             LOG.warn("IOException while reading document data", e);
         } finally {
-            lock.release(Lock.READ_LOCK);
+            readLock.unlock();
         }
     }
 
@@ -2442,9 +2415,9 @@ public class NativeBroker extends DBBroker {
 
         final CollectionCache collectionsCache = pool.getCollectionsCache();
         synchronized(collectionsCache) {
-            final Lock lock = collectionsDb.getLock();
+            final java.util.concurrent.locks.Lock writeLock = collectionsDb.getLock().writeLock();
+            writeLock.lock();
             try {
-                lock.acquire(Lock.WRITE_LOCK);
                 final DocumentImpl oldDoc = destination.getDocument(this, newName);
 
                 if(!destination.getPermissionsNoLock().validate(getCurrentSubject(), Permission.EXECUTE)) {
@@ -2516,7 +2489,7 @@ public class NativeBroker extends DBBroker {
             } catch(final TriggerException e) {
                 throw new PermissionDeniedException(e.getMessage(), e);
             } finally {
-                lock.release(Lock.WRITE_LOCK);
+                writeLock.unlock();
             }
         }
     }
@@ -2806,9 +2779,9 @@ public class NativeBroker extends DBBroker {
      */
     private void removeResourceMetadata(final Txn transaction, final DocumentImpl document) {
         // remove document metadata
-        final Lock lock = collectionsDb.getLock();
+        final java.util.concurrent.locks.Lock readLock = collectionsDb.getLock().readLock();
+        readLock.lock(); //TODO(AR) this is the wong type of lock - should be WRITE lock
         try {
-            lock.acquire(Lock.READ_LOCK);
             if(LOG.isDebugEnabled()) {
                 LOG.debug("Removing resource metadata for " + document.getDocId());
             }
@@ -2816,10 +2789,8 @@ public class NativeBroker extends DBBroker {
             collectionsDb.remove(transaction, key);
             //} catch (ReadOnlyException e) {
             //LOG.warn(DATABASE_IS_READ_ONLY);
-        } catch(final LockException e) {
-            LOG.warn("Failed to acquire lock on " + FileUtils.fileName(collectionsDb.getFile()));
         } finally {
-            lock.release(Lock.READ_LOCK);
+            readLock.unlock();
         }
     }
 
@@ -2843,9 +2814,9 @@ public class NativeBroker extends DBBroker {
             return nextDocId;
         }
         nextDocId = 1;
-        final Lock lock = collectionsDb.getLock();
+        final java.util.concurrent.locks.Lock writeLock = collectionsDb.getLock().writeLock();
+        writeLock.lock();
         try {
-            lock.acquire(Lock.WRITE_LOCK);
             final Value key = new CollectionStore.CollectionKey(CollectionStore.NEXT_DOC_ID_KEY);
             final Value data = collectionsDb.get(key);
             if(data != null) {
@@ -2865,11 +2836,8 @@ public class NativeBroker extends DBBroker {
             //LOG.warn("Database is read-only");
             //return DocumentImpl.UNKNOWN_DOCUMENT_ID;
             //TODO : rethrow ? -pb
-        } catch(final LockException e) {
-            LOG.warn("Failed to acquire lock on " + FileUtils.fileName(collectionsDb.getFile()), e);
-            //TODO : rethrow ? -pb
         } finally {
-            lock.release(Lock.WRITE_LOCK);
+            writeLock.unlock();
         }
         return nextDocId;
     }
@@ -3612,17 +3580,17 @@ public class NativeBroker extends DBBroker {
 
     protected void rebuildIndex(final byte indexId) {
         final BTree btree = getStorage(indexId);
-        final Lock lock = btree.getLock();
+        final java.util.concurrent.locks.Lock writeLock = btree.getLock().writeLock();
+        writeLock.lock();
         try {
-            lock.acquire(Lock.WRITE_LOCK);
 
             LOG.info("Rebuilding index " + FileUtils.fileName(btree.getFile()));
             btree.rebuild();
             LOG.info("Index " + FileUtils.fileName(btree.getFile()) + " was rebuilt.");
-        } catch(LockException | IOException | TerminatedException | DBException e) {
+        } catch(IOException | TerminatedException | DBException e) {
             LOG.warn("Caught error while rebuilding core index " + FileUtils.fileName(btree.getFile()) + ": " + e.getMessage(), e);
         } finally {
-            lock.release(Lock.WRITE_LOCK);
+            writeLock.unlock();
         }
     }
 
@@ -3658,14 +3626,12 @@ public class NativeBroker extends DBBroker {
                 }
             }.run();
             if(syncEvent == Sync.MAJOR) {
-                final Lock lock = collectionsDb.getLock();
+                final java.util.concurrent.locks.Lock writeLock = collectionsDb.getLock().writeLock();
+                writeLock.lock();
                 try {
-                    lock.acquire(Lock.WRITE_LOCK);
                     collectionsDb.flush();
-                } catch(final LockException e) {
-                    LOG.warn("Failed to acquire lock on " + FileUtils.fileName(collectionsDb.getFile()), e);
                 } finally {
-                    lock.release(Lock.WRITE_LOCK);
+                    writeLock.unlock();
                 }
                 notifySync();
                 pool.getIndexManager().sync();

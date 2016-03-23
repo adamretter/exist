@@ -142,8 +142,6 @@ public class CreateOrderIndex extends BasicFunction {
             index.createIndex(id, items);
         } catch (final EXistException e) {
             throw new XPathException(this, e.getMessage(), e);
-        } catch (final LockException e) {
-            throw new XPathException(this, "Caught lock error while creating index. Giving up.", e);
         }
 
         return Sequence.EMPTY_SEQUENCE;

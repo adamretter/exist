@@ -54,8 +54,6 @@ public class RemoveIndex extends BasicFunction {
             }
         } catch (final EXistException e) {
             throw new XPathException(this, e.getMessage(), e);
-        } catch (final LockException e) {
-            throw new XPathException(this, "Caught lock error while removing index. Giving up.", e);
         }
 
         return Sequence.EMPTY_SEQUENCE;

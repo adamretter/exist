@@ -11,13 +11,12 @@ import org.exist.storage.StorageAddress;
 import org.exist.storage.btree.BTree;
 import org.exist.storage.btree.BTreeException;
 import org.exist.storage.btree.Paged.Page;
-import org.exist.storage.lock.Lock;
 import org.exist.util.ByteConversion;
-import org.exist.util.FileUtils;
-import org.exist.util.LockException;
 import org.exist.util.sanity.SanityCheck;
 
 import java.io.IOException;
+import java.util.concurrent.locks.Lock;
+
 import org.exist.dom.persistent.NodeHandle;
 
 /**
@@ -69,15 +68,9 @@ public final class NodeIterator implements INodeIterator {
      */
     @Override
     public boolean hasNext() {
-        final Lock lock = db.getLock();
+        final Lock readLock = db.getLock().readLock();
+        readLock.lock();
         try {
-            try {
-                lock.acquire(Lock.READ_LOCK);
-            } catch (final LockException e) {
-                LOG.warn("Failed to acquire read lock on " + FileUtils.fileName(db.getFile()));
-                //TODO : throw exception here ? -pb
-                return false;
-            }
             db.setOwnerObject(broker);
             if (gotoNextPosition()) {
                 db.getPageBuffer().add(page);
@@ -97,7 +90,7 @@ public final class NodeIterator implements INodeIterator {
             LOG.warn(e);
             //TODO : throw exception here ? -pb
         } finally {
-            lock.release(Lock.READ_LOCK);
+            readLock.unlock();
         }
         return false;
     }
@@ -107,15 +100,9 @@ public final class NodeIterator implements INodeIterator {
      */
     @Override
     public IStoredNode next() {
-        final Lock lock = db.getLock();
+        final Lock readLock = db.getLock().readLock();
+        readLock.lock();
         try {
-            try {
-                lock.acquire(Lock.READ_LOCK);
-            } catch (final LockException e) {
-                LOG.warn("Failed to acquire read lock on " + FileUtils.fileName(db.getFile()));
-                //TODO : throw exception here ? -pb
-                return null;
-            }
             db.setOwnerObject(broker);
             IStoredNode nextNode = null;
             if (gotoNextPosition()) {
@@ -217,7 +204,7 @@ public final class NodeIterator implements INodeIterator {
             LOG.error(e.getMessage(), e);
             //TODO : re-throw exception ? -pb
         } finally {
-            lock.release(Lock.READ_LOCK);
+            readLock.unlock();
         }
         return null;
     }

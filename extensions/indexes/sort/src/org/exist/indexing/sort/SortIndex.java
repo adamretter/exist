@@ -9,7 +9,6 @@ import org.exist.indexing.RawBackupSupport;
 import org.exist.storage.DBBroker;
 import org.exist.storage.btree.DBException;
 import org.exist.storage.index.BTreeStore;
-import org.exist.storage.lock.Lock;
 import org.exist.util.DatabaseConfigurationException;
 import org.exist.util.FileUtils;
 import org.exist.util.LockException;
@@ -17,6 +16,7 @@ import org.exist.util.LockException;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Path;
+import java.util.concurrent.locks.Lock;
 
 /**
  * SortIndex helps to improve the performance of 'order by' expressions in XQuery.
@@ -61,20 +61,19 @@ public class SortIndex extends AbstractIndex implements RawBackupSupport {
 
     @Override
     public void sync() throws DBException {
-        if (btree == null)
+        if (btree == null) {
             return;
-        final Lock lock = btree.getLock();
+        }
+
+        final Lock writeLock = btree.getLock().writeLock();
+        writeLock.lock();
         try {
-            lock.acquire(Lock.WRITE_LOCK);
             btree.flush();
-        } catch (final LockException e) {
-            LOG.warn("Failed to acquire lock for '" + FileUtils.fileName(btree.getFile()) + "'", e);
-            //TODO : throw an exception ? -pb
         } catch (final DBException e) {
             LOG.error(e.getMessage(), e);
             //TODO : throw an exception ? -pb
         } finally {
-            lock.release(Lock.WRITE_LOCK);
+            writeLock.unlock();
         }
     }
 

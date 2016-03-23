@@ -45,8 +45,7 @@ import org.exist.storage.journal.JournalException;
 import org.exist.storage.journal.LogEntryTypes;
 import org.exist.storage.journal.Loggable;
 import org.exist.storage.journal.Lsn;
-import org.exist.storage.lock.Lock;
-import org.exist.storage.lock.ReentrantReadWriteLock;
+import org.exist.storage.txn.TransactionException;
 import org.exist.storage.txn.Txn;
 import org.exist.util.*;
 import org.exist.util.sanity.SanityCheck;
@@ -61,6 +60,7 @@ import java.nio.file.Path;
 import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.concurrent.locks.Lock;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -138,7 +138,6 @@ public class BFile extends BTree {
     protected final BFileHeader fileHeader;
     protected final int minFree;
     protected final Cache dataCache;
-    protected final Lock lock;
     public final int fixedKeyLen = -1;
     protected final int maxValueSize;
 
@@ -151,7 +150,6 @@ public class BFile extends BTree {
         dataCache.setFileName(FileUtils.fileName(file));
         cacheManager.registerCache(dataCache);
         minFree = PAGE_MIN_FREE;
-        lock = new ReentrantReadWriteLock(FileUtils.fileName(file));
         maxValueSize = fileHeader.getWorkSize() / 2;
         
         if(exists()) {
@@ -170,16 +168,6 @@ public class BFile extends BTree {
     @Override
     public short getFileVersion() {
         return FILE_FORMAT_VERSION_ID;
-    }
-
-    /**
-     * Returns the Lock object responsible for this BFile.
-     * 
-     * @return Lock
-     */
-    @Override
-    public Lock getLock() {
-        return lock;
     }
 
     protected long getDataSyncPeriod() {
@@ -2336,17 +2324,15 @@ public class BFile extends BTree {
                 throw new EOFException();
             }
 
+            final Lock readLock = lock.readLock();
+            readLock.lock();
             try {
-                lock.acquire(Lock.READ_LOCK);
                 nextPage = (SinglePage) getDataPage(next, false);
                 pageLen = nextPage.ph.getDataLength();
                 offset = 0;
                 dataCache.add(nextPage);
-            } catch (final LockException e) {
-                throw new IOException("failed to acquire a read lock on "
-                        + FileUtils.fileName(getFile()));
             } finally {
-                lock.release(Lock.READ_LOCK);
+                readLock.unlock();
             }
         }
 
@@ -2457,8 +2443,9 @@ public class BFile extends BTree {
         public void seek(final long position) throws IOException {
             final int newPage = StorageAddress.pageFromPointer(position);
             final short newOffset = StorageAddress.tidFromPointer(position);
+            final Lock readLock = lock.readLock();
+            readLock.lock();
             try {
-                lock.acquire(Lock.READ_LOCK);
                 nextPage = getSinglePage(newPage);
                 pageLen = nextPage.ph.getDataLength();
                 if (pageLen > fileHeader.getWorkSize()) {
@@ -2466,10 +2453,8 @@ public class BFile extends BTree {
                 }
                 offset = newOffset;
                 dataCache.add(nextPage);
-            } catch (final LockException e) {
-                throw new IOException("Failed to acquire a read lock on " + FileUtils.fileName(getFile()));
             } finally {
-                lock.release(Lock.READ_LOCK);
+                readLock.unlock();
             }
         }
     }
