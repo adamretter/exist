@@ -303,7 +303,7 @@ public class SequencedLongHashMap<V> extends AbstractHashtable<Long, V> {
      */
     @Override
     public Iterator<Long> iterator() {
-        return new SequencedLongIterator<>(IteratorType.KEYS);
+        return new SequencedLongIterator<>(IteratorType.KEYS ,first);
     }
 
     /**
@@ -311,39 +311,39 @@ public class SequencedLongHashMap<V> extends AbstractHashtable<Long, V> {
      * in which they were inserted.
      */
     @Override
-    public Iterator<V> valueIterator() {
-        return new SequencedLongIterator<>(IteratorType.VALUES);
-    }
+	public Iterator<V> valueIterator() {
+		return new SequencedLongIterator<>(IteratorType.VALUES, first);
+	}
 
-    public class SequencedLongIterator<T> extends AbstractHashSetIterator<T> {
-        private Entry<V> current;
+	public class SequencedLongIterator<T, V> extends AbstractHashSetIterator<T> {
+		private Entry<V> current;
 
-        public SequencedLongIterator(final IteratorType type) {
-            super(type);
-            current = first;
-        }
+		public SequencedLongIterator(final IteratorType iteratorType, final Entry<V> first) {
+			super(iteratorType);
+			this.current = first;
+		}
 
-        @Override
-        public boolean hasNext() {
-            return current != null;
-        }
+		@Override
+		public boolean hasNext() {
+			return current != null;
+		}
 
         @SuppressWarnings("unchecked")
-        @Override
-        public T next() {
-            if (current == null) {
-                return null;
-            }
-            final Entry next = current;
-            current = current.next;
-            switch (returnType) {
-                case KEYS:
-                    return (T) Long.valueOf(next.key);
-                case VALUES:
-                    return (T) next.value;
-            }
+		@Override
+		public T next() {
+			if(current == null) {
+				return null;
+			}
+			final Entry next = current;
+			current = current.getNext();
+			switch(returnType) {
+				case KEYS:
+					return (T) Long.valueOf(next.key);
+				case VALUES:
+					return (T) next.value;
+			}
 
-            throw new IllegalStateException("This never happens");
-        }
-    }
+			throw new IllegalStateException("This never happens");
+		}
+	}
 }
