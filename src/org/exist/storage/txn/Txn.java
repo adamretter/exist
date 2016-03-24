@@ -63,7 +63,23 @@ public class Txn implements Transaction {
     public void registerLock(final Lock lock, final int lockMode) {
         locksHeld.add(new LockInfo(lock, lockMode));
     }
-    
+
+    public void deregisterLock(final Lock lock, final int lockMode) {
+        int removeIdx = -1;
+        for(int i = 0; i < locksHeld.size(); i++) {
+            final LockInfo held = locksHeld.get(i);
+            if(held.lock == lock && held.lockMode == lockMode) {
+                removeIdx = i;
+                break;
+            }
+        }
+        if(removeIdx > -1) {
+            locksHeld.remove(removeIdx);
+        } else {
+            throw new IllegalStateException("The lock was not previously registered with the transaction");
+        }
+    }
+
     public void acquireLock(final Lock lock, final int lockMode) throws LockException {
         lock.acquire(lockMode);
         locksHeld.add(new LockInfo(lock, lockMode));

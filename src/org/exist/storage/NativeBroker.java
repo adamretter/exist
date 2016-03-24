@@ -688,9 +688,12 @@ public class NativeBroker extends DBBroker {
                 //TODO : resolve URIs !
                 final XmldbURI[] segments = name.getPathSegments();
                 XmldbURI path = XmldbURI.ROOT_COLLECTION_URI;
-                Collection sub;
-                Collection current = getCollection(XmldbURI.ROOT_COLLECTION_URI);
-                if(current == null) {
+                Collection current = openCollection(XmldbURI.ROOT_COLLECTION_URI, Lock.WRITE_LOCK);
+                if(current != null) {
+                    if(transaction != null) {
+                        transaction.registerLock(current.getLock(), Lock.WRITE_LOCK);
+                    }
+                } else {
 
                     if(LOG.isDebugEnabled()) {
                         LOG.debug("Creating root collection '" + XmldbURI.ROOT_COLLECTION_URI + "'");
@@ -705,9 +708,10 @@ public class NativeBroker extends DBBroker {
 
                     if(transaction != null) {
                         transaction.acquireLock(current.getLock(), Lock.WRITE_LOCK);
+                    } else {
+                        current.getLock().acquire(Lock.WRITE_LOCK);
                     }
 
-                    //TODO : acquire lock manually if transaction is null ?
                     saveCollection(transaction, current);
                     created = true;
 
@@ -739,14 +743,30 @@ public class NativeBroker extends DBBroker {
                     }
                 }
 
+                //at this point current has a WRITE_LOCK (which may also be registered with the transaction)
+
                 for(int i = 1; i < segments.length; i++) {
                     final XmldbURI temp = segments[i];
                     path = path.append(temp);
                     if(current.hasSubcollectionNoLock(this, temp)) {
-                        current = getCollection(path);
-                        if(current == null) {
+                        final Collection subCollection = openCollection(path, Lock.WRITE_LOCK);
+                        if(subCollection != null) {
+                            if(transaction != null) {
+                                transaction.registerLock(subCollection.getLock(), Lock.WRITE_LOCK);
+                            }
+                        } else {
                             LOG.error("Collection '" + path + "' found in subCollections set but is missing from collections.dbx!");
                         }
+
+                        //unlock the parent (i.e. current)
+                        current.getLock().release(Lock.WRITE_LOCK);
+                        if(transaction != null) {
+                            transaction.deregisterLock(current.getLock(), Lock.WRITE_LOCK);
+                        }
+
+                        //subCollection is now current
+                        current = subCollection;
+
                     } else {
 
                         if(isReadOnly()) {
@@ -775,29 +795,37 @@ public class NativeBroker extends DBBroker {
                         final CollectionTrigger trigger = new CollectionTriggers(this, current);
                         trigger.beforeCreateCollection(this, transaction, path);
 
-                        sub = new Collection(this, path);
+                        final Collection subCollection = new Collection(this, path);
                         //inherit the group to the sub-collection if current collection is setGid
                         if(current.getPermissions().isSetGid()) {
-                            sub.getPermissions().setGroupFrom(current.getPermissions()); //inherit group
-                            sub.getPermissions().setSetGid(true); //inherit setGid bit
+                            subCollection.getPermissions().setGroupFrom(current.getPermissions()); //inherit group
+                            subCollection.getPermissions().setSetGid(true); //inherit setGid bit
                         }
-                        sub.setId(getNextCollectionId(transaction));
+                        subCollection.setId(getNextCollectionId(transaction));
 
                         if(transaction != null) {
-                            transaction.acquireLock(sub.getLock(), Lock.WRITE_LOCK);
+                            transaction.acquireLock(subCollection.getLock(), Lock.WRITE_LOCK);
+                        } else {
+                            subCollection.getLock().acquire(Lock.WRITE_LOCK);
                         }
 
-                        //TODO : acquire lock manually if transaction is null ?
-                        current.addCollection(this, sub, true);
+                        current.addCollection(this, subCollection, true);
                         saveCollection(transaction, current);
                         created = true;
 
                         //adding to make it available @ afterCreateCollection
-                        collectionsCache.add(sub);
+                        collectionsCache.add(subCollection);
 
-                        trigger.afterCreateCollection(this, transaction, sub);
+                        trigger.afterCreateCollection(this, transaction, subCollection);
 
-                        current = sub;
+                        //unlock the parent (i.e. current)
+                        current.getLock().release(Lock.WRITE_LOCK);
+                        if(transaction != null) {
+                            transaction.deregisterLock(current.getLock(), Lock.WRITE_LOCK);
+                        }
+
+                        //subCollection is now current
+                        current = subCollection;
                     }
                 }
                 return new Tuple2<>(created, current);
