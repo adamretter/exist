@@ -321,10 +321,7 @@ public class ConsistencyCheck
         final DOMFile domDb = ( (NativeBroker)broker ).getDOMFile();
         return( (ErrorReport)new DOMTransaction( this, domDb, Lock.WRITE_LOCK, doc ) {
                     public Object start() {
-                        EmbeddedXMLStreamReader reader = null;
-                        try {
-                            final ElementImpl             root            = (ElementImpl)doc.getDocumentElement();
-                            reader = (EmbeddedXMLStreamReader)broker.getXMLStreamReader( root, true );
+                        try(final EmbeddedXMLStreamReader reader = (EmbeddedXMLStreamReader)broker.newXMLStreamReader( (ElementImpl)doc.getDocumentElement(), true)) {
                             NodeId                  nodeId;
                             boolean                 attribsAllowed  = false;
                             int                     expectedAttribs = 0;
@@ -435,13 +432,6 @@ public class ConsistencyCheck
                         }
                         finally {
                             elementStack.clear();
-                            if (reader != null) {
-                                try {
-                                    reader.close();
-                                } catch (XMLStreamException e) {
-                                    e.printStackTrace();
-                                }
-                            }
                         }
                     }
                 }.run() );
