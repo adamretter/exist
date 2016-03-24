@@ -33,7 +33,7 @@ import org.exist.util.LockException;
 public class Txn implements Transaction {
 
     public enum State { STARTED, ABORTED, COMMITTED, CLOSED }
-    
+
     private final TransactionManager tm;
     private final long id;
     private State state;
@@ -59,11 +59,33 @@ public class Txn implements Transaction {
     public long getId() {
         return id;
     }
-    
+
+    /**
+     * Registers a lock with the Transaction
+     *
+     * Note - registering does not acquire the lock,
+     * to acquire and register use {@link Txn#acquireLock(Lock, int)}
+     *
+     * @param lock The lock to register
+     * @param lockMode The mode of the lock
+     */
     public void registerLock(final Lock lock, final int lockMode) {
         locksHeld.add(new LockInfo(lock, lockMode));
     }
 
+    /**
+     * De-registers a lock from the Transaction
+     * that was previously registered with {@link Txn#registerLock(Lock, int)}
+     * or acquired and registered with {@link Txn#acquireLock(Lock, int)}
+     *
+     * Note - de-registering does not release the lock
+     *
+     * @param lock The lock to de-register
+     * @param lockMode The mode of the lock
+     *
+     * @throws IllegalStateException if the provided lock and mode were not previously
+     * registered with the transaction
+     */
     public void deregisterLock(final Lock lock, final int lockMode) {
         int removeIdx = -1;
         for(int i = 0; i < locksHeld.size(); i++) {
@@ -80,6 +102,12 @@ public class Txn implements Transaction {
         }
     }
 
+    /**
+     * Acquire a lock and register it with the Transaction
+     *
+     * @param lock The lock to acquire and register
+     * @param lockMode The mode of the lock
+     */
     public void acquireLock(final Lock lock, final int lockMode) throws LockException {
         lock.acquire(lockMode);
         locksHeld.add(new LockInfo(lock, lockMode));
