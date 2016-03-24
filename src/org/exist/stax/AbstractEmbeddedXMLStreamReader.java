@@ -52,7 +52,7 @@ import java.util.Stack;
  * a few selected node properties are requested. Node properties are extracted on demand. For example, the QName of
  * an element will not be read unless {@link #getText()} is called.
  */
-public abstract class AbstractEmbeddedXMLStreamReader<T extends IRawNodeIterator> implements IEmbeddedXMLStreamReader, ExtendedXMLStreamReader {
+public abstract class AbstractEmbeddedXMLStreamReader<T extends IRawNodeIterator> implements IEmbeddedXMLStreamReader, ExtendedXMLStreamReader, AutoCloseable {
 
     private static final Logger LOG = LogManager.getLogger(AbstractEmbeddedXMLStreamReader.class);
 

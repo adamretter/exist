@@ -197,7 +197,13 @@ public class RawNodeIterator implements IRawNodeIterator {
 
     @Override
     public void close() {
-        db.closeDocument();
+        final Lock writeLock = db.getLock().writeLock();
+        writeLock.lock();
+        try {
+            db.closeDocument();
+        } finally {
+            writeLock.unlock();
+        }
     }
 
     /**

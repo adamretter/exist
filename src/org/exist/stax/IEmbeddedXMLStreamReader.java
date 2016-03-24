@@ -30,7 +30,7 @@ import javax.xml.stream.StreamFilter;
 import javax.xml.stream.XMLStreamException;
 import java.io.IOException;
 
-public interface IEmbeddedXMLStreamReader extends ExtendedXMLStreamReader {
+public interface IEmbeddedXMLStreamReader extends ExtendedXMLStreamReader, AutoCloseable {
 
     /**
      * Reposition the stream reader to another start node.
