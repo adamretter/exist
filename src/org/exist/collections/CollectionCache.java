@@ -21,6 +21,7 @@ package org.exist.collections;
 
 import java.util.Iterator;
 
+import net.jcip.annotations.NotThreadSafe;
 import org.exist.storage.BrokerPool;
 import org.exist.storage.BrokerPoolService;
 import org.exist.storage.CacheManager;
@@ -39,6 +40,7 @@ import org.exist.xmldb.XmldbURI;
  * 
  * @author wolf
  */
+@NotThreadSafe
 public class CollectionCache extends LRUCache implements BrokerPoolService {
 
     private Object2LongHashMap names;

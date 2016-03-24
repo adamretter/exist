@@ -1697,7 +1697,10 @@ public class NativeBroker extends DBBroker {
             throw new IOException(DATABASE_IS_READ_ONLY);
         }
 
-        pool.getCollectionsCache().add(collection);
+        final CollectionCache collectionsCache = pool.getCollectionsCache();
+        synchronized(collectionsCache) {
+            collectionsCache.add(collection);
+        }
 
         final java.util.concurrent.locks.Lock writeLock = collectionsDb.getLock().writeLock();
         writeLock.lock();
