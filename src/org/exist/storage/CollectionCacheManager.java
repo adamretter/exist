@@ -19,6 +19,7 @@
  */
 package org.exist.storage;
 
+import net.jcip.annotations.ThreadSafe;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.exist.collections.CollectionCache;
@@ -30,7 +31,8 @@ import org.exist.management.Agent;
 
 import java.util.Optional;
 
-public class CollectionCacheManager implements CacheManager, BrokerPoolService {
+@ThreadSafe
+public class CollectionCacheManager implements CacheManager<CollectionCache>, BrokerPoolService {
 
     private static final Logger LOG = LogManager.getLogger(CollectionCacheManager.class);
 
@@ -42,12 +44,10 @@ public class CollectionCacheManager implements CacheManager, BrokerPoolService {
 
     private int maxCacheSize;
 
-    private CollectionCache collectionCache;
+    private CollectionCache collectionCache = null;
 
-    public CollectionCacheManager(final BrokerPool pool, final CollectionCache cache) {
+    public CollectionCacheManager(final BrokerPool pool) {
         this.brokerPoolId = pool.getId();
-        this.collectionCache = cache;
-        this.collectionCache.setCacheManager(this);
     }
 
     @Override
@@ -64,30 +64,31 @@ public class CollectionCacheManager implements CacheManager, BrokerPoolService {
     }
 
     @Override
-    public void registerCache(Cache cache) {
+    public void registerCache(final CollectionCache collectionCache) {
+        this.collectionCache = collectionCache;
     }
 
     @Override
-    public void deregisterCache(Cache cache) {
+    public void deregisterCache(final CollectionCache cache) {
         this.collectionCache = null;
     }
 
     @Override
-    public int requestMem(Cache cache) {
+    public int requestMem(final CollectionCache cache) {
         final int realSize = collectionCache.getRealSize();
+        final int buffers = collectionCache.getBuffers();
         if (realSize < maxCacheSize) {
-            synchronized (this) {
-                final int newCacheSize = (int)(collectionCache.getBuffers() * collectionCache.getGrowthFactor());
-                if (LOG.isDebugEnabled()) {
-                    LOG.debug("Growing cache " + collectionCache.getFileName() + " (a " + collectionCache.getClass().getName() +
-                        ") from " + collectionCache.getBuffers() + " to " + newCacheSize + ". Current memory usage = " + realSize);
-                }
-                collectionCache.resize(newCacheSize);
-                return newCacheSize;
+            final int newCacheSize = (int) (buffers * collectionCache.getGrowthFactor());
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Growing cache " + collectionCache.getFileName() + " (a " + collectionCache.getClass().getName() +
+                        ") from " + buffers + " to " + newCacheSize + ". Current memory usage = " + realSize);
             }
+            collectionCache.resize(newCacheSize);
+            return newCacheSize;
+        } else {
+            LOG.warn("Cache has reached max. size: " + realSize);
+            return -1;
         }
-        LOG.debug("Cache has reached max. size: " + realSize);
-        return -1;
     }
 
     @Override
@@ -127,7 +128,7 @@ public class CollectionCacheManager implements CacheManager, BrokerPoolService {
         return DEFAULT_CACHE_SIZE;
     }
 
-    private void registerMBean(String instanceName) {
+    private void registerMBean(final String instanceName) {
         final Agent agent = AgentFactory.getInstance();
         try {
             agent.addMBean(instanceName, "org.exist.management." + instanceName +

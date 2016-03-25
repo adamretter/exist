@@ -22,17 +22,13 @@
  */
 package org.exist.storage.cache;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.exist.storage.CacheManager;
-
 /**
  * Base interface for all cache implementations that are used for
  * buffering btree and data pages.
  * 
  * @author Wolfgang <wolfgang@exist-db.org>
  */
-public interface Cache {
+public interface Cache<T extends Cacheable> {
 
     /**
      * Returns the type of this cache. Should be one of the
@@ -40,7 +36,7 @@ public interface Cache {
      *
      * @return the type of this cache
      */
-    public String getType();
+    String getType();
 
     /**
      * Add the item to the cache. If it is already in the cache,
@@ -48,7 +44,7 @@ public interface Cache {
      * 
      * @param item
      */
-    public void add(Cacheable item);
+    void add(T item);
 
     /**
      * Add the item to the cache. If it is already in the cache,
@@ -57,7 +53,7 @@ public interface Cache {
      * @param item
      * @param initialRefCount the initial reference count for the item
      */
-    public void add(Cacheable item, int initialRefCount);
+    void add(T item, int initialRefCount);
 
     /**
      * Retrieve an item from the cache.
@@ -65,7 +61,7 @@ public interface Cache {
      * @param item
      * @return the item in the cache or null if it does not exist.
      */
-    public Cacheable get(Cacheable item);
+    T get(T item);
 
     /**
      * Retrieve an item by its key.
@@ -73,21 +69,21 @@ public interface Cache {
      * @param key a unique key, usually the page number
      * @return the item in the cache or null if it does not exist.
      */
-    public Cacheable get(long key);
+    T get(long key);
 
     /**
      * Remove an item from the cache.
      * 
      * @param item
      */
-    public void remove(Cacheable item);
+    void remove(T item);
 
     /**
      * Returns true if the cache contains any dirty
      * items that need to be written to disk.
      * 
      */
-    public boolean hasDirtyItems();
+    boolean hasDirtyItems();
 
     /**
      * Call release on all items, but without
@@ -96,14 +92,14 @@ public interface Cache {
      * This gives the items a chance to write all
      * unwritten data to disk.
      */
-    public boolean flush();
+    boolean flush();
 
     /**
      * Get the size of this cache.
      * 
      * @return size
      */
-    public int getBuffers();
+    int getBuffers();
 
     /**
      * Returns the factor by which the cache should grow
@@ -116,7 +112,7 @@ public interface Cache {
      * 
      * @return growth factor
      */
-    public double getGrowthFactor();
+    double getGrowthFactor();
 
     /**
      * Resize the cache. This method is called by the
@@ -126,26 +122,19 @@ public interface Cache {
      * 
      * @param newSize the new size of the cache.
      */
-    public void resize(int newSize);
-
-    /**
-     * Set the CacheManager object that controls this cache.
-     * 
-     * @param manager
-     */
-    public void setCacheManager(CacheManager manager);
+    void resize(int newSize);
 
     /**
      * Get the number of buffers currently used.
      * 
      */
-    public int getUsedBuffers();
+    int getUsedBuffers();
 
     /**
      * Get the number of times where an object has been successfully
      * loaded from the cache.
      */
-    public int getHits();
+    int getHits();
 
     /**
      * Get the number of times where an object could not be
@@ -154,13 +143,9 @@ public interface Cache {
      * @return number of times where an object could not be
      * found in the cache
      */
-    public int getFails();
+    int getFails();
 
-    public int getLoad();
+    int getLoad();
 
-    public void setFileName(String fileName);
-
-    public String getFileName();
-
-    public final static Logger LOG = LogManager.getLogger(Cache.class);
+    String getFileName();
 }

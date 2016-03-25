@@ -22,8 +22,18 @@
  */
 package org.exist.storage.cache;
 
+import com.evolvedbinary.j8fu.tuple.Tuple2;
+import net.jcip.annotations.GuardedBy;
+import net.jcip.annotations.ThreadSafe;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.exist.storage.CacheManager;
 import org.exist.util.hashtable.SequencedLongHashMap;
+
+import java.util.Iterator;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * A simple cache implementing a Last Recently Used policy. This
@@ -33,230 +43,261 @@ import org.exist.util.hashtable.SequencedLongHashMap;
  * LRUCache ignores reference counts or timestamps.
  * 
  * @author wolf
+ * @author Adam Retter <adam@evolvedbinary.com>
  */
-public class LRUCache implements Cache {
-    
-	protected int max;
-	protected SequencedLongHashMap<Cacheable> map;
-	
-    protected Accounting accounting;
-	
-    protected int hitsOld = -1;
-	
-    protected double growthFactor;
-    
-    protected String fileName;
-    
-    protected CacheManager cacheManager = null;
+@ThreadSafe
+public class LRUCache<T extends Cacheable> implements Cache<T> {
 
-    private String type;
+	private final static Logger LOG = LogManager.getLogger(LRUCache.class);
 
-    public LRUCache(int size, double growthFactor, double growthThreshold, String type) {
-		max = size;
+	@GuardedBy("cacheLock") protected int max;
+	@GuardedBy("cacheLock") protected SequencedLongHashMap<T> map;
+
+	protected final ReadWriteLock cacheLock = new ReentrantReadWriteLock();		//TODO(AR) could switch to cheaper TimestampLock by avoiding re-entrancy, would need to adjust CollectionCache too
+
+	//TODO(AR) looks like accounting isn't used outside of LRUCache or sub-class so we could just use cacheLock to protect it
+    protected final Accounting accounting;
+    protected final double growthFactor;
+    protected final CacheManager cacheManager;
+	private final AtomicInteger hitsOld = new AtomicInteger();
+    private final String type;
+	private final String fileName;
+
+    public LRUCache(final CacheManager cacheManager, final int size, final double growthFactor, double growthThreshold, final String type, final String fileName) {
+		this.cacheManager = cacheManager;
+		this.max = size;
         this.growthFactor = growthFactor;
-		map = new SequencedLongHashMap<Cacheable>(size * 2);
-        accounting = new Accounting(growthThreshold);
+		this.map = new SequencedLongHashMap<>(size * 2);
+        this.accounting = new Accounting(growthThreshold);
         accounting.setTotalSize(max);
         this.type = type;
+		this.fileName = fileName;
     }
-	
-	/* (non-Javadoc)
-	 * @see org.exist.storage.cache.Cache#add(org.exist.storage.cache.Cacheable, int)
-	 */
-	public void add(Cacheable item, int initialRefCount) {
+
+	@Override
+	public void add(final T item, final int initialRefCount) {
 		add(item);
 	}
 
-    public String getType() {
-        return type;
-    }
-
-    /* (non-Javadoc)
-	 * @see org.exist.storage.cache.Cache#add(org.exist.storage.cache.Cacheable)
-	 */
-	public void add(Cacheable item) {
-		if(map.size() == max) {
-			removeOne(item);
+    @Override
+	public void add(final T item) {
+		cacheLock.writeLock().lock();
+		try {
+			if (map.size() == max) {
+				removeOne(item);
+			}
+			map.put(item.getKey(), item);
+		} finally {
+			cacheLock.writeLock().unlock();
 		}
-		map.put(item.getKey(), item);
 	}
 
-	/* (non-Javadoc)
-	 * @see org.exist.storage.cache.Cache#get(org.exist.storage.cache.Cacheable)
-	 */
-	public Cacheable get(Cacheable item) {
+	@Override
+	public String getType() {
+		return type;
+	}
+
+	@Override
+	public T get(final T item) {
 		return get(item.getKey());
 	}
 
-	/* (non-Javadoc)
-	 * @see org.exist.storage.cache.Cache#get(long)
-	 */
-	public Cacheable get(long key) {
-		final Cacheable obj = map.get(key);
-		if(obj == null)
-			{accounting.missesIncrement();}
-		else
-			{accounting.hitIncrement();}
+	@Override
+	public T get(final long key) {
+		final T obj;
+
+		cacheLock.readLock().lock();
+		try {
+			obj = map.get(key);
+		} finally {
+			cacheLock.readLock().unlock();
+		}
+
+		if(obj == null) {
+			accounting.missesIncrement();
+		} else {
+			accounting.hitIncrement();
+		}
 		return obj;
 	}
 
-	/* (non-Javadoc)
-	 * @see org.exist.storage.cache.Cache#remove(org.exist.storage.cache.Cacheable)
-	 */
-	public void remove(Cacheable item) {
-		map.remove(item.getKey());
+	@Override
+	public void remove(final T item) {
+		cacheLock.writeLock().lock();
+		try {
+			map.remove(item.getKey());
+		} finally {
+			cacheLock.writeLock().unlock();
+		}
 	}
 
-	/* (non-Javadoc)
-	 * @see org.exist.storage.cache.Cache#flush()
-	 */
+	@Override
 	public boolean flush() {
 		boolean flushed = false;
-		Cacheable cacheable;
-		SequencedLongHashMap.Entry<Cacheable> next = map.getFirstEntry();
-		while(next != null) {
-			cacheable = next.getValue();
-			if(cacheable.isDirty()) {
-				flushed = flushed | cacheable.sync(false);
+
+		//lock to ensure the iterator is stable
+		cacheLock.readLock().lock();
+		try {
+			final Iterator<T> iterator = map.valueIterator();
+			while(iterator.hasNext()) {
+				final T cacheable =  iterator.next();
+				if(cacheable.isDirty()) {
+					flushed = flushed | cacheable.sync(false);
+				}
 			}
-			next = next.getNext();
+		} finally {
+			cacheLock.readLock().unlock();
 		}
+
 		return flushed;
 	}
 
-	
-    /* (non-Javadoc)
-     * @see org.exist.storage.cache.Cache#hasDirtyItems()
-     */
+    @Override
     public boolean hasDirtyItems() {
-        Cacheable cacheable;
-        SequencedLongHashMap.Entry<Cacheable> next = map.getFirstEntry();
-        while(next != null) {
-        	cacheable = next.getValue();
-        	if(cacheable.isDirty())
-        		{return true;}
-        	next = next.getNext();
-        }
-		return false;
+		//lock to ensure the iterator is stable
+		cacheLock.readLock().lock();
+		try {
+			final Iterator<T> iterator = map.valueIterator();
+			while(iterator.hasNext()) {
+				final Cacheable cacheable = iterator.next();
+				if(cacheable.isDirty()) {
+					return true;
+				}
+			}
+		} finally {
+			cacheLock.readLock().unlock();
+		}
+
+        return false;
     }
-    
-	/* (non-Javadoc)
-	 * @see org.exist.storage.cache.Cache#getBuffers()
-	 */
+
+	@Override
 	public int getBuffers() {
-		return max;
+		cacheLock.readLock().lock();
+		try {
+			return max;
+		} finally {
+			cacheLock.readLock().unlock();
+		}
 	}
 
-	/* (non-Javadoc)
-	 * @see org.exist.storage.cache.Cache#getUsedBuffers()
-	 */
+	@Override
 	public int getUsedBuffers() {
-		return map.size();
+		cacheLock.readLock().lock();
+		try {
+			return map.size();
+		} finally {
+			cacheLock.readLock().unlock();
+		}
 	}
 
-	/* (non-Javadoc)
-	 * @see org.exist.storage.cache.Cache#getHits()
-	 */
+	@Override
 	public int getHits() {
 		return accounting.getHits();
 	}
 
-	/* (non-Javadoc)
-	 * @see org.exist.storage.cache.Cache#getFails()
-	 */
+	@Override
 	public int getFails() {
 		return accounting.getMisses();
 	}
- 
+
+	//TODO(AR) is accounting.getThrashing thread-safe?
     public int getThrashing() {
         return accounting.getThrashing();
     }
-    
-	/* (non-Javadoc)
-	 * @see org.exist.storage.cache.Cache#setFileName(java.lang.String)
-	 */
-	public void setFileName(String fileName) {
-		this.fileName = fileName;
-	}
-	
+
+	@Override
     public String getFileName() {
         return fileName;
     }
     
-	protected void removeOne(Cacheable item) {
-		boolean removed = false;
-		SequencedLongHashMap.Entry<Cacheable> next = map.getFirstEntry();
-		do {
-			final Cacheable cached = next.getValue();
-			if(cached.allowUnload() && cached.getKey() != item.getKey()) {
-				cached.sync(true);
-				map.remove(next.getKey());
-				removed = true;
-			} else {
-				next = next.getNext();
-				if(next == null) {
-					LOG.debug("Unable to remove entry");
-					next = map.getFirstEntry();
+	protected void removeOne(final Cacheable item) {
+		long removeKey = -1;
+
+		cacheLock.writeLock().lock();
+		try {
+			final Iterator<Tuple2<Long, T>> iterator = map.entrySetIterator();
+			while (iterator.hasNext()) {
+				final Tuple2<Long, T> cached = iterator.next();
+				if (cached._2.allowUnload() && cached._2.getKey() != item.getKey()) {
+					cached._2.sync(true);
+					removeKey = cached._1;
+					break;
 				}
 			}
-		} while(!removed);
+
+			if (removeKey > -1) {
+				map.remove(removeKey);
+			} else {
+				LOG.warn("Unable to remove entry");
+			}
+		} finally {
+			cacheLock.writeLock().unlock();
+		}
+
+		//TODO(AR) what to do about cacheManager thread-safety? see also CollectionCache#removeOne, BTreeCache#removeNext
         accounting.replacedPage(item);
         if (growthFactor > 1.0 && accounting.resizeNeeded()) {
             cacheManager.requestMem(this);
         }
 	}
 
-    /* (non-Javadoc)
-     * @see org.exist.storage.cache.Cache#getGrowthFactor()
-     */
+    @Override
     public double getGrowthFactor() {
         return growthFactor;
     }
+    
+    @Override
+    public void resize(final int newSize) {
+		cacheLock.writeLock().lock();
+		try {
+			if (newSize < max) {
+				shrink(newSize);
+			} else {
+				final SequencedLongHashMap<T> newMap = new SequencedLongHashMap<>(newSize * 2);
 
-    /* (non-Javadoc)
-     * @see org.exist.storage.cache.Cache#setCacheManager(org.exist.storage.CacheManager)
-     */
-    public void setCacheManager(CacheManager manager) {
-        this.cacheManager = manager;
+				final Iterator<Tuple2<Long, T>> iterator = map.entrySetIterator();
+				while (iterator.hasNext()) {
+					final Tuple2<Long, T> cacheable = iterator.next();
+					newMap.put(cacheable._2.getKey(), cacheable._2);
+				}
+				max = newSize;
+				map = newMap;
+				accounting.reset();
+				accounting.setTotalSize(max);
+			}
+		} finally {
+			cacheLock.writeLock().unlock();
+		}
     }
     
-    /* (non-Javadoc)
-     * @see org.exist.storage.cache.Cache#resize(int)
-     */
-    public void resize(int newSize) {
-        if (newSize < max) {
-            shrink(newSize);
-        } else {
-            SequencedLongHashMap<Cacheable> newMap = new SequencedLongHashMap<Cacheable>(newSize * 2);
-            SequencedLongHashMap.Entry<Cacheable> next = map.getFirstEntry();
-            Cacheable cacheable;
-            while(next != null) {
-                cacheable = next.getValue();
-                newMap.put(cacheable.getKey(), cacheable);
-                next = next.getNext();
-            }
-            max = newSize;
-            map = newMap;
-            accounting.reset();
-            accounting.setTotalSize(max);
-        }
-    }
-    
-    protected void shrink(int newSize) {
-        flush();
-        this.map = new SequencedLongHashMap<Cacheable>(newSize);
-        this.max = newSize;
-        accounting.reset();
-        accounting.setTotalSize(max);
+    protected void shrink(final int newSize) {
+		cacheLock.writeLock().lock();
+		try {
+			flush();
+			this.map = new SequencedLongHashMap<>(newSize);
+			this.max = newSize;
+			accounting.reset();
+			accounting.setTotalSize(max);
+		} finally {
+			cacheLock.writeLock().unlock();
+		}
     }
 
+	/**
+	 * Get the current load on the cache
+	 *
+	 * This method only provides a weakly-consistent load
+	 * calculation
+	 */
+	@Override
     public int getLoad() {
-        if (hitsOld == 0) {
-            hitsOld = accounting.getHits();
-            return Integer.MAX_VALUE;
-        }
-        final int load = accounting.getHits() - hitsOld;
-        hitsOld = accounting.getHits();
-        return load;
+		if (hitsOld.compareAndSet(0, accounting.getHits())) {
+			return Integer.MAX_VALUE;
+		}
+
+		final int load = accounting.getHits() - hitsOld.get();
+		hitsOld.set(accounting.getHits());
+		return load;
     }
 }

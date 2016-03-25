@@ -456,8 +456,9 @@ public class BrokerPool extends BrokerPools implements BrokerPoolConstants, Data
         final int bufferSize = Optional.of(conf.getInteger(PROPERTY_COLLECTION_CACHE_SIZE))
                 .filter(size -> size != -1)
                 .orElse(DEFAULT_COLLECTION_BUFFER_SIZE);
-        this.collectionCache = servicesManager.register(new CollectionCache(this, bufferSize, 0.000001));
-        this.collectionCacheMgr = servicesManager.register(new CollectionCacheManager(this, collectionCache));
+        this.collectionCacheMgr = servicesManager.register(new CollectionCacheManager(this));
+        this.collectionCache = servicesManager.register(new CollectionCache(collectionCacheMgr, this, bufferSize, 0.000001));
+        this.collectionCacheMgr.registerCache(collectionCache);
         this.notificationService = servicesManager.register(new NotificationService());
 
         this.journalManager = recoveryEnabled ? Optional.of(new JournalManager()) : Optional.empty();

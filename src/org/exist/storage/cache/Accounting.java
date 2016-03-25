@@ -21,9 +21,15 @@
  */
 package org.exist.storage.cache;
 
+import net.jcip.annotations.GuardedBy;
+import net.jcip.annotations.ThreadSafe;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.exist.util.hashtable.SequencedLongHashMap;
+
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * Keeps track of various cache parameters. Most important,
@@ -35,8 +41,9 @@ import org.exist.util.hashtable.SequencedLongHashMap;
  * don't want any trashing at all.
  * 
  * @author wolf
- *
+ * @author Adam Retter <adam@evolvedbinary.com>
  */
+@ThreadSafe
 public class Accounting {
     
     private final static Logger LOG = LogManager.getLogger(Accounting.class);
@@ -44,36 +51,37 @@ public class Accounting {
     private final static Object DUMMY = new Object();
     
     /** the period (in milliseconds) for which trashing is recorded. */
-    private int checkPeriod = 30000;
+    @GuardedBy("accountingLock") private final int checkPeriod = 30000;
     
     /** start of the last check period */
-    private long checkPeriodStart = System.currentTimeMillis();
+    @GuardedBy("accountingLock") private long checkPeriodStart = System.currentTimeMillis();
     
     /** max. entries to keep in the table of replaced pages */
-    private int maxEntries = 5000;
+    private final int maxEntries = 5000;
     
     /** total cache hits during the lifetime of the cache*/
-    private int hits = 0;
+    private final AtomicInteger hits = new AtomicInteger();
     
     /** total cache misses during the lifetime of the cache */
-    private int misses = 0;
+    private final AtomicInteger misses = new AtomicInteger();
     
     /** the current size of the cache */
-    private int totalSize = 0;
+    @GuardedBy("accountingLock") private int totalSize = 0;
     
     /** the number of pages replaced and reloaded during the check period */
-    private int thrashing = 0;
+    @GuardedBy("accountingLock") private int thrashing = 0;
     
     /** determines the amount of allowed trashing before a cache resize will
      * be requested. This is expressed as a fraction of the total cache size.
      */
-    private double thrashingFactor;
+    private final double thrashingFactor;
     
     /** the map used to track replaced page numbers */
-    private SequencedLongHashMap<Object> map;
-    
-    public Accounting(double thrashingFactor) {
-        map = new SequencedLongHashMap<Object>((maxEntries * 3) / 2);
+    @GuardedBy("accountingLock") private final SequencedLongHashMap<Object> map;
+    private final ReadWriteLock accountingLock = new ReentrantReadWriteLock();
+
+    public Accounting(final double thrashingFactor) {
+        this.map = new SequencedLongHashMap<>((maxEntries * 3) / 2);
         this.thrashingFactor = thrashingFactor;
     }
     
@@ -83,15 +91,20 @@ public class Accounting {
      * 
      * @param totalSize
      */
-    public void setTotalSize(int totalSize) {
-        this.totalSize = totalSize;
+    public void setTotalSize(final int totalSize) {
+        accountingLock.writeLock().lock();
+        try {
+            this.totalSize = totalSize;
+        } finally {
+            accountingLock.writeLock().unlock();
+        }
     }
     
     /**
      * Increment the number of total cache hits by one.
      */
     public void hitIncrement() {
-        ++hits;
+        hits.getAndIncrement();
     }
     
     /**
@@ -101,14 +114,14 @@ public class Accounting {
      * @return number of total cache hits
      */
     public int getHits() {
-        return hits;
+        return hits.get();
     }
     
     /**
      * Increment the number of total cache faults by one.
      */
     public void missesIncrement() {
-        ++misses;
+        misses.getAndIncrement();
     }
     
     /**
@@ -116,7 +129,7 @@ public class Accounting {
      * @return number of total cache faults
      */
     public int getMisses() {
-        return misses;
+        return misses.get();
     }
     
     /**
@@ -125,29 +138,40 @@ public class Accounting {
      * 
      * @param cacheable
      */
-    public void replacedPage(Cacheable cacheable) {
-        if (System.currentTimeMillis() - checkPeriodStart > checkPeriod) {
-            map.clear();
-            thrashing = 0;
-            checkPeriodStart = System.currentTimeMillis();
+    public void replacedPage(final Cacheable cacheable) {
+        accountingLock.writeLock().lock();
+        try {
+            if (System.currentTimeMillis() - checkPeriodStart > checkPeriod) {
+                map.clear();
+                thrashing = 0;
+                checkPeriodStart = System.currentTimeMillis();
+            }
+
+            if (map.size() == maxEntries) {
+                map.removeFirst();
+            }
+
+            if (map.get(cacheable.getKey()) != null) {
+                thrashing++;
+            } else {
+                map.put(cacheable.getKey(), DUMMY);
+            }
+        } finally {
+            accountingLock.writeLock().unlock();
         }
-    
-        if (map.size() == maxEntries) {
-            map.removeFirst();
-        }
-        
-        if (map.get(cacheable.getKey()) != null) {
-            ++thrashing;
-        } else
-            {map.put(cacheable.getKey(), DUMMY);}
     }
-    
+
     /**
      * Return the current amount of trashing.
      * @return current amount of trashing
      */
     public int getThrashing() {
-        return thrashing;
+        accountingLock.readLock().lock();
+        try {
+            return thrashing;
+        } finally {
+            accountingLock.readLock().unlock();
+        }
     }
     
     /**
@@ -158,21 +182,39 @@ public class Accounting {
      * cache efficiency
      */
     public boolean resizeNeeded() {
-        if (thrashingFactor == 0)
-            {return thrashing > 0;}
-        return thrashing > totalSize * thrashingFactor;
+        accountingLock.readLock().lock();
+        try {
+            if (thrashingFactor == 0) {
+                return thrashing > 0;
+            }
+            return thrashing > totalSize * thrashingFactor;
+        } finally {
+            accountingLock.readLock().unlock();
+        }
     }
     
     public void reset() {
-        map.clear();
-        thrashing = 0;
-        checkPeriodStart = System.currentTimeMillis();
+        accountingLock.writeLock().lock();
+        try {
+            map.clear();
+            thrashing = 0;
+            checkPeriodStart = System.currentTimeMillis();
+        } finally {
+            accountingLock.writeLock().unlock();
+        }
     }
-    
+
     public void stats() {
-        LOG.debug("hits: " + hits 
-                + "; misses: " + misses 
-                + "; thrashing: " + getThrashing() 
-                + "; thrashing period: " + checkPeriod);
+        if(LOG.isDebugEnabled()) {
+            accountingLock.readLock().lock();
+            try {
+                LOG.debug("hits: " + hits
+                        + "; misses: " + misses
+                        + "; thrashing: " + thrashing
+                        + "; thrashing period: " + checkPeriod);
+            } finally {
+                accountingLock.readLock().unlock();
+            }
+        }
     }
 }

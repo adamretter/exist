@@ -22,51 +22,88 @@
 
 package org.exist.storage.cache;
 
-import org.exist.util.hashtable.SequencedLongHashMap;
+import com.evolvedbinary.j8fu.tuple.Tuple2;
+import net.jcip.annotations.ThreadSafe;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.exist.storage.CacheManager;
+
+import java.util.Iterator;
+import java.util.concurrent.locks.ReadWriteLock;
 
 /**
  * This cache implementation always tries to keep the inner btree pages in
  * cache, while the leaf pages can be removed.
+ *
+ * @author wolf
+ * @author Adam Retter <adam@evolvedbinary.com>
  */
-public class BTreeCache extends LRUCache {
+@ThreadSafe
+public class BTreeCache extends LRUCache<BTreeCacheable> {
 
-    public BTreeCache(int size, double growthFactor, double growthThreshold, String type) {
-        super(size, growthFactor, growthThreshold, type);
+    private final static Logger LOG = LogManager.getLogger(BTreeCache.class);
+
+    public BTreeCache(final CacheManager cacheManager, final int size, final double growthFactor, final double growthThreshold, final String type, final String fileName) {
+        super(cacheManager, size, growthFactor, growthThreshold, type, fileName);
     }
 
-    public void add(Cacheable item, int initialRefCount) {
+    @Override
+    public void add(final BTreeCacheable item, final int initialRefCount) {
         add(item);
     }
 
-    public void add(Cacheable item) {
-        map.put(item.getKey(), item);
-        if (map.size() >= max + 1) {
-            removeNext((BTreeCacheable) item);
+    @Override
+    public void add(final BTreeCacheable item) {
+        cacheLock.writeLock().lock();
+        try {
+            map.put(item.getKey(), item);
+            if (map.size() >= max + 1) {
+                removeNext(item);
+            }
+        } finally {
+            cacheLock.writeLock().unlock();
         }
     }
 
-    protected void removeNext(BTreeCacheable item) {
-        boolean removed = false;
-        boolean mustRemoveInner = false;
-        SequencedLongHashMap.Entry<Cacheable> next = map.getFirstEntry();
-        do {
-            final BTreeCacheable cached = (BTreeCacheable)next.getValue();
-            if(cached.allowUnload() && cached.getKey() != item.getKey() &&
-                    (mustRemoveInner || !cached.isInnerPage())) {
-                cached.sync(true);
-                map.remove(next.getKey());
-                removed = true;
-            } else {
-                next = next.getNext();
-                if(next == null) {
-                    next = map.getFirstEntry();
-                    mustRemoveInner = true;
-                }
+    protected void removeNext(final BTreeCacheable item) {
+        if(!attemptRemoveNext(item, false)) {
+            if(!attemptRemoveNext(item, true)) {
+                LOG.warn("Unable to remove item");
             }
-        } while(!removed);
+        }
+
+        //TODO(AR) what to do about cacheManager thread-safety? see also CollectionCache#removeOne, LRUCache#removeOne
         accounting.replacedPage(item);
         if (growthFactor > 1.0 && accounting.resizeNeeded()) {
             cacheManager.requestMem(this);
+        }
+    }
+
+    protected boolean attemptRemoveNext(final BTreeCacheable item, final boolean mustRemoveInner) {
+        long removeKey = -1;
+
+        cacheLock.writeLock().lock();
+        try {
+            final Iterator<Tuple2<Long, BTreeCacheable>> iterator = map.entrySetIterator();
+            while (iterator.hasNext()) {
+                final Tuple2<Long, BTreeCacheable> cached = iterator.next();
+
+                if (cached._2.allowUnload() && cached._2.getKey() != item.getKey() &&
+                        (mustRemoveInner || !cached._2.isInnerPage())) {
+                    cached._2.sync(true);
+                    removeKey = cached._1;
+                    break;
+                }
+            }
+
+            if (removeKey > -1) {
+                map.remove(removeKey);
+                return true;
+            } else {
+                return false;
+            }
+        } finally {
+            cacheLock.writeLock().unlock();
         }
     }
 }

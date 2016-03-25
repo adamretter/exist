@@ -21,7 +21,7 @@ package org.exist.storage;
 
 import org.exist.storage.cache.Cache;
 
-public interface CacheManager {
+public interface CacheManager<T extends Cache> {
 
     String BTREE_CACHE = "BTREE";
     String DATA_CACHE = "DATA";
@@ -32,9 +32,9 @@ public interface CacheManager {
      *
      * @param cache
      */
-    void registerCache(Cache cache);
+    void registerCache(T cache);
 
-    void deregisterCache(Cache cache);
+    void deregisterCache(T cache);
 
     /**
      * Called by a cache if it wants to grow. The cache manager
@@ -47,7 +47,7 @@ public interface CacheManager {
      * @param cache
      * @return new cache size, or -1 if no free pages available.
      */
-    int requestMem(Cache cache);
+    int requestMem(T cache);
 
     /**
      * Called from the global major sync event to check if caches can

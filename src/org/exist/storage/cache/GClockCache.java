@@ -22,8 +22,13 @@
  */
 package org.exist.storage.cache;
 
+import net.jcip.annotations.NotThreadSafe;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.exist.storage.CacheManager;
 import org.exist.util.hashtable.Long2ObjectHashMap;
+
+import java.util.concurrent.locks.ReadWriteLock;
 
 /**
  * Cache implementation based on the GClock algorithm. 
@@ -40,7 +45,10 @@ import org.exist.util.hashtable.Long2ObjectHashMap;
  * 
  * @author wolf
  */
+@NotThreadSafe
 public class GClockCache implements Cache {
+
+	private final static Logger LOG = LogManager.getLogger(GClockCache.class);
 
 	protected Cacheable[] items;
 	protected int count = 0;

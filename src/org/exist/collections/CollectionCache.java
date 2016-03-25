@@ -21,7 +21,11 @@ package org.exist.collections;
 
 import java.util.Iterator;
 
-import net.jcip.annotations.NotThreadSafe;
+import com.evolvedbinary.j8fu.tuple.Tuple2;
+import net.jcip.annotations.GuardedBy;
+import net.jcip.annotations.ThreadSafe;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.exist.storage.BrokerPool;
 import org.exist.storage.BrokerPoolService;
 import org.exist.storage.CacheManager;
@@ -39,93 +43,135 @@ import org.exist.xmldb.XmldbURI;
  * accessing the cache.
  * 
  * @author wolf
+ * @author Adam Retter <adam@evolvedbinary.com>
  */
-@NotThreadSafe
+@ThreadSafe
 public class CollectionCache extends LRUCache implements BrokerPoolService {
 
-    private Object2LongHashMap names;
-    private BrokerPool pool;
+    private final static Logger LOG = LogManager.getLogger(CollectionCache.class);
 
-    public CollectionCache(BrokerPool pool, int blockBuffers, double growthThreshold) {
-        super(blockBuffers, 2.0, growthThreshold, CacheManager.DATA_CACHE);
+    @GuardedBy("cacheLock") private Object2LongHashMap names;
+    private final BrokerPool pool;
+
+    public CollectionCache(final CacheManager cacheManager, final BrokerPool pool, final int blockBuffers, final double growthThreshold) {
+        super(cacheManager, blockBuffers, 2.0, growthThreshold, CacheManager.DATA_CACHE, "collection cache");
         this.names = new Object2LongHashMap(blockBuffers);
         this.pool = pool;
-        setFileName("collection cache");
     }
 
-    public void add(Collection collection) {
+    public void add(final Collection collection) {
         add(collection, 1);
     }
 
-    public void add(Collection collection, int initialRefCount) {
+    public void add(final Collection collection, final int initialRefCount) {
         // don't cache the collection during initialization: SecurityManager is not yet online
         if(!pool.isOperational()) return;
 
-        super.add(collection, initialRefCount);
-        final String name = collection.getURI().getRawCollectionPath();
-        names.put(name, collection.getKey());
+        cacheLock.writeLock().lock();
+        try {
+            super.add(collection, initialRefCount);
+            final String name = collection.getURI().getRawCollectionPath();
+            names.put(name, collection.getKey());
+        } finally {
+            cacheLock.writeLock().unlock();
+        }
     }
 
-    public Collection get(Collection collection) {
+    public Collection get(final Collection collection) {
         return (Collection) get(collection.getKey());
     }
 
-    public Collection get(XmldbURI name) {
-        final long key = names.get(name.getRawCollectionPath());
-        if (key < 0) {
-            return null;
+    public Collection get(final XmldbURI name) {
+        cacheLock.readLock().lock();
+        try {
+            final long key = names.get(name.getRawCollectionPath());
+            if (key < 0) {
+                return null;
+            }
+            return (Collection) get(key);
+        } finally {
+            cacheLock.readLock().unlock();
         }
-        return (Collection) get(key);
     }
 
     /**
-     * Overwritten to lock collections before they are removed.
+     * Overridden to lock collections before they are removed.
      */
-    protected void removeOne(Cacheable item) {
+    @Override
+    protected void removeOne(final Cacheable item) {
+        final int maxAttempts = 3;
+
         boolean removed = false;
-        SequencedLongHashMap.Entry<Cacheable> next = map.getFirstEntry();
-        int tries = 0;
-        do {
-            final Cacheable cached = next.getValue();
-            if(cached.getKey() != item.getKey()) {
-                final Collection old = (Collection) cached;
-                final Lock lock = old.getLock();
-                if (lock.attempt(Lock.READ_LOCK)) {
-                    try {
-                        if (cached.allowUnload()) {
-                            if(pool.getConfigurationManager()!=null) { // might be null during db initialization
-                                pool.getConfigurationManager().invalidate(old.getURI(), null);
-                            }
-                            names.remove(old.getURI().getRawCollectionPath());
-                            cached.sync(true);
-                            map.remove(cached.getKey());
-                            removed = true;
-                        }
-                    } finally {
-                        lock.release(Lock.READ_LOCK);
-                    }
-                }
+        for(int attempt = 1; attempt <= maxAttempts; attempt++) {
+            removed = attemptRemoveOne(item);
+            if(removed) {
+                break;
             }
-            if (!removed) {
-                next = next.getNext();
-                if (next == null && tries < 2) {
-                    next = map.getFirstEntry();
-                    tries++;
-                } else {
-                    LOG.info("Unable to remove entry");
-                    removed = true;
-                }
-            }
-        } while(!removed);
+        }
+
+        if(!removed) {
+            LOG.warn("Unable to remove entry");
+        }
+
+        //TODO(AR) what to do about cacheManager thread-safety? see also LRUCache#removeOne, BTreeCache#removeNext
         cacheManager.requestMem(this);
     }
 
-    public void remove(Cacheable item) {
-        final Collection col = (Collection) item;
-        super.remove(item);
-        names.remove(col.getURI().getRawCollectionPath());
-        if(pool.getConfigurationManager() != null) // might be null during db initialization
-           {pool.getConfigurationManager().invalidate(col.getURI(), null);}
+    private boolean attemptRemoveOne(final Cacheable item) {
+        long removeKey = -1;
+
+        cacheLock.writeLock().lock();
+        try {
+            final Iterator<Tuple2<Long, Cacheable>> iterator = map.entrySetIterator();
+            while (iterator.hasNext()) {
+                final Tuple2<Long, Cacheable> cached = iterator.next();
+                if (cached._2.getKey() != item.getKey()) {
+                    final Collection old = (Collection) cached._2;
+                    final Lock lock = old.getLock();
+                    if (lock.attempt(Lock.READ_LOCK)) {
+                        try {
+                            if (cached._2.allowUnload()) {
+                                if (pool.getConfigurationManager() != null) { // might be null during db initialization
+                                    pool.getConfigurationManager().invalidate(old.getURI(), null);
+                                }
+                                names.remove(old.getURI().getRawCollectionPath());
+                                cached._2.sync(true);
+                                removeKey = cached._2.getKey();
+                                break;
+                            }
+                        } finally {
+                            lock.release(Lock.READ_LOCK);
+                        }
+                    }
+                }
+            }
+
+            if (removeKey > -1) {
+                map.remove(removeKey);
+                return true;
+            } else {
+                return false;
+            }
+        } finally {
+            cacheLock.writeLock().unlock();
+        }
+    }
+
+    @Override
+    public void remove(final Cacheable item) {
+        cacheLock.writeLock().lock();
+        try {
+            final Collection col = (Collection) item;
+            super.remove(item);
+            names.remove(col.getURI().getRawCollectionPath());
+
+            // might be null during db initialization
+            if (pool.getConfigurationManager() != null) {
+                pool.getConfigurationManager().invalidate(col.getURI(), null);
+            }
+        } finally {
+            cacheLock.writeLock().unlock();
+        }
     }
 
     /**
@@ -137,41 +183,59 @@ public class CollectionCache extends LRUCache implements BrokerPoolService {
      */
     public int getRealSize() {
         int size = 0;
-        for (final Iterator<Long> i = names.valueIterator(); i.hasNext(); ) {
-            final Collection collection = (Collection) get(i.next());
-            if (collection != null) {
-                size += collection.getMemorySize();
+
+        cacheLock.readLock().lock();
+        try {
+            for (final Iterator<Long> i = names.valueIterator(); i.hasNext(); ) {
+                //TODO(AR) if we want this number to be accurate we would haev to read lock the collection too
+                final Collection collection = (Collection) get(i.next());
+                if (collection != null) {
+                    size += collection.getMemorySize();
+                }
             }
+        } finally {
+            cacheLock.readLock().unlock();
         }
         return size;
     }
 
-    public void resize(int newSize) {
-        if (newSize < max) {
-            shrink(newSize);
-        } else {
-            LOG.debug("Growing collection cache to " + newSize);
-            SequencedLongHashMap<Cacheable> newMap = new SequencedLongHashMap<Cacheable>(newSize * 2);
-            Object2LongHashMap newNames = new Object2LongHashMap(newSize);
-            SequencedLongHashMap.Entry<Cacheable> next = map.getFirstEntry();
-            Cacheable cacheable;
-            while(next != null) {
-                cacheable = next.getValue();
-                newMap.put(cacheable.getKey(), cacheable);
-                newNames.put(((Collection) cacheable).getURI().getRawCollectionPath(), cacheable.getKey());
-                next = next.getNext();
+    @Override
+    public void resize(final int newSize) {
+        cacheLock.writeLock().lock();
+        try {
+            if (newSize < max) {
+                shrink(newSize);
+            } else {
+                LOG.debug("Growing collection cache to " + newSize);
+                final SequencedLongHashMap<Cacheable> newMap = new SequencedLongHashMap<>(newSize * 2);
+                final Object2LongHashMap newNames = new Object2LongHashMap(newSize);
+
+                final Iterator<Tuple2<Long, Cacheable>> iterator = map.entrySetIterator();
+                while (iterator.hasNext()) {
+                    final Tuple2<Long, Cacheable> cacheable = iterator.next();
+                    newMap.put(cacheable._2.getKey(), cacheable._2);
+                    newNames.put(((Collection) cacheable._2).getURI().getRawCollectionPath(), cacheable._2.getKey());
+                }
+
+                max = newSize;
+                map = newMap;
+                names = newNames;
+                accounting.reset();
+                accounting.setTotalSize(max);
             }
-            max = newSize;
-            map = newMap;
-            names = newNames;
-            accounting.reset();
-            accounting.setTotalSize(max);
+        } finally {
+            cacheLock.writeLock().unlock();
         }
     }
 
     @Override
-    protected void shrink(int newSize) {
-        super.shrink(newSize);
-        names = new Object2LongHashMap(newSize);
+    protected void shrink(final int newSize) {
+        cacheLock.writeLock().lock();
+        try {
+            super.shrink(newSize);
+            names = new Object2LongHashMap(newSize);
+        } finally {
+            cacheLock.writeLock().unlock();
+        }
     }
 }

@@ -238,9 +238,8 @@ public class BTree extends Paged {
     }
 
     protected void initCache() {
-        this.cache = new BTreeCache(cacheManager.getDefaultInitialSize(), 1.5,
-            0, CacheManager.BTREE_CACHE);
-        cache.setFileName(FileUtils.fileName(getFile()));
+        this.cache = new BTreeCache(cacheManager, cacheManager.getDefaultInitialSize(), 1.5,
+            0, CacheManager.BTREE_CACHE, FileUtils.fileName(getFile()));
         cacheManager.registerCache(cache);
     }
 

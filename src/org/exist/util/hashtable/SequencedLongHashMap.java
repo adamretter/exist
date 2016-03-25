@@ -29,6 +29,7 @@ package org.exist.util.hashtable;
  * map thus implements a "Last Recently Used" (LRU) behaviour.
  */
 
+import com.evolvedbinary.j8fu.tuple.Tuple2;
 import net.jcip.annotations.NotThreadSafe;
 
 import java.util.Iterator;
@@ -315,6 +316,10 @@ public class SequencedLongHashMap<V> extends AbstractHashtable<Long, V> {
 		return new SequencedLongIterator<>(IteratorType.VALUES, first);
 	}
 
+    public Iterator<Tuple2<Long, V>> entrySetIterator() {
+        return new KVSequencedLongIterator<>(first);
+    }
+
 	public class SequencedLongIterator<T, V> extends AbstractHashSetIterator<T> {
 		private Entry<V> current;
 
@@ -344,6 +349,30 @@ public class SequencedLongHashMap<V> extends AbstractHashtable<Long, V> {
 			}
 
 			throw new IllegalStateException("This never happens");
+		}
+	}
+
+	public static class KVSequencedLongIterator<V> implements Iterator<Tuple2<Long, V>> {
+		private Entry<V> current;
+
+		public KVSequencedLongIterator(final Entry<V> first) {
+			this.current = first;
+		}
+
+		@Override
+		public boolean hasNext() {
+			return current != null;
+		}
+
+		@Override
+		public Tuple2<Long, V> next() {
+			if(current == null) {
+				return null;
+			}
+			final Entry<V> next = current;
+			current = current.getNext();
+
+			return new Tuple2<>(next.getKey(), next.getValue());
 		}
 	}
 }

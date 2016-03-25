@@ -188,8 +188,7 @@ public class DOMFile extends BTree {
         fileHeader = (BTreeFileHeader)getFileHeader();
         fileHeader.setPageCount(0);
         fileHeader.setTotalCount(0);
-        dataCache = new LRUCache(256, 0.0, 1.0, CacheManager.DATA_CACHE);
-        dataCache.setFileName(getFileName());
+        dataCache = new LRUCache(pool.getCacheManager(), 256, 0.0, 1.0, CacheManager.DATA_CACHE, getFileName());
         cacheManager.registerCache(dataCache);
         final Path file = dataDir.resolve(getFileName());
         setFile(file);

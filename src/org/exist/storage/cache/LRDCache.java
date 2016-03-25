@@ -22,6 +22,12 @@
  */
 package org.exist.storage.cache;
 
+import net.jcip.annotations.NotThreadSafe;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.util.concurrent.locks.ReadWriteLock;
+
 /**
  * A cache implementation based on a Least Reference Density (LRD)
  * replacement policy.
@@ -38,7 +44,10 @@ package org.exist.storage.cache;
  * 
  * @author wolf
  */
+@NotThreadSafe
 public class LRDCache extends GClockCache {
+
+	private final static Logger LOG = LogManager.getLogger(LRDCache.class);
 	
 	protected int totalReferences = 0;
 
