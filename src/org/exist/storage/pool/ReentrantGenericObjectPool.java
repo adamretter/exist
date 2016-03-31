@@ -51,15 +51,14 @@ public class ReentrantGenericObjectPool<T> implements ObjectPool<T>, GenericObje
         Objects.requireNonNull(obj);
         final ReentrantObject reentrantObj = localObject.get();
         if (reentrantObj == null || reentrantObj.obj != obj) {
+            localObject.remove();
             throw new IllegalStateException("returnObject() has been called from the wrong thread for Object");
-        } else {
-            if (reentrantObj.referenceCount.decrementAndGet() == 0) {
-                try {
-                    pool.returnObject(obj);
-                } finally {
-                    localObject.remove();
-                }
-            }
+        } 
+        if (reentrantObj.referenceCount.decrementAndGet() > 0) return;
+        try {
+            pool.returnObject(obj);
+        } finally {
+            localObject.remove();
         }
     }
 
