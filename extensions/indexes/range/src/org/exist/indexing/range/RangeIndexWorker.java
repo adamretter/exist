@@ -112,7 +112,6 @@ public class RangeIndexWorker implements OrderedValuesIndex, QNamedKeysIndex {
 
     public Query toQuery(String field, QName qname, AtomicValue content, RangeIndex.Operator operator, DocumentSet docs) throws XPathException {
         final int type = content.getType();
-        BytesRef bytes;
         if (Type.subTypeOf(type, Type.STRING)) {
             BytesRef key = null;
             if (operator != RangeIndex.Operator.MATCH) {
@@ -124,8 +123,7 @@ public class RangeIndexWorker implements OrderedValuesIndex, QNamedKeysIndex {
                     return new TermQuery(new Term(field, key));
                 case NE:
                     final BooleanQuery qnot = new BooleanQuery();
-                    bytes = new BytesRef("*");
-                    query = new WildcardQuery(new Term(field, bytes));
+                    query = new WildcardQuery(new Term(field, new BytesRef("*")));
                     query.setRewriteMethod(MultiTermQuery.CONSTANT_SCORE_FILTER_REWRITE);
                     qnot.add(query, BooleanClause.Occur.MUST);
                     qnot.add(new TermQuery(new Term(field, key)), BooleanClause.Occur.MUST_NOT);
@@ -133,16 +131,18 @@ public class RangeIndexWorker implements OrderedValuesIndex, QNamedKeysIndex {
                 case STARTS_WITH:
                     return new PrefixQuery(new Term(field, key));
                 case ENDS_WITH:
-                    bytes = new BytesRef("*");
-                    bytes.append(key);
-                    query = new WildcardQuery(new Term(field, bytes));
+                    final BytesRefBuilder endsWithBytes = new BytesRefBuilder();
+                    endsWithBytes.copyChars("*");
+                    endsWithBytes.append(key);
+                    query = new WildcardQuery(new Term(field, endsWithBytes.toBytesRef()));
                     query.setRewriteMethod(MultiTermQuery.CONSTANT_SCORE_FILTER_REWRITE);
                     return query;
                 case CONTAINS:
-                    bytes = new BytesRef("*");
-                    bytes.append(key);
-                    bytes.append(new BytesRef("*"));
-                    query = new WildcardQuery(new Term(field, bytes));
+                    final BytesRefBuilder containsBytes = new BytesRefBuilder();
+                    containsBytes.copyChars("*");
+                    containsBytes.append(key);
+                    containsBytes.append(new BytesRef("*"));
+                    query = new WildcardQuery(new Term(field, containsBytes.toBytesRef()));
                     query.setRewriteMethod(MultiTermQuery.CONSTANT_SCORE_FILTER_REWRITE);
                     return query;
                 case MATCH:
@@ -447,11 +447,11 @@ public class RangeIndexWorker implements OrderedValuesIndex, QNamedKeysIndex {
             writer = index.getWriter();
 
             // docId and nodeId are stored as doc value
-            IntDocValuesField fDocId = new IntDocValuesField(FIELD_DOC_ID, 0);
-            BinaryDocValuesField fNodeId = new BinaryDocValuesField(FIELD_NODE_ID, new BytesRef(8));
-            BinaryDocValuesField fAddress = new BinaryDocValuesField(FIELD_ADDRESS, new BytesRef(8));
+            NumericDocValuesField fDocId = new NumericDocValuesField(FIELD_DOC_ID, 0);
+            final BinaryDocValuesField fNodeId = new BinaryDocValuesField(FIELD_NODE_ID, new BytesRef(8));
+            final BinaryDocValuesField fAddress = new BinaryDocValuesField(FIELD_ADDRESS, new BytesRef(8));
             // docId also needs to be indexed
-            IntField fDocIdIdx = new IntField(FIELD_DOC_ID, 0, IntField.TYPE_NOT_STORED);
+            final IntField fDocIdIdx = new IntField(FIELD_DOC_ID, 0, IntField.TYPE_NOT_STORED);
             for (RangeIndexDoc pending : nodesToWrite) {
                 Document doc = new Document();
 
@@ -503,7 +503,7 @@ public class RangeIndexWorker implements OrderedValuesIndex, QNamedKeysIndex {
             LOG.warn("An exception was caught while indexing document: " + e.getMessage(), e);
         } finally {
             index.releaseWriter(writer);
-            nodesToWrite = new ArrayList<RangeIndexDoc>();
+            nodesToWrite = new ArrayList<>();
             cachedNodesSize = 0;
         }
     }
@@ -597,14 +597,14 @@ public class RangeIndexWorker implements OrderedValuesIndex, QNamedKeysIndex {
         return collector.getResultSet();
     }
 
-    private class SearchCollector extends Collector {
+    private class SearchCollector extends SimpleCollector {
         private final NodeSet resultSet;
         private final NodeSet contextSet;
         private final QName qname;
         private final int axis;
         private final int contextId;
         private final DocumentSet docs;
-        private AtomicReader reader;
+        private LeafReader reader;
         private NumericDocValues docIdValues;
         private BinaryDocValues nodeIdValues;
         private BinaryDocValues addressValues;
@@ -681,16 +681,11 @@ public class RangeIndexWorker implements OrderedValuesIndex, QNamedKeysIndex {
         }
 
         @Override
-        public void setNextReader(AtomicReaderContext atomicReaderContext) throws IOException {
-            this.reader = atomicReaderContext.reader();
+        public void doSetNextReader(final LeafReaderContext leafReaderContext) throws IOException {
+            this.reader = leafReaderContext.reader();
             this.docIdValues = this.reader.getNumericDocValues(FIELD_DOC_ID);
             this.nodeIdValues = this.reader.getBinaryDocValues(FIELD_NODE_ID);
             this.addressValues = this.reader.getBinaryDocValues(FIELD_ADDRESS);
-        }
-
-        @Override
-        public boolean acceptsDocsOutOfOrder() {
-            return true;
         }
     }
 
@@ -982,8 +977,8 @@ public class RangeIndexWorker implements OrderedValuesIndex, QNamedKeysIndex {
     }
 
     private void scan(DocumentSet docs, NodeSet nodes, String start, String end, long max, TreeMap<String, Occurrences> map, IndexReader reader, String field) throws IOException {
-        List<AtomicReaderContext> leaves = reader.leaves();
-        for (AtomicReaderContext context : leaves) {
+        final List<LeafReaderContext> leaves = reader.leaves();
+        for (final LeafReaderContext context : leaves) {
             NumericDocValues docIdValues = context.reader().getNumericDocValues(FIELD_DOC_ID);
             BinaryDocValues nodeIdValues = context.reader().getBinaryDocValues(FIELD_NODE_ID);
             Bits liveDocs = context.reader().getLiveDocs();

@@ -92,7 +92,7 @@ public class LuceneIndexWorker implements OrderedValuesIndex, QNamedKeysIndex {
 
     public static final org.apache.lucene.document.FieldType TYPE_NODE_ID = new org.apache.lucene.document.FieldType();
     static {
-        TYPE_NODE_ID.setIndexed(true);
+        TYPE_NODE_ID.setIndexOptions(IndexOptions.DOCS); //TODO(AR) is this correct?
         TYPE_NODE_ID.setStored(false);
         TYPE_NODE_ID.setOmitNorms(true);
         TYPE_NODE_ID.setStoreTermVectors(false);
@@ -671,7 +671,8 @@ public class LuceneIndexWorker implements OrderedValuesIndex, QNamedKeysIndex {
 
         return index.withSearcher(searcher -> {
             // Get analyzer : to be retrieved from configuration
-            final Analyzer searchAnalyzer = new StandardAnalyzer(LuceneIndex.LUCENE_VERSION_IN_USE);
+            final Analyzer searchAnalyzer = new StandardAnalyzer();
+            searchAnalyzer.setVersion(LuceneIndex.LUCENE_VERSION_IN_USE);
 
             // Setup query Version, default field, analyzer
             final QueryParserWrapper parser = getQueryParser("", searchAnalyzer, null);
@@ -694,9 +695,9 @@ public class LuceneIndexWorker implements OrderedValuesIndex, QNamedKeysIndex {
             final int nodeNr = builder.startElement("", "results", "results", null);
 
             // Perform actual search
-            searcher.search(query, new Collector() {
+            searcher.search(query, new SimpleCollector() {
                 private Scorer scorer;
-                private AtomicReader reader;
+                private LeafReader reader;
 
                 @Override
                 public void setScorer(Scorer scorer) throws IOException {
@@ -762,13 +763,8 @@ public class LuceneIndexWorker implements OrderedValuesIndex, QNamedKeysIndex {
                 }
 
                 @Override
-                public void setNextReader(AtomicReaderContext atomicReaderContext) throws IOException {
-                    this.reader = atomicReaderContext.reader();
-                }
-
-                @Override
-                public boolean acceptsDocsOutOfOrder() {
-                    return true;
+                public void doSetNextReader(final LeafReaderContext leafReaderContext) throws IOException {
+                    this.reader = leafReaderContext.reader();
                 }
             });
 
@@ -786,16 +782,16 @@ public class LuceneIndexWorker implements OrderedValuesIndex, QNamedKeysIndex {
     public String getFieldContent(int docId, String field) throws IOException {
         final BytesRefBuilder bytes = new BytesRefBuilder();
         NumericUtils.intToPrefixCoded(docId, 0, bytes);
-        Term dt = new Term(FIELD_DOC_ID, bytes.toBytesRef());
+        final Term dt = new Term(FIELD_DOC_ID, bytes.toBytesRef());
 
         return index.withReader(reader -> {
-            List<AtomicReaderContext> leaves = reader.leaves();
-            for (AtomicReaderContext context : leaves) {
-                AtomicReader atomicReader = context.reader();
-                DocsEnum docs = atomicReader.termDocsEnum(dt);
+            final List<LeafReaderContext> leaves = reader.leaves();
+            for (final LeafReaderContext context : leaves) {
+                final LeafReader atomicReader = context.reader();
+                final DocsEnum docs = atomicReader.termDocsEnum(dt);
                 if (docs != null && docs.nextDoc() != DocsEnum.NO_MORE_DOCS) {
-                    Document doc = atomicReader.document(docs.docID());
-                    String value = doc.get(field);
+                    final Document doc = atomicReader.document(docs.docID());
+                    final String value = doc.get(field);
                     if (value != null) {
                         return value;
                     }
@@ -808,13 +804,13 @@ public class LuceneIndexWorker implements OrderedValuesIndex, QNamedKeysIndex {
     public boolean hasIndex(int docId) throws IOException {
         final BytesRefBuilder bytes = new BytesRefBuilder();
         NumericUtils.intToPrefixCoded(docId, 0, bytes);
-        Term dt = new Term(FIELD_DOC_ID, bytes.toBytesRef());
+        final Term dt = new Term(FIELD_DOC_ID, bytes.toBytesRef());
 
         return index.withReader(reader -> {
             boolean found = false;
-            List<AtomicReaderContext> leaves = reader.leaves();
-            for (AtomicReaderContext context : leaves) {
-                DocsEnum docs = context.reader().termDocsEnum(dt);
+            final List<LeafReaderContext> leaves = reader.leaves();
+            for (final LeafReaderContext context : leaves) {
+                final DocsEnum docs = context.reader().termDocsEnum(dt);
                 if (docs != null && docs.nextDoc() != DocsEnum.NO_MORE_DOCS) {
                     found = true;
                     break;
@@ -852,11 +848,11 @@ public class LuceneIndexWorker implements OrderedValuesIndex, QNamedKeysIndex {
         return false;
     }
 
-    private class LuceneHitCollector extends Collector {
+    private class LuceneHitCollector extends SimpleCollector {
 
         private Scorer scorer;
 
-        private AtomicReader reader;
+        private LeafReader reader;
         private NumericDocValues docIdValues;
         private BinaryDocValues nodeIdValues;
         private final byte[] buf = new byte[1024];
@@ -887,15 +883,10 @@ public class LuceneIndexWorker implements OrderedValuesIndex, QNamedKeysIndex {
         }
 
         @Override
-        public void setNextReader(AtomicReaderContext atomicReaderContext) throws IOException {
-            this.reader = atomicReaderContext.reader();
+        public void doSetNextReader(LeafReaderContext leafReaderContext) throws IOException {
+            this.reader = leafReaderContext.reader();
             this.docIdValues = this.reader.getNumericDocValues(FIELD_DOC_ID);
             this.nodeIdValues = this.reader.getBinaryDocValues(LuceneUtil.FIELD_NODE_ID);
-        }
-
-        @Override
-        public boolean acceptsDocsOutOfOrder() {
-            return false;
         }
 
         @Override
@@ -1067,8 +1058,8 @@ public class LuceneIndexWorker implements OrderedValuesIndex, QNamedKeysIndex {
         index.withReader(reader -> {
             for (QName qname : qnames) {
                 String field = LuceneUtil.encodeQName(qname, index.getBrokerPool().getSymbols());
-                List<AtomicReaderContext> leaves = reader.leaves();
-                for (AtomicReaderContext context : leaves) {
+                final List<LeafReaderContext> leaves = reader.leaves();
+                for (final LeafReaderContext context : leaves) {
                     NumericDocValues docIdValues = context.reader().getNumericDocValues(FIELD_DOC_ID);
                     BinaryDocValues nodeIdValues = context.reader().getBinaryDocValues(LuceneUtil.FIELD_NODE_ID);
                     Bits liveDocs = context.reader().getLiveDocs();

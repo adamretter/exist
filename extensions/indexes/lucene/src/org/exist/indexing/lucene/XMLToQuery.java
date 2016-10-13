@@ -264,10 +264,10 @@ public class XMLToQuery {
             final Automaton automaton = WildcardQuery.toAutomaton(new Term(field, queryStr));
             final CompiledAutomaton compiled = new CompiledAutomaton(automaton);
             final List<Term> termList = new ArrayList<>(8);
-            for (AtomicReaderContext atomic : reader.leaves()) {
-                Terms terms = atomic.reader().terms(field);
+            for (final LeafReaderContext leaf : reader.leaves()) {
+                final Terms terms = leaf.reader().terms(field);
                 if (terms != null) {
-                    TermsEnum termsEnum = compiled.getTermsEnum(terms);
+                    final TermsEnum termsEnum = compiled.getTermsEnum(terms);
                     BytesRef data = termsEnum.next();
                     while (data != null) {
                         String term = data.utf8ToString();
@@ -276,7 +276,7 @@ public class XMLToQuery {
                     }
                 }
             }
-            Term[] matchingTerms = new Term[termList.size()];
+            final Term[] matchingTerms = new Term[termList.size()];
             return termList.toArray(matchingTerms);
         });
     }
@@ -364,7 +364,7 @@ public class XMLToQuery {
         if (option.equalsIgnoreCase("yes"))
             query.setRewriteMethod(MultiTermQuery.CONSTANT_SCORE_FILTER_REWRITE);
         else
-            query.setRewriteMethod(MultiTermQuery.CONSTANT_SCORE_AUTO_REWRITE_DEFAULT);
+            query.setRewriteMethod(MultiTermQuery.CONSTANT_SCORE_BOOLEAN_QUERY_REWRITE);
     }
 
     private BooleanClause.Occur getOccur(Element elem) {

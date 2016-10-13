@@ -4,9 +4,7 @@ import org.apache.lucene.index.*;
 import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Filter;
-import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.*;
 import org.exist.dom.persistent.NodeProxy;
 import org.exist.dom.persistent.NodeSet;
 import org.exist.dom.persistent.NodeSetIterator;
@@ -26,20 +24,20 @@ public class NodesFilter extends Filter {
     }
 
     @Override
-    public DocIdSet getDocIdSet(AtomicReaderContext context, Bits acceptDocs) throws IOException {
+    public DocIdSet getDocIdSet(LeafReaderContext context, Bits acceptDocs) throws IOException {
         DocIdSet cached = cachedSets.get(context.ord);
         return cached;
     }
 
     public void init(IndexReader reader) throws IOException {
-        for (AtomicReaderContext context : reader.leaves()) {
+        for (final LeafReaderContext context : reader.leaves()) {
             init(context);
         }
     }
-    private void init(AtomicReaderContext context) throws IOException {
-        final AtomicReader reader = context.reader();
-        final FixedBitSet result = new FixedBitSet(reader.maxDoc());
-        cachedSets.put(context.ord, result);
+    private void init(final LeafReaderContext context) throws IOException {
+        final LeafReader reader = context.reader();
+        final BitSet result = new FixedBitSet(reader.maxDoc());
+        cachedSets.put(context.ord, new BitDocIdSet(result));
 
         final Fields fields = reader.fields();
         Terms terms = fields.terms(RangeIndexWorker.FIELD_ID);

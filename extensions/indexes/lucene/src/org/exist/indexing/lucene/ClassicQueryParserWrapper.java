@@ -65,7 +65,7 @@ public class ClassicQueryParserWrapper extends QueryParserWrapper {
 
     public ClassicQueryParserWrapper(String field, Analyzer analyzer) {
         super(field, analyzer);
-        parser = new QueryParser(LuceneIndex.LUCENE_VERSION_IN_USE, field, analyzer);
+        parser = new QueryParser(field, analyzer);
     }
 
     public Query parse(String query) throws XPathException {

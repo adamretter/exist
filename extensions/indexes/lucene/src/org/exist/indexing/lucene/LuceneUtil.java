@@ -25,7 +25,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
-import org.apache.lucene.index.AtomicReaderContext;
+import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.IndexReader;
@@ -202,7 +202,7 @@ public class LuceneUtil {
     }
 
     private static Query rewrite(MultiTermQuery query, IndexReader reader) throws IOException {
-        query.setRewriteMethod(MultiTermQuery.CONSTANT_SCORE_AUTO_REWRITE_DEFAULT);
+        query.setRewriteMethod(MultiTermQuery.CONSTANT_SCORE_FILTER_REWRITE); //TODO(AR) consider configuration choice for RewriteMethod
         return query.rewrite(reader);
     }
 
@@ -221,7 +221,7 @@ public class LuceneUtil {
 
         public void extractTerms(MultiTermQuery query, Map<Object, Query> termsMap, IndexReader reader, boolean includeFields) throws IOException {
             IndexReaderContext topReaderContext = reader.getContext();
-            for (AtomicReaderContext context : topReaderContext.leaves()) {
+            for (final LeafReaderContext context : topReaderContext.leaves()) {
                 final Fields fields = context.reader().fields();
                 if (fields == null) {
                     // reader has no fields

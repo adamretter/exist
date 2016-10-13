@@ -59,7 +59,8 @@ public class RangeIndexConfigElement {
         String collation = node.getAttribute("collation");
         if (collation != null && collation.length() > 0) {
             try {
-                analyzer = new CollationKeyAnalyzer(RangeIndex.LUCENE_VERSION_IN_USE, Collations.getCollationFromURI(null, collation));
+                analyzer = new CollationKeyAnalyzer(Collations.getCollationFromURI(null, collation));
+                analyzer.setVersion(RangeIndex.LUCENE_VERSION_IN_USE);
             } catch (XPathException e) {
                 throw new DatabaseConfigurationException(e.getMessage(), e);
             }

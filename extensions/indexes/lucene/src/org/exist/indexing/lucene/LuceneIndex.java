@@ -49,7 +49,7 @@ import java.nio.file.Path;
 
 public class LuceneIndex extends AbstractIndex implements RawBackupSupport {
     
-    public final static Version LUCENE_VERSION_IN_USE = Version.LUCENE_4_10_4;
+    public final static Version LUCENE_VERSION_IN_USE = Version.LUCENE_5_0_0;
 
     private static final Logger LOG = LogManager.getLogger(LuceneIndexWorker.class);
 
@@ -98,8 +98,10 @@ public class LuceneIndex extends AbstractIndex implements RawBackupSupport {
             defaultAnalyzer = AnalyzerConfig.configureAnalyzer(node);
         }
 
-        if (defaultAnalyzer == null)
-            defaultAnalyzer = new StandardAnalyzer(LUCENE_VERSION_IN_USE);
+        if (defaultAnalyzer == null) {
+            defaultAnalyzer = new StandardAnalyzer();
+            defaultAnalyzer.setVersion(LUCENE_VERSION_IN_USE);
+        }
         if (LOG.isDebugEnabled())
             LOG.debug("Using default analyzer: " + defaultAnalyzer.getClass().getName());
     }
@@ -120,9 +122,9 @@ public class LuceneIndex extends AbstractIndex implements RawBackupSupport {
                 Files.createDirectories(dir);
             }
 
-            directory = FSDirectory.open(dir.toFile());
+            directory = FSDirectory.open(dir);
 
-            final IndexWriterConfig idxWriterConfig = new IndexWriterConfig(LUCENE_VERSION_IN_USE, defaultAnalyzer);
+            final IndexWriterConfig idxWriterConfig = new IndexWriterConfig(defaultAnalyzer);
             idxWriterConfig.setRAMBufferSizeMB(bufferSize);
             cachedWriter = new IndexWriter(directory, idxWriterConfig);
 
