@@ -31,9 +31,12 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.exist.extensions.exquery.restxq.RestXqServiceCompiledXQueryCache;
 import org.exist.storage.DBBroker;
+import org.exist.storage.lock.Lock.LockMode;
+import org.exist.storage.lock.ManagedLock;
 import org.exist.xquery.CompiledXQuery;
 import org.exquery.restxq.RestXqService;
 import org.exquery.restxq.RestXqServiceException;
@@ -56,35 +59,41 @@ public class RestXqServiceCompiledXQueryCacheImpl implements RestXqServiceCompil
 
     @Override
     public CompiledXQuery getCompiledQuery(final DBBroker broker, final URI xqueryLocation) throws RestXqServiceException {
-        
-        CompiledXQuery xquery = null;
-        cacheLock.writeLock().lock();
-        try {
+
+        // optimise for read path first
+        try (final ManagedLock<ReadWriteLock> cacheReadLock = ManagedLock.acquire(cacheLock, LockMode.READ_LOCK)) {
             final Deque<CompiledXQuery> queries = cache.get(xqueryLocation);
-            
-            if(queries != null && !queries.isEmpty()) {
-                xquery = queries.pop();
+
+            if (queries != null && !queries.isEmpty()) {
+                return queries.pop();
             }
-        } finally {
-            cacheLock.writeLock().unlock();
         }
-        
-        if(xquery == null) {
-            xquery = XQueryCompiler.compile(broker, xqueryLocation);
+
+        // fall back to write path
+        try (final ManagedLock<ReadWriteLock> cacheWriteLock = ManagedLock.acquire(cacheLock, LockMode.WRITE_LOCK)) {
+            final Deque<CompiledXQuery> queries = cache.get(xqueryLocation);
+
+            // attempt to retrieve from the cache again as we may have been preempted
+            if (queries != null && !queries.isEmpty()) {
+                return queries.pop();
+            } else {
+
+                // not in the cache, compile a new query
+                final CompiledXQuery xquery = XQueryCompiler.compile(broker, xqueryLocation);
+
+                //reset the state of the query
+                xquery.reset();
+                xquery.getContext().getWatchDog().reset();
+                xquery.getContext().prepareForExecution();
+
+                return xquery;
+            }
         }
-        
-        //reset the state of the query
-        xquery.reset();
-        xquery.getContext().getWatchDog().reset();
-        xquery.getContext().prepareForExecution();
-        
-        return xquery;
     }
     
     @Override
     public void returnCompiledQuery(final URI xqueryLocation, final CompiledXQuery xquery) {
-        cacheLock.writeLock().lock();
-        try {
+        try(final ManagedLock<ReadWriteLock> cacheWriteLock = ManagedLock.acquire(cacheLock, LockMode.WRITE_LOCK)) {
             Deque<CompiledXQuery> queries = cache.get(xqueryLocation);
             if(queries == null) {
                 queries = new ArrayDeque<>();
@@ -98,30 +107,22 @@ public class RestXqServiceCompiledXQueryCacheImpl implements RestXqServiceCompil
             
             cache.put(xqueryLocation, queries);
             
-        } finally {
-            cacheLock.writeLock().unlock();
         }
     }
     
     @Override
     public void removeService(final RestXqService service) {
-        cacheLock.writeLock().lock();
-        try {        
+        try(final ManagedLock<ReadWriteLock> cacheWriteLock = ManagedLock.acquire(cacheLock, LockMode.WRITE_LOCK)) {
             cache.remove(service.getResourceFunction().getXQueryLocation());
-        } finally {
-            cacheLock.writeLock().unlock();
         }
     }
     
     @Override
     public void removeServices(final Iterable<RestXqService> services) {
-        cacheLock.writeLock().lock();
-        try {
+        try(final ManagedLock<ReadWriteLock> cacheWriteLock = ManagedLock.acquire(cacheLock, LockMode.WRITE_LOCK)) {
             for(final RestXqService service : services) {
                 cache.remove(service.getResourceFunction().getXQueryLocation());
             }
-        } finally {
-            cacheLock.writeLock().unlock();
         }
     }
 }
