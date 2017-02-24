@@ -2034,8 +2034,8 @@ public class NativeBroker extends DBBroker {
                 //store the temporary document
                 temp.addDocument(transaction, this, targetDoc); //NULL transaction, so temporary fragment is not journalled - AR
 
-                if(transaction != null) {
-                    transaction.acquireLock(temp.getLock(), LockMode.WRITE_LOCK);
+                if (transaction != null) {
+                    transaction.acquireCollectionLock(() -> pool.getLockManager().acquireCollectionWriteLock(temp.getURI(), false));
                 }
 
                 //NULL transaction, so temporary fragment is not journalled - AR
