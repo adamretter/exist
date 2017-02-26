@@ -633,10 +633,12 @@ public class NativeBroker extends DBBroker {
         throws LockException, PermissionDeniedException, IOException, TriggerException {
         try {
             pushSubject(pool.getSecurityManager().getSystemSubject());
-            final Collection temp = getOrCreateCollection(transaction, XmldbURI.TEMP_COLLECTION_URI);
-            temp.setPermissions(0771);
-            saveCollection(transaction, temp);
-            return temp;
+            final Tuple2<Boolean, Collection> temp = getOrCreateCollectionExplicit(transaction, XmldbURI.TEMP_COLLECTION_URI);
+            if(temp._1) {
+                temp._2.setPermissions(0771);
+                saveCollection(transaction, temp._2);
+            }
+            return temp._2;
         } finally {
             popSubject();
         }
@@ -1534,25 +1536,28 @@ public class NativeBroker extends DBBroker {
                 if(!isRoot) {
                     // remove from parent collection
                     //TODO : resolve URIs ! (uri.resolve(".."))
-                    final Collection parentCollection = openCollection(collection.getParentURI(), LockMode.WRITE_LOCK);
-                    // keep the lock for the transaction
-                    if(transaction != null) {
-                        transaction.registerLock(parentCollection.getLock(), LockMode.WRITE_LOCK);
-                    }
 
-                    if(parentCollection != null) {
-                        try {
+                    Collection parentCollection = null;
+                    try {
+                        parentCollection = openCollection(collection.getParentURI(), LockMode.WRITE_LOCK);
+                        if(parentCollection != null) {
+
+                            // keep a lock for the transaction
+                            if(transaction != null) {
+                                transaction.acquireLock(parentCollection.getLock(), LockMode.WRITE_LOCK);
+                            }
+
                             LOG.debug("Removing collection '" + collName + "' from its parent...");
                             //TODO : resolve from collection's base URI
                             parentCollection.removeCollection(this, uri.lastSegment());
                             saveCollection(transaction, parentCollection);
+                        }
 
-                        } catch(final LockException e) {
-                            LOG.warn("LockException while removing collection '" + collName + "'");
-                        } finally {
-                            if(transaction == null) {
-                                parentCollection.getLock().release(LockMode.WRITE_LOCK);
-                            }
+                    } catch(final LockException e) {
+                        LOG.warn("LockException while removing collection '" + collName + "'");
+                    } finally {
+                        if(parentCollection != null) {
+                            parentCollection.release(LockMode.WRITE_LOCK);
                         }
                     }
                 }
@@ -1915,10 +1920,13 @@ public class NativeBroker extends DBBroker {
             final XmldbURI docName = XmldbURI.create(MessageDigester.md5(Thread.currentThread().getName() + Long.toString(System.currentTimeMillis()), false) + ".xml");
 
             //get the temp collection
-            Collection temp = openCollection(XmldbURI.TEMP_COLLECTION_URI, LockMode.WRITE_LOCK);
+            Collection temp = null;
             boolean created = false;
+
             try (final Txn transaction = transact.beginTransaction()) {
-                //if no temp collection
+                temp = openCollection(XmldbURI.TEMP_COLLECTION_URI, LockMode.WRITE_LOCK);
+
+                // if temp collection does not exist
                 if (temp == null) {
                     //creates temp collection (with write lock)
                     temp = createTempCollection(transaction);
@@ -1928,6 +1936,7 @@ public class NativeBroker extends DBBroker {
                     }
                     created = true;
                 }
+
                 //create a temporary document
                 final DocumentImpl targetDoc = new DocumentImpl(pool, temp, docName);
                 targetDoc.getPermissions().setMode(Permission.DEFAULT_TEMPORARY_DOCUMENT_PERM);
@@ -1943,12 +1952,11 @@ public class NativeBroker extends DBBroker {
                 indexer.store();
                 //store the temporary document
                 temp.addDocument(transaction, this, targetDoc); //NULL transaction, so temporary fragment is not journalled - AR
-                // unlock the temp collection
-                if (transaction == null) {
-                    temp.getLock().release(LockMode.WRITE_LOCK);
-                } else if (!created) {
-                    transaction.registerLock(temp.getLock(), LockMode.WRITE_LOCK);
+
+                if(transaction != null) {
+                    transaction.acquireLock(temp.getLock(), LockMode.WRITE_LOCK);
                 }
+
                 //NULL transaction, so temporary fragment is not journalled - AR
                 storeXMLResource(transaction, targetDoc);
                 flush();
@@ -1959,6 +1967,10 @@ public class NativeBroker extends DBBroker {
             } catch (final Exception e) {
                 LOG.warn("Failed to store temporary fragment: " + e.getMessage(), e);
                 //abort the transaction
+            } finally {
+                if(!created && temp != null) {
+                    temp.release(LockMode.WRITE_LOCK);
+                }
             }
         } finally {
             //restore the user
