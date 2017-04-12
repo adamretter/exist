@@ -27,6 +27,7 @@ import org.exist.security.PermissionDeniedException;
 import org.exist.storage.txn.TransactionException;
 import org.exist.test.ExistEmbeddedServer;
 import org.exist.util.FileUtils;
+import org.exist.util.LockException;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.exist.collections.Collection;
@@ -278,7 +279,7 @@ public class BasicNodeSetTest {
     }
 	
     @Test
-    public void testOptimizations() throws XPathException, SAXException, PermissionDeniedException {
+    public void testOptimizations() throws XPathException, SAXException, PermissionDeniedException, LockException {
             
         Serializer serializer = broker.getSerializer();
         serializer.reset();
