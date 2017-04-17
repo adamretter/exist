@@ -21,6 +21,7 @@
  */
 package org.exist.dom.persistent;
 
+import net.jcip.annotations.NotThreadSafe;
 import org.exist.EXistException;
 import org.exist.Resource;
 import org.exist.dom.QName;
@@ -41,8 +42,6 @@ import org.exist.storage.NodePath;
 import org.exist.storage.StorageAddress;
 import org.exist.storage.io.VariableByteInput;
 import org.exist.storage.io.VariableByteOutputStream;
-import org.exist.storage.lock.Lock;
-import org.exist.storage.lock.MultiReadReentrantLock;
 import org.exist.storage.txn.Txn;
 import org.exist.xmldb.XmldbURI;
 import org.exist.xquery.Constants;
@@ -74,6 +73,7 @@ import java.io.IOException;
  *
  * @author Wolfgang Meier <wolfgang@exist-db.org>
  */
+@NotThreadSafe
 public class DocumentImpl extends NodeImpl<DocumentImpl> implements Resource, Document {
 
     public static final int UNKNOWN_DOCUMENT_ID = -1;
@@ -105,13 +105,11 @@ public class DocumentImpl extends NodeImpl<DocumentImpl> implements Resource, Do
     private int docId = UNKNOWN_DOCUMENT_ID;
 
     /**
-     * the document's file name
+     * Just the document's file name
      */
     private XmldbURI fileURI = null;
 
     private Permission permissions = null;
-
-    private transient Lock updateLock = null;
 
     private DocumentMetadata metadata = null;
 
@@ -190,12 +188,12 @@ public class DocumentImpl extends NodeImpl<DocumentImpl> implements Resource, Do
     }
 
     /**
-     * The method <code>setCollection</code>
+     * Set the Collection for the document
      *
-     * @param parent a <code>Collection</code> value
+     * @param collection The Collection that the document belongs too
      */
-    public void setCollection(final Collection parent) {
-        this.collection = parent;
+    public void setCollection(final Collection collection) {
+        this.collection = collection;
     }
 
     /**
@@ -230,7 +228,6 @@ public class DocumentImpl extends NodeImpl<DocumentImpl> implements Resource, Do
      * @return a <code>XmldbURI</code> value
      */
     public XmldbURI getFileURI() {
-        //checkAvail();
         return fileURI;
     }
 
@@ -355,25 +352,6 @@ public class DocumentImpl extends NodeImpl<DocumentImpl> implements Resource, Do
     }
 
     /**
-     * Returns true if the document is currently locked for
-     * write.
-     */
-    public synchronized boolean isLockedForWrite() {
-        return getUpdateLock().isLockedForWrite();
-    }
-
-    /**
-     * Returns the update lock associated with this
-     * resource.
-     */
-    public final synchronized Lock getUpdateLock() {
-        if(updateLock == null) {
-            updateLock = new MultiReadReentrantLock(fileURI.toString());
-        }
-        return updateLock;
-    }
-
-    /**
      * The method <code>setUserLock</code>
      *
      * @param user an <code>User</code> value
@@ -488,9 +466,6 @@ public class DocumentImpl extends NodeImpl<DocumentImpl> implements Resource, Do
      */
     public void write(final VariableByteOutputStream ostream) throws IOException {
         try {
-            if(!getCollection().isTempCollection() && !getUpdateLock().isLockedForWrite()) {
-                LOG.warn("document not locked for write !");
-            }
             ostream.writeInt(docId);
             ostream.writeUTF(fileURI.toString());
             getPermissions().write(ostream);
@@ -546,7 +521,7 @@ public class DocumentImpl extends NodeImpl<DocumentImpl> implements Resource, Do
             metadata = new DocumentMetadata();
             metadata.read(pool.getSymbols(), istream);
         } catch(final IOException e) {
-            LOG.error("IO error while reading document data for document " + fileURI, e);
+            LOG.error("IO error while reading document data for document {}" + fileURI, e);
             //TODO : raise exception ?
         }
     }
@@ -576,7 +551,7 @@ public class DocumentImpl extends NodeImpl<DocumentImpl> implements Resource, Do
             metadata.read(pool.getSymbols(), istream);
 
         } catch(final IOException e) {
-            LOG.error("IO error while reading document metadata for " + fileURI, e);
+            LOG.error("IO error while reading document metadata for {}", fileURI, e);
             //TODO : raise exception ?
         }
     }

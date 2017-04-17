@@ -46,30 +46,24 @@ public class NodeTest {
 
     @Test
     public void document() throws EXistException, LockException, PermissionDeniedException {
-        DocumentImpl doc = null;
         final BrokerPool pool = existEmbeddedServer.getBrokerPool();
-        try(final DBBroker broker = pool.get(Optional.of(pool.getSecurityManager().getSystemSubject()))) {
-            doc = root.getDocumentWithLock(broker, XmldbURI.create("test.xml"),LockMode.READ_LOCK);
-            final NodeList children = doc.getChildNodes();
+        try(final DBBroker broker = pool.get(Optional.of(pool.getSecurityManager().getSystemSubject()));
+                final LockedDocument lockedDoc = root.getDocumentWithLock(broker, XmldbURI.create("test.xml"),LockMode.READ_LOCK)) {
+            final NodeList children = lockedDoc.getDocument().getChildNodes();
             for (int i = 0; i < children.getLength(); i++) {
                 final IStoredNode node = (IStoredNode<?>) children.item(i);
                 node.getNodeId();
                 node.getNodeName();
-            }
-        } finally {
-            if (doc != null) {
-                doc.getUpdateLock().release(LockMode.READ_LOCK);
             }
         }
     }
 
     @Test
 	public void childAxis() throws EXistException, LockException, PermissionDeniedException {
-		DocumentImpl doc = null;
         final BrokerPool pool = existEmbeddedServer.getBrokerPool();
-        try(final DBBroker broker = pool.get(Optional.of(pool.getSecurityManager().getSystemSubject()))) {
-            doc = root.getDocumentWithLock(broker, XmldbURI.create("test.xml"),LockMode.READ_LOCK);
-            final Element rootNode = doc.getDocumentElement();
+        try(final DBBroker broker = pool.get(Optional.of(pool.getSecurityManager().getSystemSubject()));
+                final LockedDocument lockedDoc = root.getDocumentWithLock(broker, XmldbURI.create("test.xml"),LockMode.READ_LOCK)) {
+            final Element rootNode = lockedDoc.getDocument().getDocumentElement();
             
             //Testing getChildNodes()
             NodeList cl = rootNode.getChildNodes();
@@ -98,20 +92,15 @@ public class NodeTest {
         	parent = parent.getParentNode();
         	assertNotNull(parent);
         	assertEquals(parent.getNodeName(), "test");
-        } finally {
-        	if (doc != null) {
-                doc.getUpdateLock().release(LockMode.READ_LOCK);
-            }
         }
 	}
 
     @Test
     public void siblingAxis() throws EXistException, LockException, PermissionDeniedException {
-        DocumentImpl doc = null;
         final BrokerPool pool = existEmbeddedServer.getBrokerPool();
-        try(final DBBroker broker = pool.get(Optional.of(pool.getSecurityManager().getSystemSubject()))) {
-            doc = root.getDocumentWithLock(broker, XmldbURI.create("test.xml"),LockMode.READ_LOCK);
-            Element rootNode = doc.getDocumentElement();
+        try(final DBBroker broker = pool.get(Optional.of(pool.getSecurityManager().getSystemSubject()));
+                final LockedDocument lockedDoc = root.getDocumentWithLock(broker, XmldbURI.create("test.xml"),LockMode.READ_LOCK)) {
+            Element rootNode = lockedDoc.getDocument().getDocumentElement();
             Element child = (Element) rootNode.getFirstChild();
             assertNotNull(child);
             assertEquals(child.getNodeName(), "a");
@@ -134,20 +123,15 @@ public class NodeTest {
                 count++;
             }
             assertEquals(count, 4);
-        } finally {
-            if (doc != null) {
-                doc.getUpdateLock().release(LockMode.READ_LOCK);
-            }
         }
     }
 
     @Test
 	public void attributeAxis() throws EXistException, LockException, PermissionDeniedException {
-		DocumentImpl doc = null;
         final BrokerPool pool = existEmbeddedServer.getBrokerPool();
-        try(final DBBroker broker = pool.get(Optional.of(pool.getSecurityManager().getSystemSubject()))) {
-            doc = root.getDocumentWithLock(broker, XmldbURI.create("test.xml"),LockMode.READ_LOCK);
-            Element rootNode = doc.getDocumentElement();
+        try(final DBBroker broker = pool.get(Optional.of(pool.getSecurityManager().getSystemSubject()));
+                final LockedDocument lockedDoc = root.getDocumentWithLock(broker, XmldbURI.create("test.xml"),LockMode.READ_LOCK)) {
+            Element rootNode = lockedDoc.getDocument().getDocumentElement();
             Element first = (Element) rootNode.getFirstChild();
             assertEquals(first.getNodeName(), "a");
             
@@ -182,20 +166,16 @@ public class NodeTest {
             assertEquals(attr.getLocalName(), "b");
             assertEquals(attr.getNamespaceURI(), "http://foo.org");
             assertEquals(attr.getValue(), "m");
-        } finally {
-        	if (doc != null) doc.getUpdateLock().release(LockMode.READ_LOCK);
         }
 	}
 
     @Deprecated
 	@Test
     public void visitor() throws EXistException, LockException, PermissionDeniedException {
-        DocumentImpl doc = null;
         final BrokerPool pool = existEmbeddedServer.getBrokerPool();
-        try(final DBBroker broker = pool.get(Optional.of(pool.getSecurityManager().getSystemSubject()))) {
-            
-            doc = root.getDocumentWithLock(broker, XmldbURI.create("test.xml"));
-            StoredNode rootNode = (StoredNode) doc.getDocumentElement();
+        try(final DBBroker broker = pool.get(Optional.of(pool.getSecurityManager().getSystemSubject()));
+                final LockedDocument lockedDoc = root.getDocumentWithLock(broker, XmldbURI.create("test.xml"),LockMode.READ_LOCK)) {
+            StoredNode rootNode = (StoredNode) lockedDoc.getDocument().getDocumentElement();
             NodeVisitor visitor = new NodeVisitor() {
                 @Override
                 public boolean visit(IStoredNode node) {
@@ -205,10 +185,6 @@ public class NodeTest {
                 };
             };
             rootNode.accept(visitor);
-        } finally {
-            if (doc != null) {
-                doc.getUpdateLock().release(LockMode.READ_LOCK);
-            }
         }
     }
 
