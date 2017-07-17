@@ -26,7 +26,7 @@
 	<classpathentry kind="src" path="extensions/webdav/src"/>
 	<classpathentry kind="src" path="extensions/commands/src"/>
 	<classpathentry kind="lib" path="lib/core/caffeine-2.4.0.jar"/>
-	<classpathentry kind="lib" path="lib/core/j8fu-1.0.jar"/>
+	<classpathentry kind="lib" path="lib/core/j8fu-1.8.jar"/>
 	<classpathentry kind="lib" path="lib/core/jsr305-3.0.1.jar"/>
 	<classpathentry kind="lib" path="lib/core/pkg-repo.jar"/>
 	<classpathentry kind="lib" path="lib/core/rsyntaxtextarea-2.6.1.jar"/>
