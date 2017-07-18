@@ -189,8 +189,9 @@
 
             <include name="org/**"/>
 
-            <!-- Do not compile Aspects here, compiled below by iajc -->
+        <!-- Do not compile Aspects here, compiled below by iajc -->
 	    <exclude name="org/exist/security/PermissionRequiredAspect.java"/>
+        <exclude name="org/exist/storage/lock/EnsureLockingAspect.java"/>
 
 	    <classpath>
                 <path refid="classpath.core"/>
@@ -238,6 +239,7 @@
 	<target name="check.aspects.uptodate">
     	<uptodate property="aspectj.uptodate" targetfile="exist.jar">
 			<srcfiles dir= "${src}" includes="org/exist/security/PermissionRequiredAspect.java"/>
+            <srcfiles dir= "${src}" includes="org/exist/storage/lock/EnsureLockingAspect.java"/>
     	</uptodate>
   	</target>
 
@@ -262,6 +264,9 @@
             fork="true" maxmem="1024m" showWeaveInfo="true" inpath="${build.classes}">
 
             <include name="org/exist/security/PermissionRequiredAspect.java"/>
+
+            <!-- can be enabled in local.build.properties -->
+            <include name="org/exist/storage/lock/EnsureLockingAspect.java" if="${enable.ensurelocking.aspect}" />
 
             <classpath refid="classpath.compile-aspectj"/>
         </iajc>
