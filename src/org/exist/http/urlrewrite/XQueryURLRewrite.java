@@ -775,6 +775,10 @@ public class XQueryURLRewrite extends HttpServlet {
                             } else {
                                 break;
                             }
+
+                            // NOTE: early release of Collection lock inline with Asymmetrical Locking scheme
+                            subColl.close();
+
                         } catch (final PermissionDeniedException e) {
                             LOG.debug("Permission denied while scanning for XQueryURLRewrite controllers: " +
                                     e.getMessage(), e);
@@ -818,6 +822,9 @@ public class XQueryURLRewrite extends HttpServlet {
 
                         sourceInfo = new SourceInfo(new DBSource(broker, (BinaryDocument) controllerDoc, true), "xmldb:exist://" + controllerPath);
                         sourceInfo.controllerPath = controllerPath.substring(locationUri.getCollectionPath().length());
+
+                        // NOTE: early release of Collection lock inline with Asymmetrical Locking scheme
+                        collection.close();
 
                         return sourceInfo;
                     } finally {
