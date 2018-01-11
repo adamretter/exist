@@ -85,7 +85,7 @@ public class EnsureLockingAspect {
 
     private static final boolean ENFORCE = Boolean.parseBoolean(System.getProperty(PROP_ENFORCE, "false"));
     private static final boolean OUTPUT_TO_CONSOLE = System.getProperty(PROP_OUTPUT, "console").equals("console");
-    private static final int OUTPUT_STACK_DEPTH = Integer.parseInt(System.getProperty(PROP_OUTPUT_STACK_DEPTH, "0"));
+    private static final int OUTPUT_STACK_DEPTH = Integer.parseInt(System.getProperty(PROP_OUTPUT_STACK_DEPTH, "10"));
     private static final boolean TRACE = Boolean.parseBoolean(System.getProperty(PROP_TRACE, "false"));
 
     private static final Logger LOG = LogManager.getLogger(EnsureLockingAspect.class);
@@ -141,6 +141,12 @@ public class EnsureLockingAspect {
             if (lockManager != null) {
                 final int idx = ensureLockedConstraint.getParameterIndex();
                 final Object arg = args[idx];
+
+                // if the argument is null, and annotated @Nullable, we can skip the check
+                if(arg == null && !getAllParameterAnnotations(method, Nullable.class).isEmpty()) {
+                    traceln(() -> "Skipping method=" + ms.getDeclaringType().getName() + "#" + ms.getName() + " for null argument(idx=" + idx + ") with @EnsureLocked @Nullable");
+                    continue;
+                }
 
                 switch (ensureLockDetail.type) {
                     case COLLECTION:
@@ -335,6 +341,12 @@ public class EnsureLockingAspect {
             if (lockManager != null) {
                 final int idx = ensureUnlockedConstraint.getParameterIndex();
                 final Object arg = args[idx];
+
+                // if the argument is null, and annotated @Nullable, we can skip the check
+                if(arg == null && !getAllParameterAnnotations(method, Nullable.class).isEmpty()) {
+                    traceln(() -> "Skipping method=" + ms.getDeclaringType().getName() + "#" + ms.getName() + " for null argument(idx=" + idx + ") with @EnsureUnlocked @Nullable");
+                    continue;
+                }
 
                 switch (lockType) {
                     case COLLECTION:
@@ -537,25 +549,46 @@ public class EnsureLockingAspect {
         }
     }
 
+
+    /**
+     * Checks if a Collection is locked explicitly, or implicitly through a parent lock for the correct mode on the sub-tree.
+     *
+     * @true if a collection is locked either explicitly or implicitly
+     */
     private boolean hasCollectionLock(final LockManager lockManager, final XmldbURI collectionUri, final EnsureLockDetail ensureLockDetail) {
-        switch (ensureLockDetail.mode) {
-            case READ_LOCK:
-                return lockManager.isCollectionLockedForRead(collectionUri) ||
-                        lockManager.isCollectionLockedForWrite(collectionUri);
+        XmldbURI uri = collectionUri;
+        while(uri.numSegments() > 0) {
 
-            case WRITE_LOCK:
-                return lockManager.isCollectionLockedForWrite(collectionUri);
+            switch (ensureLockDetail.mode) {
+                case READ_LOCK:
+                    if(lockManager.isCollectionLockedForRead(uri) ||
+                            lockManager.isCollectionLockedForWrite(uri)) {
+                        return true;
+                    }
+                    break;
 
-            case NO_LOCK:
-                if(ensureLockDetail.modeWasFromParam) {
-                    traceln(() -> "Nothing to trace for NO_LOCK");  // TODO(AR) consider implementation strategies? although it is likely we will obsolete NO_LOCK
-                    return true;
-                }
-                //intentional fallthrough
+                case WRITE_LOCK:
+                    if(lockManager.isCollectionLockedForWrite(uri)) {
+                        return true;
+                    }
+                    break;
 
-            default:
-                throw new UnsupportedOperationException("Currently only READ or WRITE lock modes are supported");
+                case NO_LOCK:
+                    if(ensureLockDetail.modeWasFromParam) {
+                        traceln(() -> "Nothing to trace for NO_LOCK");  // TODO(AR) consider implementation strategies? although it is likely we will obsolete NO_LOCK
+                        return true;
+                    }
+                    //intentional fallthrough
+
+                default:
+                    throw new UnsupportedOperationException("Currently only READ or WRITE lock modes are supported");
+            }
+
+            // loop round to parent collection
+            uri = uri.removeLastSegment();
         }
+
+        return false;
     }
 
     private boolean hasNoDocumentLocks(final LockManager lockManager, final XmldbURI documentUri) {
