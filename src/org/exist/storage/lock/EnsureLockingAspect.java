@@ -85,7 +85,7 @@ public class EnsureLockingAspect {
 
     private static final boolean ENFORCE = Boolean.parseBoolean(System.getProperty(PROP_ENFORCE, "false"));
     private static final boolean OUTPUT_TO_CONSOLE = System.getProperty(PROP_OUTPUT, "console").equals("console");
-    private static final int OUTPUT_STACK_DEPTH = Integer.parseInt(System.getProperty(PROP_OUTPUT_STACK_DEPTH, "10"));
+    private static final int OUTPUT_STACK_DEPTH = Integer.parseInt(System.getProperty(PROP_OUTPUT_STACK_DEPTH, "0"));
     private static final boolean TRACE = Boolean.parseBoolean(System.getProperty(PROP_TRACE, "false"));
 
     private static final Logger LOG = LogManager.getLogger(EnsureLockingAspect.class);
