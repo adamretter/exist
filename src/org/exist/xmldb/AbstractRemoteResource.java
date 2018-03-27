@@ -29,10 +29,12 @@ import java.util.*;
 import java.util.zip.DataFormatException;
 import java.util.zip.Inflater;
 
-import org.apache.xmlrpc.XmlRpcException;
+import com.evolvedbinary.j8fu.function.BiFunction2E;
 import org.apache.commons.io.output.ByteArrayOutputStream;
 
+import org.exist.EXistException;
 import org.exist.security.Permission;
+import org.exist.security.PermissionDeniedException;
 import org.exist.storage.serializers.EXistOutputKeys;
 import org.exist.util.EXistInputSource;
 import org.exist.util.VirtualTempFile;
@@ -52,9 +54,9 @@ public abstract class AbstractRemoteResource extends AbstractRemote
     protected final XmldbURI path;
     private String mimeType;
 
-    protected VirtualTempFile vfile = null;
+    VirtualTempFile vfile = null;
     private VirtualTempFile contentVFile = null;
-    protected InputSource inputSource = null;
+    InputSource inputSource = null;
     private boolean isLocal = false;
     private long contentLen = 0L;
     private Permission permissions = null;
@@ -62,8 +64,7 @@ public abstract class AbstractRemoteResource extends AbstractRemote
     Date dateCreated = null;
     Date dateModified = null;
 
-    protected AbstractRemoteResource(final RemoteCollection parent, final XmldbURI documentName, final String mimeType)
-            throws XMLDBException {
+    protected AbstractRemoteResource(final RemoteCollection parent, final XmldbURI documentName, final String mimeType) {
         super(parent);
         if (documentName.numSegments() > 1) {
             this.path = documentName;
@@ -142,20 +143,17 @@ public abstract class AbstractRemoteResource extends AbstractRemote
     }
 
     @Override
-    public long getContentLength()
-            throws XMLDBException {
+    public long getContentLength() {
         return contentLen;
     }
 
     @Override
-    public Date getCreationTime()
-            throws XMLDBException {
+    public Date getCreationTime() {
         return dateCreated;
     }
 
     @Override
-    public Date getLastModificationTime()
-            throws XMLDBException {
+    public Date getLastModificationTime() {
         return dateModified;
     }
 
@@ -166,22 +164,19 @@ public abstract class AbstractRemoteResource extends AbstractRemote
                 throw new XMLDBException(ErrorCodes.PERMISSION_DENIED, "Modification time must be after creation time.");
             }
 
-            final List params = new ArrayList(2);
-            params.add(path.toString());
-            params.add(dateModified.getTime());
-
             try {
-                collection.getClient().execute("setLastModified", params);
-            } catch (final XmlRpcException e) {
-                throw new XMLDBException(ErrorCodes.UNKNOWN_ERROR, e.getMessage(), e);
+                collection.getClient().setLastModified(path.toString(), dateModified.getTime());
+            } catch (final EXistException e) {
+                throw new XMLDBException(ErrorCodes.VENDOR_ERROR, e.getMessage(), e);
+            } catch (final PermissionDeniedException e) {
+                throw new XMLDBException(ErrorCodes.PERMISSION_DENIED, e.getMessage(), e);
             }
 
             this.dateModified = dateModified;
         }
     }
 
-    public long getExtendedContentLength()
-            throws XMLDBException {
+    public long getExtendedContentLength() {
         return contentLen;
     }
 
@@ -191,8 +186,7 @@ public abstract class AbstractRemoteResource extends AbstractRemote
     }
 
     @Override
-    public Collection getParentCollection()
-            throws XMLDBException {
+    public Collection getParentCollection() {
         return collection;
     }
 
@@ -201,8 +195,7 @@ public abstract class AbstractRemoteResource extends AbstractRemote
         return permissions;
     }
 
-    protected boolean setContentInternal(final Object value)
-            throws XMLDBException {
+    boolean setContentInternal(final Object value) {
         freeResources();
         boolean wasSet = false;
         if (value instanceof VirtualTempFile) {
@@ -239,7 +232,7 @@ public abstract class AbstractRemoteResource extends AbstractRemote
         return wasSet;
     }
 
-    protected void setExtendendContentLength(final long len) {
+    void setExtendendContentLength(final long len) {
         this.contentLen = len;
     }
 
@@ -270,37 +263,29 @@ public abstract class AbstractRemoteResource extends AbstractRemote
         }
     }
 
-    protected void getRemoteContentIntoLocalFile(final OutputStream os, final boolean isRetrieve, final int handle, final int pos) throws XMLDBException {
-        final String command;
-        final List<Object> params = new ArrayList<>();
-        if (isRetrieve) {
-            command = "retrieveFirstChunk";
-            params.add(Integer.valueOf(handle));
-            params.add(Integer.valueOf(pos));
-        } else {
-            command = "getDocumentData";
-            params.add(path.toString());
-        }
-        params.add(getProperties());
-
+    void getRemoteContentIntoLocalFile(final OutputStream os, final boolean isRetrieve, final int handle, final int pos) throws XMLDBException {
         try {
             final VirtualTempFile vtmpfile = new VirtualTempFile();
             vtmpfile.setTempPrefix("eXistARR");
             vtmpfile.setTempPostfix("XMLResource".equals(getResourceType()) ? ".xml" : ".bin");
 
-            Map table = (Map) collection.getClient().execute(command, params);
-
-            final String method;
-            final boolean useLongOffset;
-            if (table.containsKey("supports-long-offset") && (Boolean)table.get("supports-long-offset")) {
-                useLongOffset = true;
-                method = "getNextExtendedChunk";
+            Map<String, Object> table;
+            if (isRetrieve) {
+                table = collection.getClient().retrieveFirstChunk(handle, pos, asMap(getProperties()));
             } else {
-                useLongOffset = false;
-                method = "getNextChunk";
+                table = collection.getClient().getDocumentData(path.toString(), asMap(getProperties()));
             }
 
-            long offset = ((Integer) table.get("offset")).intValue();
+            final BiFunction2E<String, Long, Map<String, Object>, EXistException, PermissionDeniedException> fnNextChunk;
+            final boolean useLongOffset;
+            if (table.containsKey("supports-long-offset") && (Boolean)table.get("supports-long-offset")) {
+                fnNextChunk = (strHandle, longOffset) -> collection.getClient().getNextExtendedChunk(strHandle,  Long.toString(longOffset));
+                useLongOffset = true;
+            } else {
+                useLongOffset = false;
+                fnNextChunk = (strHandle, longOffset) -> collection.getClient().getNextChunk(strHandle,  longOffset.intValue());
+            }
+
             byte[] data = (byte[]) table.get("data");
             final boolean isCompressed = "yes".equals(getProperties().getProperty(EXistOutputKeys.COMPRESS_OUTPUT, "no"));
 
@@ -329,11 +314,10 @@ public abstract class AbstractRemoteResource extends AbstractRemote
                 }
             }
 
+            long offset = ((Integer) table.get("offset")).intValue();
             while (offset > 0) {
-                params.clear();
-                params.add(table.get("handle"));
-                params.add(useLongOffset ? Long.toString(offset) : Integer.valueOf((int) offset));
-                table = (Map<?, ?>) collection.getClient().execute(method, params);
+
+                table = fnNextChunk.apply(table.get("handle").toString(), offset);
                 offset = useLongOffset ? Long.parseLong((String) table.get("offset")) : ((Integer) table.get("offset"));
                 data = (byte[]) table.get("data");
 
@@ -363,8 +347,10 @@ public abstract class AbstractRemoteResource extends AbstractRemote
 
             isLocal = false;
             contentVFile = vtmpfile;
-        } catch (final XmlRpcException xre) {
-            throw new XMLDBException(ErrorCodes.INVALID_RESOURCE, xre.getMessage(), xre);
+        } catch (final EXistException e) {
+            throw new XMLDBException(ErrorCodes.VENDOR_ERROR, e.getMessage(), e);
+        } catch (final PermissionDeniedException e) {
+            throw new XMLDBException(ErrorCodes.PERMISSION_DENIED, e.getMessage(), e);
         } catch (final IOException | DataFormatException e) {
             throw new XMLDBException(ErrorCodes.VENDOR_ERROR, e.getMessage(), e);
         } finally {
@@ -378,7 +364,15 @@ public abstract class AbstractRemoteResource extends AbstractRemote
         }
     }
 
-    protected static InputStream getAnyStream(final Object obj)
+    static Map<String, Object> asMap(final Properties properties) {
+        final Map<String, Object> map = new HashMap<>(properties.size());
+        for(final Map.Entry<Object, Object> entry : properties.entrySet()) {
+            map.put(entry.getKey().toString(), entry.getValue());
+        }
+        return map;
+    }
+
+    private static InputStream getAnyStream(final Object obj)
             throws XMLDBException {
         if (obj instanceof String) {
             return new ByteArrayInputStream(((String) obj).getBytes(UTF_8));
@@ -389,7 +383,7 @@ public abstract class AbstractRemoteResource extends AbstractRemote
         }
     }
 
-    protected void getContentIntoAStreamInternal(final OutputStream os, final Object obj, final boolean isRetrieve, final int handle, final int pos)
+    void getContentIntoAStreamInternal(final OutputStream os, final Object obj, final boolean isRetrieve, final int handle, final int pos)
             throws XMLDBException {
         if (vfile != null || contentVFile != null || inputSource != null || obj != null) {
             InputStream bis = null;
@@ -436,7 +430,7 @@ public abstract class AbstractRemoteResource extends AbstractRemote
         }
     }
 
-    protected Object getExtendedContentInternal(final Object obj, final boolean isRetrieve, final int handle, final int pos)
+    Object getExtendedContentInternal(final Object obj, final boolean isRetrieve, final int handle, final int pos)
             throws XMLDBException {
         if (obj != null) {
             return obj;
@@ -452,7 +446,7 @@ public abstract class AbstractRemoteResource extends AbstractRemote
         }
     }
 
-    protected InputStream getStreamContentInternal(final Object obj, final boolean isRetrieve, final int handle, final int pos)
+    InputStream getStreamContentInternal(final Object obj, final boolean isRetrieve, final int handle, final int pos)
             throws XMLDBException {
         final InputStream retval;
         try {
@@ -476,7 +470,7 @@ public abstract class AbstractRemoteResource extends AbstractRemote
         return retval;
     }
 
-    protected long getStreamLengthInternal(final Object obj)
+    long getStreamLengthInternal(final Object obj)
             throws XMLDBException {
 
         final long retval;
@@ -495,11 +489,8 @@ public abstract class AbstractRemoteResource extends AbstractRemote
         } else if (contentVFile != null) {
             retval = contentVFile.length();
         } else {
-            final List<Object> params = new ArrayList<>();
-            params.add(path.toString());
-            params.add(getProperties());
             try {
-                final Map table = (Map) collection.getClient().execute("describeResource", params);
+                final Map<String, Object> table = collection.getClient().describeResource(path.toString());
                 if (table.containsKey("content-length-64bit")) {
                     final Object o = table.get("content-length-64bit");
                     if (o instanceof Long) {
@@ -510,8 +501,10 @@ public abstract class AbstractRemoteResource extends AbstractRemote
                 } else {
                     retval = ((Integer) table.get("content-length"));
                 }
-            } catch (final XmlRpcException xre) {
-                throw new XMLDBException(ErrorCodes.INVALID_RESOURCE, xre.getMessage(), xre);
+            } catch (final EXistException e) {
+                throw new XMLDBException(ErrorCodes.VENDOR_ERROR, e.getMessage(), e);
+            } catch (final PermissionDeniedException e) {
+                throw new XMLDBException(ErrorCodes.PERMISSION_DENIED, e.getMessage(), e);
             }
         }
 

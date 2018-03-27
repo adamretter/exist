@@ -20,34 +20,36 @@
 package org.exist.xmldb;
 
 import java.net.URISyntaxException;
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
-import java.util.List;
 
-import org.apache.xmlrpc.client.XmlRpcClient;
-import org.apache.xmlrpc.XmlRpcException;
+import org.exist.EXistException;
+import org.exist.security.PermissionDeniedException;
+import org.exist.xmlrpc.RpcAPI;
 import org.w3c.dom.Document;
 import org.xmldb.api.base.Collection;
 import org.xmldb.api.base.ErrorCodes;
 import org.xmldb.api.base.XMLDBException;
 
+import javax.annotation.Nullable;
+
 
 public class RemoteCollectionManagementService extends AbstractRemote implements EXistCollectionManagementService {
 
-    final XmlRpcClient client;
+    final RpcAPI apiClient;
 
-    public RemoteCollectionManagementService(final RemoteCollection parent, final XmlRpcClient client) {
+    public RemoteCollectionManagementService(final RemoteCollection parent, final RpcAPI apiClient) {
         super(parent);
-        this.client = client;
+        this.apiClient = apiClient;
     }
 
     @Override
-    public String getName() throws XMLDBException {
+    public String getName() {
         return "CollectionManagementService";
     }
 
     @Override
-    public String getVersion() throws XMLDBException {
+    public String getVersion() {
         return "1.0";
     }
 
@@ -79,18 +81,18 @@ public class RemoteCollectionManagementService extends AbstractRemote implements
     }
 
     @Override
-    public Collection createCollection(final XmldbURI name, final Date created) throws XMLDBException {
+    public Collection createCollection(final XmldbURI name, @Nullable final Date created) throws XMLDBException {
         final XmldbURI collName = resolve(name);
-        final List<Object> params = new ArrayList<>();
-        params.add(collName.toString());
-        if (created != null) {
-            params.add(created);
-        }
-
         try {
-            client.execute("createCollection", params);
-        } catch (final XmlRpcException xre) {
-            throw new XMLDBException(ErrorCodes.VENDOR_ERROR, xre.getMessage(), xre);
+            if (created != null) {
+                apiClient.createCollection(collName.toString(), created);
+            } else {
+                apiClient.createCollection(collName.toString());
+            }
+        } catch (final EXistException e) {
+            throw new XMLDBException(ErrorCodes.VENDOR_ERROR, e.getMessage(), e);
+        } catch (final PermissionDeniedException e) {
+            throw new XMLDBException(ErrorCodes.PERMISSION_DENIED, e.getMessage(), e);
         }
 
         return collection.getChildCollection(collName);
@@ -134,17 +136,19 @@ public class RemoteCollectionManagementService extends AbstractRemote implements
     @Override
     public void removeCollection(final XmldbURI name) throws XMLDBException {
         final XmldbURI collName = resolve(name);
-        final List<Object> params = new ArrayList<>();
-        params.add(collName.toString());
         try {
-            client.execute("removeCollection", params);
-        } catch (final XmlRpcException xre) {
-            throw new XMLDBException(ErrorCodes.VENDOR_ERROR, xre.getMessage(), xre);
+            apiClient.removeCollection(collName.toString());
+        } catch (final URISyntaxException e) {
+            throw new XMLDBException(ErrorCodes.INVALID_URI, e.getMessage(), e);
+        } catch (final EXistException e) {
+            throw new XMLDBException(ErrorCodes.VENDOR_ERROR, e.getMessage(), e);
+        } catch (final PermissionDeniedException e) {
+            throw new XMLDBException(ErrorCodes.PERMISSION_DENIED, e.getMessage(), e);
         }
     }
 
     @Override
-    public void setCollection(final Collection parent) throws XMLDBException {
+    public void setCollection(final Collection parent) {
         this.collection = (RemoteCollection) parent;
     }
 
@@ -161,7 +165,7 @@ public class RemoteCollectionManagementService extends AbstractRemote implements
         try {
             move(XmldbURI.xmldbUriFor(collectionPath), XmldbURI.xmldbUriFor(destinationPath), XmldbURI.xmldbUriFor(newName));
         } catch (final URISyntaxException e) {
-            throw new XMLDBException(ErrorCodes.INVALID_URI, e);
+            throw new XMLDBException(ErrorCodes.INVALID_URI, e.getMessage(), e);
         }
     }
 
@@ -176,14 +180,14 @@ public class RemoteCollectionManagementService extends AbstractRemote implements
         } else {
             newName = name;
         }
-        final List<Object> params = new ArrayList<>();
-        params.add(srcPath.toString());
-        params.add(destPath.toString());
-        params.add(newName.toString());
         try {
-            client.execute("moveCollection", params);
-        } catch (final XmlRpcException xre) {
-            throw new XMLDBException(ErrorCodes.VENDOR_ERROR, xre.getMessage(), xre);
+            apiClient.moveCollection(srcPath.toString(), destPath.toString(), newName.toString());
+        } catch (final URISyntaxException e) {
+            throw new XMLDBException(ErrorCodes.INVALID_URI, e.getMessage(), e);
+        } catch (final EXistException e) {
+            throw new XMLDBException(ErrorCodes.VENDOR_ERROR, e.getMessage(), e);
+        } catch (final PermissionDeniedException e) {
+            throw new XMLDBException(ErrorCodes.PERMISSION_DENIED, e.getMessage(), e);
         }
     }
 
@@ -197,7 +201,7 @@ public class RemoteCollectionManagementService extends AbstractRemote implements
         try {
             moveResource(XmldbURI.xmldbUriFor(resourcePath), XmldbURI.xmldbUriFor(destinationPath), XmldbURI.xmldbUriFor(newName));
         } catch (final URISyntaxException e) {
-            throw new XMLDBException(ErrorCodes.INVALID_URI, e);
+            throw new XMLDBException(ErrorCodes.INVALID_URI, e.getMessage(), e);
         }
     }
 
@@ -212,17 +216,14 @@ public class RemoteCollectionManagementService extends AbstractRemote implements
         } else {
             newName = name;
         }
-
-        final List<Object> params = new ArrayList<>();
-        params.add(srcPath.toString());
-        params.add(destPath.toString());
-        params.add(newName.toString());
         try {
-            client.execute("moveResource", params);
-        } catch (final XmlRpcException xre) {
-            throw new XMLDBException(ErrorCodes.VENDOR_ERROR,
-                    xre.getMessage(),
-                    xre);
+            apiClient.moveResource(srcPath.toString(), destPath.toString(), newName.toString());
+        } catch (final URISyntaxException e) {
+            throw new XMLDBException(ErrorCodes.INVALID_URI, e.getMessage(), e);
+        } catch (final EXistException e) {
+            throw new XMLDBException(ErrorCodes.VENDOR_ERROR, e.getMessage(), e);
+        } catch (final PermissionDeniedException e) {
+            throw new XMLDBException(ErrorCodes.PERMISSION_DENIED, e.getMessage(), e);
         }
     }
 
@@ -236,7 +237,7 @@ public class RemoteCollectionManagementService extends AbstractRemote implements
         try {
             copy(XmldbURI.xmldbUriFor(collectionPath), XmldbURI.xmldbUriFor(destinationPath), XmldbURI.xmldbUriFor(newName));
         } catch (final URISyntaxException e) {
-            throw new XMLDBException(ErrorCodes.INVALID_URI, e);
+            throw new XMLDBException(ErrorCodes.INVALID_URI, e.getMessage(), e);
         }
     }
 
@@ -250,17 +251,14 @@ public class RemoteCollectionManagementService extends AbstractRemote implements
         } else {
             newName = name;
         }
-
-        final List<Object> params = new ArrayList<>();
-        params.add(srcPath.toString());
-        params.add(destPath.toString());
-        params.add(newName.toString());
         try {
-            client.execute("copyCollection", params);
-        } catch (final XmlRpcException xre) {
-            throw new XMLDBException(ErrorCodes.VENDOR_ERROR,
-                    xre.getMessage(),
-                    xre);
+            apiClient.copyCollection(srcPath.toString(), destPath.toString(), newName.toString());
+        } catch (final URISyntaxException e) {
+            throw new XMLDBException(ErrorCodes.INVALID_URI, e.getMessage(), e);
+        } catch (final EXistException e) {
+            throw new XMLDBException(ErrorCodes.VENDOR_ERROR, e.getMessage(), e);
+        } catch (final PermissionDeniedException e) {
+            throw new XMLDBException(ErrorCodes.PERMISSION_DENIED, e.getMessage(), e);
         }
     }
 
@@ -274,7 +272,7 @@ public class RemoteCollectionManagementService extends AbstractRemote implements
         try {
             copyResource(XmldbURI.xmldbUriFor(resourcePath), XmldbURI.xmldbUriFor(destinationPath), XmldbURI.xmldbUriFor(newName));
         } catch (final URISyntaxException e) {
-            throw new XMLDBException(ErrorCodes.INVALID_URI, e);
+            throw new XMLDBException(ErrorCodes.INVALID_URI, e.getMessage(), e);
         }
     }
 
@@ -289,30 +287,25 @@ public class RemoteCollectionManagementService extends AbstractRemote implements
         } else {
             newName = name;
         }
-        final List<Object> params = new ArrayList<>();
-        params.add(srcPath.toString());
-        params.add(destPath.toString());
-        params.add(newName.toString());
         try {
-            client.execute("copyResource", params);
-        } catch (final XmlRpcException xre) {
-            throw new XMLDBException(ErrorCodes.VENDOR_ERROR,
-                    xre.getMessage(),
-                    xre);
+            apiClient.copyResource(srcPath.toString(), destPath.toString(), newName.toString());
+        } catch (final URISyntaxException e) {
+            throw new XMLDBException(ErrorCodes.INVALID_URI, e.getMessage(), e);
+        } catch (final EXistException e) {
+            throw new XMLDBException(ErrorCodes.VENDOR_ERROR, e.getMessage(), e);
+        } catch (final PermissionDeniedException e) {
+            throw new XMLDBException(ErrorCodes.PERMISSION_DENIED, e.getMessage(), e);
         }
     }
 
     @Override
     public void runCommand(final String[] cmdParams) throws XMLDBException {
-        final List<Object> params = new ArrayList<>();
-        params.add(collection.getPathURI());
-        params.add(cmdParams);
         try {
-            client.execute("runCommand", params);
-        } catch (final XmlRpcException xre) {
-            throw new XMLDBException(ErrorCodes.VENDOR_ERROR,
-                    xre.getMessage(),
-                    xre);
+            apiClient.runCommand(collection.getPathURI(), Arrays.asList(cmdParams));
+        } catch (final EXistException e) {
+            throw new XMLDBException(ErrorCodes.VENDOR_ERROR, e.getMessage(), e);
+        } catch (final PermissionDeniedException e) {
+            throw new XMLDBException(ErrorCodes.PERMISSION_DENIED, e.getMessage(), e);
         }
     }
 }

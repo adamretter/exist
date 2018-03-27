@@ -19,34 +19,30 @@
  */
 package org.exist.xmldb;
 
-import org.apache.xmlrpc.XmlRpcException;
-import org.apache.xmlrpc.client.XmlRpcClient;
+import org.exist.security.PermissionDeniedException;
+import org.exist.xmlrpc.RpcAPI;
 import org.xmldb.api.base.Collection;
 import org.xmldb.api.base.ErrorCodes;
 import org.xmldb.api.base.XMLDBException;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
 public class RemoteDatabaseInstanceManager implements DatabaseInstanceManager {
 
-    private final XmlRpcClient client;
+    final RpcAPI apiClient;
 
     /**
      * Constructor for DatabaseInstanceManagerImpl.
      */
-    public RemoteDatabaseInstanceManager(final XmlRpcClient client) {
-        this.client = client;
+    public RemoteDatabaseInstanceManager(final RpcAPI apiClient) {
+        this.apiClient = apiClient;
     }
 
     @Override
-    public String getName() throws XMLDBException {
+    public String getName() {
         return "DatabaseInstanceManager";
     }
 
     @Override
-    public String getVersion() throws XMLDBException {
+    public String getVersion() {
         return "1.0";
     }
 
@@ -58,30 +54,31 @@ public class RemoteDatabaseInstanceManager implements DatabaseInstanceManager {
     @Override
     public void shutdown() throws XMLDBException {
         try {
-            client.execute("shutdown", Collections.EMPTY_LIST);
-        } catch (final XmlRpcException e) {
-            throw new XMLDBException(ErrorCodes.VENDOR_ERROR, "shutdown failed", e);
+            apiClient.shutdown();
+        } catch (final PermissionDeniedException e) {
+            throw new XMLDBException(ErrorCodes.PERMISSION_DENIED, "shutdown failed", e);
         }
     }
 
     @Override
-    public void shutdown(long delay) throws XMLDBException {
-        final List<Object> params = new ArrayList<>();
-        if (delay > 0)
-            params.add(Long.valueOf(delay).toString());
+    public void shutdown(final long delay) throws XMLDBException {
         try {
-            client.execute("shutdown", params);
-        } catch (final XmlRpcException e) {
-            throw new XMLDBException(ErrorCodes.VENDOR_ERROR, "shutdown failed", e);
+            if (delay > 0) {
+                apiClient.shutdown(delay);
+            } else {
+                apiClient.shutdown();
+            }
+        } catch (final PermissionDeniedException e) {
+            throw new XMLDBException(ErrorCodes.PERMISSION_DENIED, "shutdown failed", e);
         }
     }
 
     @Override
     public boolean enterServiceMode() throws XMLDBException {
         try {
-            client.execute("enterServiceMode", Collections.EMPTY_LIST);
-        } catch (final XmlRpcException e) {
-            throw new XMLDBException(ErrorCodes.VENDOR_ERROR, "Failed to switch db to service mode: " + e.getMessage(), e);
+            apiClient.enterServiceMode();
+        } catch (final PermissionDeniedException e) {
+            throw new XMLDBException(ErrorCodes.PERMISSION_DENIED, "Failed to switch db to service mode: " + e.getMessage(), e);
         }
         return true;
     }
@@ -89,23 +86,23 @@ public class RemoteDatabaseInstanceManager implements DatabaseInstanceManager {
     @Override
     public void exitServiceMode() throws XMLDBException {
         try {
-            client.execute("exitServiceMode", Collections.EMPTY_LIST);
-        } catch (final XmlRpcException e) {
-            throw new XMLDBException(ErrorCodes.VENDOR_ERROR, "Failed to switch db to service mode: " + e.getMessage(), e);
+            apiClient.exitServiceMode();
+        } catch (final PermissionDeniedException e) {
+            throw new XMLDBException(ErrorCodes.PERMISSION_DENIED, "Failed to switch db to service mode: " + e.getMessage(), e);
         }
     }
 
     @Override
-    public void setCollection(final Collection collection) throws XMLDBException {
+    public void setCollection(final Collection collection) {
     }
 
     @Override
-    public String getProperty(final String name) throws XMLDBException {
+    public String getProperty(final String name) {
         return null;
     }
 
     @Override
-    public void setProperty(final String name, final String value) throws XMLDBException {
+    public void setProperty(final String name, final String value) {
     }
 
     @Override

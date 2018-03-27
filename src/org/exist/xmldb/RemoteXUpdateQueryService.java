@@ -19,18 +19,19 @@
  */
 package org.exist.xmldb;
 
-import java.util.List;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.xmlrpc.XmlRpcException;
+import org.exist.EXistException;
+import org.exist.security.PermissionDeniedException;
+import org.exist.util.LockException;
+import org.exist.xquery.XPathException;
+import org.xml.sax.SAXException;
 import org.xmldb.api.base.Collection;
 import org.xmldb.api.base.ErrorCodes;
 import org.xmldb.api.base.XMLDBException;
 import org.xmldb.api.modules.XUpdateQueryService;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
-import java.util.ArrayList;
 
 public class RemoteXUpdateQueryService implements XUpdateQueryService {
 
@@ -43,61 +44,68 @@ public class RemoteXUpdateQueryService implements XUpdateQueryService {
     }
 
     @Override
-    public String getName() throws XMLDBException {
+    public String getName() {
         return "XUpdateQueryService";
     }
 
     @Override
-    public String getVersion() throws XMLDBException {
+    public String getVersion() {
         return "1.0";
     }
 
     @Override
     public long update(final String commands) throws XMLDBException {
-        LOG.debug("processing xupdate:\n" + commands);
-        final List<Object> params = new ArrayList<>();
-        final byte[] xupdateData = commands.getBytes(UTF_8);
+        if(LOG.isDebugEnabled()) {
+            LOG.debug("processing xupdate:\n" + commands);
+        }
 
-        params.add(parent.getPath());
-        params.add(xupdateData);
+        final byte[] xupdateData = commands.getBytes(UTF_8);
         try {
-            final int mods = (int) parent.getClient().execute("xupdate", params);
-            LOG.debug("processed " + mods + " modifications");
+            final int mods = parent.getClient().xupdate(parent.getPath(), xupdateData);
+
+            if(LOG.isDebugEnabled()) {
+                LOG.debug("processed " + mods + " modifications");
+            }
+
             return mods;
-        } catch (final XmlRpcException e) {
+        } catch (final EXistException | SAXException | LockException | XPathException e) {
             throw new XMLDBException(ErrorCodes.VENDOR_ERROR, e.getMessage(), e);
+        } catch (final PermissionDeniedException e) {
+            throw new XMLDBException(ErrorCodes.PERMISSION_DENIED, e.getMessage(), e);
         }
     }
 
     @Override
     public long updateResource(final String id, final String commands) throws XMLDBException {
-        LOG.debug("processing xupdate:\n" + commands);
-        final List<Object> params = new ArrayList<>();
+        if(LOG.isDebugEnabled()) {
+            LOG.debug("processing xupdate:\n" + commands);
+        }
         final byte[] xupdateData = commands.getBytes(UTF_8);
-        //TODO : use dedicated function in XmldbURI
-        params.add(parent.getPath() + "/" + id);
-        params.add(xupdateData);
         try {
-            final int mods = (int) parent.getClient().execute("xupdateResource", params);
-            LOG.debug("processed " + mods + " modifications");
+            final int mods = parent.getClient().xupdateResource(parent.getPath() + "/" + id, xupdateData);
+            if(LOG.isDebugEnabled()) {
+                LOG.debug("processed " + mods + " modifications");
+            }
             return mods;
-        } catch (final XmlRpcException e) {
+        } catch (final EXistException | SAXException e) {
             throw new XMLDBException(ErrorCodes.VENDOR_ERROR, e.getMessage(), e);
+        } catch (final PermissionDeniedException e) {
+            throw new XMLDBException(ErrorCodes.PERMISSION_DENIED, e.getMessage(), e);
         }
     }
 
 
     @Override
-    public void setCollection(final Collection collection) throws XMLDBException {
+    public void setCollection(final Collection collection) {
         parent = (RemoteCollection) collection;
     }
 
     @Override
-    public String getProperty(final String name) throws XMLDBException {
+    public String getProperty(final String name) {
         return null;
     }
 
     @Override
-    public void setProperty(final String name, final String value) throws XMLDBException {
+    public void setProperty(final String name, final String value) {
     }
 }

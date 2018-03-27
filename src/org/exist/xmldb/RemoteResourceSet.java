@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URISyntaxException;
 import java.util.*;
-import java.util.function.Function;
 import java.util.zip.DataFormatException;
 import java.util.zip.Inflater;
 import javax.xml.transform.OutputKeys;
@@ -33,7 +32,8 @@ import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.xmlrpc.XmlRpcException;
+import org.exist.EXistException;
+import org.exist.security.PermissionDeniedException;
 import org.exist.storage.serializers.EXistOutputKeys;
 import org.exist.util.VirtualTempFile;
 import org.xmldb.api.base.ErrorCodes;
@@ -42,11 +42,13 @@ import org.xmldb.api.base.ResourceIterator;
 import org.xmldb.api.base.ResourceSet;
 import org.xmldb.api.base.XMLDBException;
 
+import static org.exist.xmldb.AbstractRemoteResource.asMap;
+
 public class RemoteResourceSet implements ResourceSet {
 
     private final RemoteCollection collection;
-    private int handle = -1;
-    private int hash = -1;
+    private int handle;
+    private int hash;
     private final List resources;
     private final Properties outputProperties;
 
@@ -66,38 +68,33 @@ public class RemoteResourceSet implements ResourceSet {
     }
 
     @Override
-    public void clear() throws XMLDBException {
+    public void clear() {
         if (handle < 0) {
             return;
         }
-        final List<Object> params = new ArrayList<>();
-        params.add(handle);
-        if (hash > -1)
-            params.add(hash);
-        try {
-            collection.getClient().execute("releaseQueryResult", params);
-        } catch (final XmlRpcException e) {
-            LOG.error("Failed to release query result on server: " + e.getMessage(), e);
+
+        if (hash > -1) {
+            collection.getClient().releaseQueryResult(handle,  hash);
+        } else {
+            collection.getClient().releaseQueryResult(handle);
         }
+
         hash = -1;
         resources.clear();
         handle = -1;
     }
 
     @Override
-    public ResourceIterator getIterator() throws XMLDBException {
+    public ResourceIterator getIterator() {
         return new NewResourceIterator();
     }
 
-    public ResourceIterator getIterator(final long start) throws XMLDBException {
+    public ResourceIterator getIterator(final long start) {
         return new NewResourceIterator(start);
     }
 
     @Override
     public Resource getMembersAsResource() throws XMLDBException {
-        final List<Object> params = new ArrayList<>();
-        params.add(Integer.valueOf(handle));
-        params.add(outputProperties);
 
         try {
             VirtualTempFile vtmpfile = null;
@@ -106,9 +103,9 @@ public class RemoteResourceSet implements ResourceSet {
                 vtmpfile.setTempPrefix("eXistRRS");
                 vtmpfile.setTempPostfix(".xml");
 
-                Map<?, ?> table = (Map<?, ?>) collection.getClient().execute("retrieveAllFirstChunk", params);
+                Map<String, Object> table = collection.getClient().retrieveAllFirstChunk(handle, asMap(outputProperties));
 
-                long offset = ((Integer) table.get("offset")).intValue();
+                long offset = (Integer) table.get("offset");
                 byte[] data = (byte[]) table.get("data");
                 final boolean isCompressed = "yes".equals(outputProperties.getProperty(EXistOutputKeys.COMPRESS_OUTPUT, "no"));
                 // One for the local cached file
@@ -127,10 +124,7 @@ public class RemoteResourceSet implements ResourceSet {
                     vtmpfile.write(data);
                 }
                 while (offset > 0) {
-                    params.clear();
-                    params.add(table.get("handle"));
-                    params.add(Long.toString(offset));
-                    table = (Map<?, ?>) collection.getClient().execute("getNextExtendedChunk", params);
+                    table = collection.getClient().getNextExtendedChunk(table.get("handle").toString(), Long.toString(offset));
                     offset = Long.parseLong((String) table.get("offset"));
                     data = (byte[]) table.get("data");
                     // One for the local cached file
@@ -152,8 +146,8 @@ public class RemoteResourceSet implements ResourceSet {
                 res.setContent(vtmpfile);
                 res.setProperties(outputProperties);
                 return res;
-            } catch (final XmlRpcException xre) {
-                final byte[] data = (byte[]) collection.getClient().execute("retrieveAll", params);
+            } catch (final EXistException | PermissionDeniedException xre) {
+                final byte[] data = collection.getClient().retrieveAll(handle, asMap(outputProperties));
                 String content;
                 try {
                     content = new String(data, outputProperties.getProperty(OutputKeys.ENCODING, "UTF-8"));
@@ -177,8 +171,10 @@ public class RemoteResourceSet implements ResourceSet {
                     }
                 }
             }
-        } catch (final XmlRpcException xre) {
-            throw new XMLDBException(ErrorCodes.INVALID_RESOURCE, xre.getMessage(), xre);
+        } catch (final EXistException e) {
+            throw new XMLDBException(ErrorCodes.VENDOR_ERROR, e.getMessage(), e);
+        } catch (final PermissionDeniedException e) {
+            throw new XMLDBException(ErrorCodes.PERMISSION_DENIED, e.getMessage(), e);
         }
     }
 
@@ -243,7 +239,7 @@ public class RemoteResourceSet implements ResourceSet {
         return res;
     }
 
-    private RemoteXMLResource getResourceValue(final int pos, final Map<String, String> valueDetail) throws XMLDBException {
+    private RemoteXMLResource getResourceValue(final int pos, final Map<String, String> valueDetail) {
         final RemoteXMLResource res = new RemoteXMLResource(collection, handle, pos, XmldbURI.create(Long.toString(pos)), Optional.empty());
         res.setContent(valueDetail.get("value"));
         res.setProperties(outputProperties);
@@ -266,12 +262,12 @@ public class RemoteResourceSet implements ResourceSet {
     }
 
     @Override
-    public long getSize() throws XMLDBException {
+    public long getSize() {
         return resources == null ? 0 : (long) resources.size();
     }
 
     @Override
-    public void removeResource(final long pos) throws XMLDBException {
+    public void removeResource(final long pos) {
         resources.remove(pos);
     }
 
@@ -295,8 +291,8 @@ public class RemoteResourceSet implements ResourceSet {
         }
 
         @Override
-        public boolean hasMoreResources() throws XMLDBException {
-            return resources == null ? false : pos < resources.size();
+        public boolean hasMoreResources() {
+            return resources != null && pos < resources.size();
         }
 
         @Override

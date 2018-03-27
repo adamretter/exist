@@ -21,16 +21,17 @@ package org.exist.xmldb;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
-import org.apache.xmlrpc.XmlRpcException;
+import org.exist.EXistException;
+import org.exist.security.PermissionDeniedException;
 import org.xmldb.api.base.ErrorCodes;
 import org.xmldb.api.base.Resource;
 import org.xmldb.api.base.ResourceIterator;
 import org.xmldb.api.base.XMLDBException;
 import org.xmldb.api.modules.XMLResource;
+
+import javax.xml.transform.OutputKeys;
 
 public class RemoteResourceIterator implements ResourceIterator {
 
@@ -52,7 +53,7 @@ public class RemoteResourceIterator implements ResourceIterator {
     }
 
     @Override
-    public boolean hasMoreResources() throws XMLDBException {
+    public boolean hasMoreResources() {
         return pos < resources.size();
     }
 
@@ -72,21 +73,19 @@ public class RemoteResourceIterator implements ResourceIterator {
             final List<String> v = (List<String>) resources.get(pos++);
             final String doc = v.get(0);
             final String s_id = v.get(1);
+            final Map<String, Object> parameters = new HashMap<>();
+            parameters.put(OutputKeys.INDENT, indentXML > 0 ? "yes" : "no");
+            parameters.put(OutputKeys.ENCODING, encoding);
 
-            final List<Object> params = new ArrayList<>();
-            params.add(doc);
-            params.add(s_id);
-            params.add(indentXML);
-            params.add(encoding);
             try {
-                final byte[] data = (byte[])collection.getClient().execute("retrieve", params);
+                final byte[] data = collection.getClient().retrieve(doc, s_id, parameters);
                 final XMLResource res = new RemoteXMLResource(collection, XmldbURI.xmldbUriFor(doc), Optional.of(doc + "_" + s_id));
                 res.setContent(new String(data, encoding));
                 return res;
-            } catch (final XmlRpcException xre) {
-                throw new XMLDBException(ErrorCodes.INVALID_RESOURCE, xre.getMessage(), xre);
-            } catch (final IOException ioe) {
-                throw new XMLDBException(ErrorCodes.VENDOR_ERROR, ioe.getMessage(), ioe);
+            } catch (final EXistException | IOException e) {
+                throw new XMLDBException(ErrorCodes.VENDOR_ERROR, e.getMessage(), e);
+            } catch (final PermissionDeniedException e) {
+                throw new XMLDBException(ErrorCodes.PERMISSION_DENIED, e.getMessage(), e);
             } catch (final URISyntaxException e) {
                 throw new XMLDBException(ErrorCodes.INVALID_URI, e.getMessage(), e);
             }

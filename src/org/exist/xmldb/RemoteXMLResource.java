@@ -21,10 +21,11 @@ package org.exist.xmldb;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.xmlrpc.XmlRpcException;
 
+import org.exist.EXistException;
 import org.exist.Namespaces;
 import org.exist.dom.persistent.DocumentTypeImpl;
+import org.exist.security.PermissionDeniedException;
 import org.exist.util.MimeType;
 import org.exist.util.serializer.DOMSerializer;
 import org.exist.util.serializer.SAXSerializer;
@@ -38,8 +39,6 @@ import org.w3c.dom.Node;
 import org.xml.sax.ContentHandler;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
-import org.xml.sax.SAXNotRecognizedException;
-import org.xml.sax.SAXNotSupportedException;
 import org.xml.sax.XMLReader;
 import org.xml.sax.ext.LexicalHandler;
 import org.xmldb.api.base.ErrorCodes;
@@ -59,7 +58,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.StringReader;
-import java.util.ArrayList;
+import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Properties;
 
@@ -85,8 +84,7 @@ public class RemoteXMLResource
     private Properties outputProperties = null;
     private LexicalHandler lexicalHandler = null;
 
-    public RemoteXMLResource(final RemoteCollection parent, final XmldbURI docId, final Optional<String> id)
-            throws XMLDBException {
+    public RemoteXMLResource(final RemoteCollection parent, final XmldbURI docId, final Optional<String> id) {
         this(parent, -1, -1, docId, id);
     }
 
@@ -95,8 +93,7 @@ public class RemoteXMLResource
             final int handle,
             final int pos,
             final XmldbURI docId,
-            final Optional<String> id)
-            throws XMLDBException {
+            final Optional<String> id) {
         super(parent, docId, MimeType.XML_TYPE.getName());
         this.handle = handle;
         this.pos = pos;
@@ -104,12 +101,12 @@ public class RemoteXMLResource
     }
 
     @Override
-    public String getId() throws XMLDBException {
+    public String getId() {
         return id.map(x -> x.equals("1") ? getDocumentId() : getDocumentId() + '_' + id).orElse(getDocumentId());
     }
 
     @Override
-    public String getResourceType() throws XMLDBException {
+    public String getResourceType() {
         return XMLResource.RESOURCE_TYPE;
     }
 
@@ -224,7 +221,7 @@ public class RemoteXMLResource
     }
 
     @Override
-    public void setContent(final Object value) throws XMLDBException {
+    public void setContent(final Object value) {
         content = null;
         if (!super.setContentInternal(value)) {
             if (value instanceof String) {
@@ -268,7 +265,7 @@ public class RemoteXMLResource
     }
 
     @Override
-    public ContentHandler setContentAsSAX() throws XMLDBException {
+    public ContentHandler setContentAsSAX() {
         freeResources();
         content = null;
         return new InternalXMLSerializer();
@@ -330,21 +327,19 @@ public class RemoteXMLResource
                 }
 
                 setContent(vtmpfile);
-            } catch (final IOException | XMLDBException e) {
+            } catch (final IOException e) {
                 throw new SAXException("Unable to set file content containing serialized data", e);
             }
         }
     }
 
     @Override
-    public boolean getSAXFeature(final String name)
-            throws SAXNotRecognizedException, SAXNotSupportedException {
+    public boolean getSAXFeature(final String name) {
         return false;
     }
 
     @Override
-    public void setSAXFeature(final String name, final boolean value)
-            throws SAXNotRecognizedException, SAXNotSupportedException {
+    public void setSAXFeature(final String name, final boolean value) {
     }
 
     @Override
@@ -354,36 +349,35 @@ public class RemoteXMLResource
 
     @Override
     public DocumentType getDocType() throws XMLDBException {
-        final List params = new ArrayList(1);
-        params.add(path.toString());
-
         try {
-            final Object[] request = (Object[]) collection.getClient().execute("getDocType", params);
+            final List<String> request = collection.getClient().getDocType(path.toString());
             final DocumentType result;
-            if (!"".equals(request[0])) {
-                result = new DocumentTypeImpl((String) request[0], (String) request[1], (String) request[2]);
+            if (!"".equals(request.get(0))) {
+                result = new DocumentTypeImpl(request.get(0), request.get(1), request.get(2));
             } else {
                 result = null;
             }
             return result;
-        } catch (final XmlRpcException e) {
-            throw new XMLDBException(ErrorCodes.UNKNOWN_ERROR, e.getMessage(), e);
+        } catch (final URISyntaxException e) {
+            throw new XMLDBException(ErrorCodes.INVALID_URI, e.getMessage(), e);
+        } catch (final EXistException e) {
+            throw new XMLDBException(ErrorCodes.VENDOR_ERROR, e.getMessage(), e);
+        } catch (final PermissionDeniedException e) {
+            throw new XMLDBException(ErrorCodes.PERMISSION_DENIED, e.getMessage(), e);
         }
     }
 
     @Override
     public void setDocType(final DocumentType doctype) throws XMLDBException {
         if (doctype != null) {
-            final List params = new ArrayList(4);
-            params.add(path.toString());
-            params.add(doctype.getName());
-            params.add(doctype.getPublicId() == null ? "" : doctype.getPublicId());
-            params.add(doctype.getSystemId() == null ? "" : doctype.getSystemId());
-
             try {
-                collection.getClient().execute("setDocType", params);
-            } catch (final XmlRpcException e) {
-                throw new XMLDBException(ErrorCodes.UNKNOWN_ERROR, e.getMessage(), e);
+                collection.getClient().setDocType(path.toString(), doctype.getName(), doctype.getPublicId() == null ? "" : doctype.getPublicId(), doctype.getSystemId() == null ? "" : doctype.getSystemId());
+            } catch (final URISyntaxException e) {
+                throw new XMLDBException(ErrorCodes.INVALID_URI, e.getMessage(), e);
+            } catch (final EXistException e) {
+                throw new XMLDBException(ErrorCodes.VENDOR_ERROR, e.getMessage(), e);
+            } catch (final PermissionDeniedException e) {
+                throw new XMLDBException(ErrorCodes.PERMISSION_DENIED, e.getMessage(), e);
             }
         }
     }

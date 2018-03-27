@@ -108,7 +108,7 @@ public class RpcServlet extends XmlRpcServlet {
         final DefaultHandlerMapping mapping = new DefaultHandlerMapping();
         mapping.setVoidMethodEnabled(true);
         mapping.setRequestProcessorFactoryFactory(new XmldbRequestProcessorFactoryFactory(useDefaultUser));
-        mapping.loadDefault(RpcConnection.class);
+        mapping.registerMapping(RpcAPI.class, RpcConnection.class);
         return mapping;
     }
 
@@ -135,15 +135,20 @@ public class RpcServlet extends XmlRpcServlet {
         private DefaultHandlerMapping() throws XmlRpcException {
         }
 
-        public void loadDefault(final Class<?> clazz) throws XmlRpcException {
-            registerPublicMethods("Default", clazz);
+        public <T> void registerMapping(final Class<T> iface, final Class<? extends T> impl) throws XmlRpcException {
+            registerPublicMethods(iface.getName(), impl);
         }
 
         @Override
         public XmlRpcHandler getHandler(String pHandlerName) throws XmlRpcException {
+            // for backwards compatibility
             if (pHandlerName.indexOf('.') < 0) {
-                pHandlerName = "Default." + pHandlerName;
+                pHandlerName = RpcAPI.class.getName() + "." + pHandlerName;
             }
+            if(pHandlerName.startsWith(RpcAPI.REMOTE_NAME + ".")) {
+                pHandlerName = pHandlerName.replace(RpcAPI.REMOTE_NAME + ".", RpcAPI.class.getName() + ".");
+            }
+
             return super.getHandler(pHandlerName);
         }
     }

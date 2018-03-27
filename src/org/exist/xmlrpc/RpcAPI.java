@@ -43,6 +43,8 @@ import javax.annotation.Nullable;
  */
 public interface RpcAPI {
 
+    String REMOTE_NAME = "Default";
+
     String SORT_EXPR = "sort-expr";
     String NAMESPACES = "namespaces";
     String VARIABLES = "variables";

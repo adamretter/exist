@@ -2382,7 +2382,7 @@ public class RpcConnection implements RpcAPI {
 
             OutputStream os;
             if (compression) {
-                if(LOG.isDebugEnabled()) {
+                if (LOG.isDebugEnabled()) {
                     LOG.debug("retrieveAllFirstChunk compression");
                 }
                 os = new DeflaterOutputStream(vtempFile);

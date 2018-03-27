@@ -19,11 +19,13 @@
  */
 package org.exist.xmldb;
 
+import com.evolvedbinary.j8fu.tuple.Tuple2;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.xmlrpc.client.XmlRpcClient;
 import org.apache.xmlrpc.client.XmlRpcClientConfigImpl;
 
+import org.apache.xmlrpc.client.util.ClientFactory;
 import org.exist.EXistException;
 import org.exist.security.AuthenticationException;
 import org.exist.security.SecurityManager;
@@ -33,6 +35,7 @@ import org.exist.util.Configuration;
 import org.exist.util.SSLHelper;
 
 import org.exist.xmlrpc.ExistRpcTypeFactory;
+import org.exist.xmlrpc.RpcAPI;
 import org.xmldb.api.base.Collection;
 import org.xmldb.api.base.Database;
 import org.xmldb.api.base.ErrorCodes;
@@ -85,7 +88,7 @@ public class DatabaseImpl implements Database {
     private String configuration = null;
     private String currentInstanceName = null;
 
-    private final Map<String, XmlRpcClient> rpcClients = new HashMap<>();
+    private final Map<String, Tuple2<XmlRpcClient, RpcAPI>> clients = new HashMap<>();
     private ShutdownListener shutdown = null;
     private int mode = UNKNOWN_CONNECTION;
 
@@ -224,8 +227,8 @@ public class DatabaseImpl implements Database {
 
             final URL url = new URL(protocol, xmldbURI.getHost(), xmldbURI.getPort(), xmldbURI.getContext());
 
-            final XmlRpcClient rpcClient = getRpcClient(user, password, url);
-            return readCollection(xmldbURI.getRawCollectionPath(), rpcClient);
+            final RpcAPI apiClient = getRpcClient(user, password, url);
+            return readCollection(xmldbURI.getRawCollectionPath(), apiClient);
 
         } catch (final MalformedURLException e) {
             //Should never happen
@@ -245,7 +248,7 @@ public class DatabaseImpl implements Database {
         }
     }
 
-    public static Collection readCollection(final String c, final XmlRpcClient rpcClient) throws XMLDBException {
+    public static Collection readCollection(final String c, final RpcAPI apiClient) throws XMLDBException {
         final XmldbURI path;
         try {
             path = XmldbURI.xmldbUriFor(c);
@@ -263,7 +266,7 @@ public class DatabaseImpl implements Database {
             rootName = XmldbURI.ROOT_COLLECTION_URI;
         }
 
-        Collection current = RemoteCollection.instance(rpcClient, rootName);
+        Collection current = RemoteCollection.instance(apiClient, rootName);
         for (int i = 1; i < components.length; i++) {
             current = ((RemoteCollection) current).getChildCollection(components[i]);
             if (current == null) {
@@ -300,10 +303,11 @@ public class DatabaseImpl implements Database {
      * @param url
      * @throws XMLDBException
      */
-    private XmlRpcClient getRpcClient(final String user, final String password, final URL url) throws XMLDBException {
+    private RpcAPI getRpcClient(final String user, final String password, final URL url) {
         final String key = user + "@" + url.toString();
         final XmlRpcClientConfigImpl config = new XmlRpcClientConfigImpl();
         config.setEnabledForExtensions(true);
+        config.setEnabledForExceptions(true);
         config.setContentLengthOptional(true);
         config.setGzipCompressing(true);
         config.setGzipRequesting(true);
@@ -311,15 +315,22 @@ public class DatabaseImpl implements Database {
         config.setBasicUserName(user);
         config.setBasicPassword(password);
 
-        final XmlRpcClient client = Optional.ofNullable(rpcClients.get(key)).orElseGet(() -> {
-            final XmlRpcClient newClient = new XmlRpcClient();
-            newClient.setTypeFactory(new ExistRpcTypeFactory(newClient));
-            rpcClients.put(key, newClient);
+        final Tuple2<XmlRpcClient, RpcAPI> client = Optional.ofNullable(clients.get(key)).orElseGet(() -> {
+            final XmlRpcClient xmlRpcClient = new XmlRpcClient();
+            xmlRpcClient.setTypeFactory(new ExistRpcTypeFactory(xmlRpcClient));
+
+            final ClientFactory factory = new ClientFactory(xmlRpcClient);
+            //final RpcAPI apiClient = (RpcAPI) factory.newInstance(RpcAPI.class);
+            // using REMOTE_NAME ensures some compatibility with older server APIs
+            final RpcAPI apiClient = (RpcAPI) factory.newInstance(Thread.currentThread().getContextClassLoader(), RpcAPI.class, RpcAPI.REMOTE_NAME);
+
+            final Tuple2<XmlRpcClient, RpcAPI> newClient = new Tuple2<>(xmlRpcClient, apiClient);
+            clients.put(key, newClient);
             return newClient;
         });
 
-        client.setConfig(config);
-        return client;
+        client._1.setConfig(config);
+        return client._2;
     }
 
     /**

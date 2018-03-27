@@ -21,9 +21,11 @@ package org.exist.xmldb;
 
 import java.io.IOException;
 import java.io.Writer;
+import java.net.URISyntaxException;
 import java.util.*;
 
-import org.apache.xmlrpc.XmlRpcException;
+import org.exist.EXistException;
+import org.exist.security.PermissionDeniedException;
 import org.exist.source.Source;
 import org.exist.xmlrpc.RpcAPI;
 import org.exist.xquery.XPathException;
@@ -58,12 +60,12 @@ public class RemoteXPathQueryService extends AbstractRemote implements EXistXPat
     }
 
     @Override
-    public String getName() throws XMLDBException {
+    public String getName() {
         return "XPathQueryService";
     }
 
     @Override
-    public String getVersion() throws XMLDBException {
+    public String getVersion() {
         return "1.0";
     }
 
@@ -73,8 +75,7 @@ public class RemoteXPathQueryService extends AbstractRemote implements EXistXPat
     }
 
     @Override
-    public ResourceSet query(final String query, final String sortExpr)
-            throws XMLDBException {
+    public ResourceSet query(final String query, final String sortExpr) throws XMLDBException {
         try {
             final Map<String, Object> optParams = new HashMap<>();
 
@@ -94,10 +95,8 @@ public class RemoteXPathQueryService extends AbstractRemote implements EXistXPat
             if (protectedMode) {
                 optParams.put(RpcAPI.PROTECTED_MODE, collection.getPath());
             }
-            final List<Object> params = new ArrayList<>();
-            params.add(query.getBytes(UTF_8));
-            params.add(optParams);
-            final Map result = (Map) collection.getClient().execute("queryPT", params);
+
+            final Map<String, Object> result = collection.getClient().queryPT(query.getBytes(UTF_8), optParams);
 
             if (result.get(RpcAPI.ERROR) != null) {
                 throwException(result);
@@ -111,8 +110,10 @@ public class RemoteXPathQueryService extends AbstractRemote implements EXistXPat
                 hash = (Integer) result.get("hash");
             }
             return new RemoteResourceSet(collection, outputProperties, resources, handle, hash);
-        } catch (final XmlRpcException xre) {
-            throw new XMLDBException(ErrorCodes.VENDOR_ERROR, xre.getMessage(), xre);
+        } catch (final EXistException e) {
+            throw new XMLDBException(ErrorCodes.VENDOR_ERROR, e.getMessage(), e);
+        } catch (final PermissionDeniedException e) {
+            throw new XMLDBException(ErrorCodes.PERMISSION_DENIED, e.getMessage(), e);
         }
     }
 
@@ -140,17 +141,16 @@ public class RemoteXPathQueryService extends AbstractRemote implements EXistXPat
             }
             optParams.put(RpcAPI.BASE_URI,
                     outputProperties.getProperty(RpcAPI.BASE_URI, collection.getPath()));
-            final List<Object> params = new ArrayList<>();
-            params.add(query.getBytes(UTF_8));
-            params.add(optParams);
-            final Map result = (Map) collection.getClient().execute("compile", params);
+            final Map<String, Object> result = collection.getClient().compile(query.getBytes(UTF_8), optParams);
 
             if (result.get(RpcAPI.ERROR) != null) {
                 throwXPathException(result);
             }
             return new RemoteCompiledExpression(query);
-        } catch (final XmlRpcException xre) {
-            throw new XMLDBException(ErrorCodes.VENDOR_ERROR, xre.getMessage(), xre);
+        } catch (final EXistException e) {
+            throw new XMLDBException(ErrorCodes.VENDOR_ERROR, e.getMessage(), e);
+        } catch (final PermissionDeniedException e) {
+            throw new XMLDBException(ErrorCodes.PERMISSION_DENIED, e.getMessage(), e);
         }
     }
 
@@ -185,13 +185,8 @@ public class RemoteXPathQueryService extends AbstractRemote implements EXistXPat
 
     @Override
     public ResourceSet executeStoredQuery(final String uri) throws XMLDBException {
-
-        final List<Object> params = new ArrayList<>();
-        params.add(uri);
-        params.add(new HashMap<String, Object>());
-
         try {
-            final Map result = (Map) collection.getClient().execute("executeT", params);
+            final Map<String, Object> result = collection.getClient().executeT(uri, Collections.emptyMap());
 
             if (result.get(RpcAPI.ERROR) != null) {
                 throwException(result);
@@ -205,8 +200,10 @@ public class RemoteXPathQueryService extends AbstractRemote implements EXistXPat
                 hash = (Integer) result.get("hash");
             }
             return new RemoteResourceSet(collection, outputProperties, resources, handle, hash);
-        } catch (final XmlRpcException xre) {
-            throw new XMLDBException(ErrorCodes.VENDOR_ERROR, xre.getMessage(), xre);
+        } catch (final EXistException e) {
+            throw new XMLDBException(ErrorCodes.VENDOR_ERROR, e.getMessage(), e);
+        } catch (final PermissionDeniedException e) {
+            throw new XMLDBException(ErrorCodes.PERMISSION_DENIED, e.getMessage(), e);
         }
     }
 
@@ -239,12 +236,7 @@ public class RemoteXPathQueryService extends AbstractRemote implements EXistXPat
             if (protectedMode) {
                 optParams.put(RpcAPI.PROTECTED_MODE, collection.getPath());
             }
-            final List<Object> params = new ArrayList<>();
-            params.add(query.getBytes(UTF_8));
-            params.add(resource.path.toString());
-            params.add(resource.idIsPresent() ? resource.getNodeId() : "");
-            params.add(optParams);
-            final Map result = (Map) collection.getClient().execute("queryPT", params);
+            final Map<String, Object> result = collection.getClient().queryPT(query.getBytes(UTF_8), resource.path.toString(), resource.idIsPresent() ? resource.getNodeId() : "", optParams);
 
             if (result.get(RpcAPI.ERROR) != null) {
                 throwException(result);
@@ -258,8 +250,12 @@ public class RemoteXPathQueryService extends AbstractRemote implements EXistXPat
                 hash = (Integer) result.get("hash");
             }
             return new RemoteResourceSet(collection, outputProperties, resources, handle, hash);
-        } catch (final XmlRpcException xre) {
-            throw new XMLDBException(ErrorCodes.VENDOR_ERROR, xre.getMessage(), xre);
+        } catch (final URISyntaxException e) {
+            throw new XMLDBException(ErrorCodes.INVALID_URI, e.getMessage(), e);
+        } catch (final EXistException e) {
+            throw new XMLDBException(ErrorCodes.VENDOR_ERROR, e.getMessage(), e);
+        } catch (final PermissionDeniedException e) {
+            throw new XMLDBException(ErrorCodes.PERMISSION_DENIED, e.getMessage(), e);
         }
     }
 
@@ -281,51 +277,46 @@ public class RemoteXPathQueryService extends AbstractRemote implements EXistXPat
     }
 
     @Override
-    public void setCollection(final Collection collection) throws XMLDBException {
+    public void setCollection(final Collection collection) {
     }
 
     @Override
-    public String getProperty(final String name) throws XMLDBException {
+    public String getProperty(final String name) {
         return outputProperties.getProperty(name);
     }
 
     @Override
-    public void setProperty(final String property, final String value) throws XMLDBException {
+    public void setProperty(final String property, final String value) {
         outputProperties.setProperty(property, value);
     }
 
     @Override
-    public void clearNamespaces() throws XMLDBException {
+    public void clearNamespaces() {
         namespaceMappings.clear();
     }
 
     @Override
-    public void removeNamespace(final String ns)
-            throws XMLDBException {
-        for (final Iterator<String> i = namespaceMappings.values().iterator(); i.hasNext(); ) {
-            if (i.next().equals(ns)) {
-                i.remove();
-            }
-        }
+    public void removeNamespace(final String ns) {
+        namespaceMappings.values().removeIf(s -> s.equals(ns));
     }
 
     @Override
-    public void setNamespace(final String prefix, final String namespace) throws XMLDBException {
+    public void setNamespace(final String prefix, final String namespace) {
         namespaceMappings.put(prefix != null ? prefix : XMLConstants.DEFAULT_NS_PREFIX, namespace);
     }
 
     @Override
-    public String getNamespace(final String prefix) throws XMLDBException {
+    public String getNamespace(final String prefix) {
         return namespaceMappings.get(prefix != null ? prefix : XMLConstants.DEFAULT_NS_PREFIX);
     }
 
     @Override
-    public void declareVariable(final String qname, final Object initialValue) throws XMLDBException {
+    public void declareVariable(final String qname, final Object initialValue) {
         variableDecls.put(qname, initialValue);
     }
 
     @Override
-    public void clearVariables() throws XMLDBException {
+    public void clearVariables() {
         variableDecls.clear();
     }
 
@@ -348,7 +339,7 @@ public class RemoteXPathQueryService extends AbstractRemote implements EXistXPat
      * Calling this method has no effect. The server loads modules
      * relative to its own context.
      *
-     * @see org.exist.xmldb.XQueryService#setModuleLoadPath(java.lang.String)
+     * @see org.exist.xmldb.EXistXQueryService#setModuleLoadPath(java.lang.String)
      */
     @Override
     public void setModuleLoadPath(final String path) {
@@ -367,14 +358,13 @@ public class RemoteXPathQueryService extends AbstractRemote implements EXistXPat
         }
         optParams.put(RpcAPI.BASE_URI,
                 outputProperties.getProperty(RpcAPI.BASE_URI, collection.getPath()));
-        final List<Object> params = new ArrayList<>();
-        params.add(query);
-        params.add(optParams);
         try {
-            final String dump = (String) collection.getClient().execute("printDiagnostics", params);
+            final String dump = collection.getClient().printDiagnostics(query, optParams);
             writer.write(dump);
-        } catch (final XmlRpcException | IOException e) {
-            throw new XMLDBException(ErrorCodes.UNKNOWN_ERROR, e.getMessage(), e);
+        } catch (final EXistException |  IOException e) {
+            throw new XMLDBException(ErrorCodes.VENDOR_ERROR, e.getMessage(), e);
+        } catch (final PermissionDeniedException e) {
+            throw new XMLDBException(ErrorCodes.PERMISSION_DENIED, e.getMessage(), e);
         }
     }
 
