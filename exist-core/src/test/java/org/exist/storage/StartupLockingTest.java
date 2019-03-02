@@ -28,6 +28,7 @@ import org.exist.EXistException;
 import org.exist.collections.Collection;
 import org.exist.collections.triggers.TriggerException;
 import org.exist.security.PermissionDeniedException;
+import org.exist.storage.lock.Lock;
 import org.exist.storage.lock.LockEventJsonListener;
 import org.exist.storage.lock.LockEventXmlListener;
 import org.exist.storage.lock.LockTable;
@@ -39,6 +40,7 @@ import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
 
+import javax.annotation.Nullable;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.Map;
@@ -192,10 +194,12 @@ public class StartupLockingTest {
         }
 
         @Override
-        public void accept(final LockTable.LockAction lockAction) {
+        public void accept(final LockTable.Action action, final long groupId, final String id,
+                final Lock.LockType lockType, final Lock.LockMode mode, final String threadName, final int count,
+                final long timestamp, @Nullable final StackTraceElement[] stackTrace) {
             synchronized (lockReadWriteCount) {
                 final long change;
-                switch(lockAction.action) {
+                switch(action) {
                     case Acquired:
                         change = 1;
                         break;
@@ -208,12 +212,12 @@ public class StartupLockingTest {
                         change = 0;
                 }
 
-                Tuple2<Long, Long> value = lockReadWriteCount.get(lockAction.id);
+                Tuple2<Long, Long> value = lockReadWriteCount.get(id);
                 if(value == null) {
                     value = new Tuple2<>(0l, 0l);
                 }
 
-                switch(lockAction.mode) {
+                switch(mode) {
                     case READ_LOCK:
                         value = new Tuple2<>(value._1 + change, value._2);
                         break;
@@ -228,9 +232,9 @@ public class StartupLockingTest {
                 }
 
                 if(value._1 == 0 && value._2 == 0) {
-                    lockReadWriteCount.remove(lockAction.id);
+                    lockReadWriteCount.remove(id);
                 } else {
-                    lockReadWriteCount.put(lockAction.id, value);
+                    lockReadWriteCount.put(id, value);
                 }
             }
         }

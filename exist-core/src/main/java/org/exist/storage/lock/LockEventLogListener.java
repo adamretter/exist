@@ -23,6 +23,8 @@ import net.jcip.annotations.NotThreadSafe;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.Logger;
 
+import javax.annotation.Nullable;
+
 /**
  * A lock event listener which sends events to Log4j
  *
@@ -43,9 +45,12 @@ public class LockEventLogListener implements LockTable.LockEventListener {
     }
 
     @Override
-    public void accept(final LockTable.LockAction lockAction) {
+    public void accept(final LockTable.Action action, final long groupId, final String id, final Lock.LockType lockType,
+            final Lock.LockMode mode, final String threadName, final int count, final long timestamp,
+            @Nullable final StackTraceElement[] stackTrace) {
         if(log.isEnabled(level)) {
-            log.log(level, lockAction);
+            log.log(level, LockTable.asString(action, groupId, id, lockType, mode, threadName, count, timestamp,
+                    stackTrace));
         }
     }
 }

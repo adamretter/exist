@@ -111,7 +111,9 @@ public class LockEventJsonListener implements LockTable.LockEventListener {
     }
 
     @Override
-    public void accept(final LockTable.LockAction lockAction) {
+    public void accept(final LockTable.Action action, final long groupId, final String id, final Lock.LockType lockType,
+            final Lock.LockMode mode, final String threadName, final int count, final long timestamp,
+            @Nullable final StackTraceElement[] stackTrace) {
         if(!registered) {
             return;
         }
@@ -120,17 +122,17 @@ public class LockEventJsonListener implements LockTable.LockEventListener {
             try {
                 jsonGenerator.writeStartObject();
 
-                    jsonGenerator.writeNumberField("timestamp", lockAction.timestamp);
-                    jsonGenerator.writeStringField("action", lockAction.action.name());
-                    jsonGenerator.writeNumberField("groupId", lockAction.groupId);
-                    jsonGenerator.writeStringField("id", lockAction.id);
-                    jsonGenerator.writeStringField("thread", lockAction.threadName);
-                    stackTraceToJson(lockAction.stackTrace);
+                    jsonGenerator.writeNumberField("timestamp", timestamp);
+                    jsonGenerator.writeStringField("action", action.name());
+                    jsonGenerator.writeNumberField("groupId", groupId);
+                    jsonGenerator.writeStringField("id", id);
+                    jsonGenerator.writeStringField("thread", threadName);
+                    stackTraceToJson(stackTrace);
 
                     jsonGenerator.writeObjectFieldStart("lock");
-                        jsonGenerator.writeStringField("type", lockAction.lockType.name());
-                        jsonGenerator.writeStringField("mode", lockAction.mode.name());
-                        jsonGenerator.writeNumberField("holdCount", lockAction.count);
+                        jsonGenerator.writeStringField("type", lockType.name());
+                        jsonGenerator.writeStringField("mode", mode.name());
+                        jsonGenerator.writeNumberField("holdCount", count);
                     jsonGenerator.writeEndObject();
 
                 jsonGenerator.writeEndObject();

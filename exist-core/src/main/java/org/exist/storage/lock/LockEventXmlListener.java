@@ -109,7 +109,9 @@ public class LockEventXmlListener implements LockTable.LockEventListener {
     }
 
     @Override
-    public void accept(final LockTable.LockAction lockAction) {
+    public void accept(final LockTable.Action action, final long groupId, final String id, final Lock.LockType lockType,
+            final Lock.LockMode mode, final String threadName, final int count, final long timestamp,
+            @Nullable final StackTraceElement[] stackTrace) {
         if(!registered) {
             return;
         }
@@ -118,17 +120,17 @@ public class LockEventXmlListener implements LockTable.LockEventListener {
             try {
                 xmlStreamWriter.writeStartElement("lockEvent");
 
-                    writeLongElement("timestamp", lockAction.timestamp);
-                    writeStringElement("action", lockAction.action.name());
-                    writeLongElement("groupId", lockAction.groupId);
-                    writeStringElement("id", lockAction.id);
-                    writeStringElement("thread", lockAction.threadName);
-                    stackTraceToJson(lockAction.stackTrace);
+                    writeLongElement("timestamp", timestamp);
+                    writeStringElement("action", action.name());
+                    writeLongElement("groupId", groupId);
+                    writeStringElement("id", id);
+                    writeStringElement("thread", threadName);
+                    stackTraceToJson(stackTrace);
 
                     xmlStreamWriter.writeStartElement("lock");
-                        writeStringElement("type", lockAction.lockType.name());
-                        writeStringElement("mode", lockAction.mode.name());
-                        writeIntElement("holdCount", lockAction.count);
+                        writeStringElement("type", lockType.name());
+                        writeStringElement("mode", mode.name());
+                        writeIntElement("holdCount", count);
                     xmlStreamWriter.writeEndElement();
 
                 xmlStreamWriter.writeEndElement();

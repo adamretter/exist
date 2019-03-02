@@ -5,10 +5,10 @@ import org.exist.EXistException;
 import org.exist.collections.Collection;
 import org.exist.collections.triggers.TriggerException;
 import org.exist.security.PermissionDeniedException;
+import org.exist.storage.lock.Lock;
 import org.exist.storage.lock.Lock.LockMode;
 import org.exist.storage.lock.LockTable;
-import org.exist.storage.lock.LockTable.LockAction;
-import org.exist.storage.lock.LockTable.LockAction.Action;
+import org.exist.storage.lock.LockTable.Action;
 import org.exist.storage.lock.LockTable.LockEventListener;
 import org.exist.storage.txn.Txn;
 import org.exist.test.ExistEmbeddedServer;
@@ -19,6 +19,7 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
+import javax.annotation.Nullable;
 import java.io.IOException;
 import java.util.Optional;
 import java.util.Stack;
@@ -365,7 +366,7 @@ public class NativeBrokerLockingTest {
 
     @ThreadSafe
     private static class LockSymmetryListener implements LockEventListener {
-        private final Stack<LockTable.LockAction> events = new Stack<>();
+        private final Stack<LockAction> events = new Stack<>();
         private final Stack<LockAction> eventsAfterError = new Stack<>();
 
         private final AtomicBoolean registered = new AtomicBoolean();
@@ -390,15 +391,21 @@ public class NativeBrokerLockingTest {
         }
 
         @Override
-        public void accept(final LockTable.LockAction lockAction) {
+        public void accept(final Action action, final long groupId, final String id, final Lock.LockType lockType,
+                final LockMode mode, final String threadName, final int count, final long timestamp,
+                @Nullable final StackTraceElement[] stackTrace) {
 
             // ignore sync events
-            final String reason = lockAction.getSimpleStackReason();
+            final String reason = LockTable.getSimpleStackReason(stackTrace);
             if(reason != null && (reason.equals("sync") || reason.equals("notifySync"))) {
                 return;
             }
 
-            System.out.println(lockAction.toString());
+            System.out.println(LockTable.asString(action, groupId, id, lockType, mode, threadName, count, timestamp,
+                    stackTrace));
+
+            final LockAction lockAction = new LockAction(action, groupId, id, lockType, mode, threadName, count,
+                    timestamp, stackTrace);
 
             if(error.get()) {
                 eventsAfterError.push(lockAction);
@@ -455,6 +462,32 @@ public class NativeBrokerLockingTest {
         private boolean isRelated(final LockAction lockAction1, final LockAction lockAction2) {
             return lockAction1.lockType.equals(lockAction2.lockType)
                     && lockAction1.id.equals(lockAction2.id);
+        }
+    }
+
+    private static class LockAction {
+        public final Action action;
+        public final long groupId;
+        public final String id;
+        public final Lock.LockType lockType;
+        public final LockMode mode;
+        public final String threadName;
+        public final int count;
+        public final long timestamp;
+        @Nullable public final StackTraceElement[] stackTrace;
+
+        LockAction(final Action action, final long groupId, final String id, final Lock.LockType lockType,
+                final LockMode mode, final String threadName, final int count, final long timestamp,
+                @Nullable final StackTraceElement[] stackTrace) {
+            this.action = action;
+            this.groupId = groupId;
+            this.id = id;
+            this.lockType = lockType;
+            this.mode = mode;
+            this.threadName = threadName;
+            this.count = count;
+            this.timestamp = timestamp;
+            this.stackTrace = stackTrace;
         }
     }
 }
