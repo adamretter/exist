@@ -32,6 +32,7 @@ import org.jctools.maps.NonBlockingHashMap;
 import javax.annotation.Nullable;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.function.BiFunction;
 
 import static com.evolvedbinary.j8fu.tuple.Tuple.Tuple;
 import static org.exist.storage.lock.LockTable.Action.*;
@@ -55,6 +56,14 @@ public class LockTable {
 
     private static final Logger LOG = LogManager.getLogger(LockTable.class);
     private static final String THIS_CLASS_NAME = LockTable.class.getName();
+
+    private static <K, V> ConcurrentMap<K, V> newConcurrentMap() {
+
+        //TODO(AR) switching to ExtNonBlockingHashMap leads to lots of errors logged vs ConcurrentHashMap.
+
+        return new ConcurrentHashMap<>();
+        //return new ExtNonBlockingHashMap<>();
+    }
 
     /**
      * Set to false to disable all events
@@ -80,14 +89,14 @@ public class LockTable {
      *
      * Map<Id, Map<Lock Type, List<LockModeOwner>>>
      */
-    private final ConcurrentMap<String, Map<LockType, List<LockModeOwner>>> attempting = new NonBlockingHashMap<>();
+    private final ConcurrentMap<String, Map<LockType, List<LockModeOwner>>> attempting = newConcurrentMap();
 
     /**
      * Reference count of acquired locks by id and type
      *
      * Map<Id, Map<Lock Type, Map<Lock Mode, Map<Owner, LockCountTraces>>>>
      */
-    private final ConcurrentMap<String, Map<LockType, Map<LockMode, Map<String, LockCountTraces>>>> acquired = new NonBlockingHashMap<>();
+    private final ConcurrentMap<String, Map<LockType, Map<LockMode, Map<String, LockCountTraces>>>> acquired = newConcurrentMap();
 
     /**
      * Holds a count of READ and WRITE locks by id.
@@ -313,7 +322,7 @@ public class LockTable {
     private void addToAttempting(final String id, final LockType lockType, final LockMode mode, final String threadName) {
         attempting.compute(id, (_id, attempts) -> {
             if (attempts == null) {
-                attempts = new NonBlockingHashMap<>();
+                attempts = newConcurrentMap();
             }
 
             attempts.compute(lockType, (_lockType, v) -> {
@@ -359,17 +368,17 @@ public class LockTable {
     private void incrementAcquired(final Action action, final long groupId, final String id, final LockType lockType, final LockMode mode, final String threadName, final long timestamp, @Nullable final StackTraceElement[] stackTrace) {
         acquired.compute(id, (_id, acqu) -> {
             if (acqu == null) {
-                acqu = new NonBlockingHashMap<>();
+                acqu = newConcurrentMap();
             }
 
             acqu.compute(lockType, (_lockType, v) -> {
                 if (v == null) {
-                    v = new NonBlockingHashMap<>();
+                    v = newConcurrentMap();
                 }
 
                 v.compute(mode, (_mode, ownerHolds) -> {
                     if (ownerHolds == null) {
-                        ownerHolds = new NonBlockingHashMap<>();
+                        ownerHolds = newConcurrentMap();
                     }
 
                     ownerHolds.compute(threadName, (_threadName, holdCount) -> {
@@ -605,5 +614,187 @@ public class LockTable {
         }
 
         return null;
+    }
+
+    private static class ExtNonBlockingHashMap<TypeK, TypeV> extends NonBlockingHashMap<TypeK, TypeV> {
+        @Override
+        public long reprobes() {
+            return super.reprobes();
+        }
+
+        public ExtNonBlockingHashMap() {
+            super();
+        }
+
+        public ExtNonBlockingHashMap(int initial_sz) {
+            super(initial_sz);
+        }
+
+        @Override
+        public int size() {
+            return super.size();
+        }
+
+        @Override
+        public boolean isEmpty() {
+            return super.isEmpty();
+        }
+
+        @Override
+        public boolean containsKey(Object key) {
+            return super.containsKey(key);
+        }
+
+        @Override
+        public boolean contains(Object val) {
+            return super.contains(val);
+        }
+
+        @Override
+        public TypeV put(TypeK key, TypeV val) {
+            return super.put(key, val);
+        }
+
+        @Override
+        public TypeV putIfAbsent(TypeK key, TypeV val) {
+            return super.putIfAbsent(key, val);
+        }
+
+        @Override
+        public TypeV remove(Object key) {
+            return super.remove(key);
+        }
+
+        @Override
+        public boolean remove(Object key, Object val) {
+            return super.remove(key, val);
+        }
+
+        @Override
+        public TypeV replace(TypeK key, TypeV val) {
+            return super.replace(key, val);
+        }
+
+        @Override
+        public boolean replace(TypeK key, TypeV oldValue, TypeV newValue) {
+            return super.replace(key, oldValue, newValue);
+        }
+
+        @Override
+        public void putAll(Map<? extends TypeK, ? extends TypeV> m) {
+            super.putAll(m);
+        }
+
+        @Override
+        public void clear() {
+            super.clear();
+        }
+
+        @Override
+        public boolean containsValue(Object val) {
+            return super.containsValue(val);
+        }
+
+        @Override
+        protected void rehash() {
+            super.rehash();
+        }
+
+        @Override
+        public Object clone() {
+            return super.clone();
+        }
+
+        @Override
+        public String toString() {
+            return super.toString();
+        }
+
+        @Override
+        public TypeV get(Object key) {
+            return super.get(key);
+        }
+
+        @Override
+        public TypeK getk(TypeK key) {
+            return super.getk(key);
+        }
+
+        @Override
+        public Object[] raw_array() {
+            return super.raw_array();
+        }
+
+        @Override
+        public Enumeration<TypeV> elements() {
+            return super.elements();
+        }
+
+        @Override
+        public Collection<TypeV> values() {
+            return super.values();
+        }
+
+        @Override
+        public Enumeration<TypeK> keys() {
+            return super.keys();
+        }
+
+        @Override
+        public Set<TypeK> keySet() {
+            return super.keySet();
+        }
+
+        @Override
+        public Set<Entry<TypeK, TypeV>> entrySet() {
+            return super.entrySet();
+        }
+
+        //TODO(AR) see https://github.com/JCTools/JCTools/issues/232#issuecomment-472709575
+        @Override
+        public TypeV compute(TypeK key,
+                       BiFunction<? super TypeK, ? super TypeV, ? extends TypeV> remappingFunction) {
+            Objects.requireNonNull(remappingFunction);
+            TypeV oldValue = get(key);
+            for(;;) {
+                TypeV newValue = remappingFunction.apply(key, oldValue);
+                if (newValue == null) {
+                    // delete mapping
+                    if (oldValue != null || containsKey(key)) {
+                        // something to remove
+                        if (oldValue != null && remove(key, oldValue)) {
+                            // removed the old value as expected
+                            return null;
+                        }
+
+                        // some other value replaced old value. try again.
+                        oldValue = get(key);
+                    } else {
+                        // nothing to do. Leave things as they were.
+                        return null;
+                    }
+                } else {
+                    // add or replace old mapping
+                    if (oldValue != null) {
+                        // replace
+                        if (replace(key, oldValue, newValue)) {
+                            // replaced as expected.
+                            return newValue;
+                        }
+
+                        // some other value replaced old value. try again.
+                        oldValue = get(key);
+                    } else {
+                        // add (replace if oldValue was null)
+                        if ((oldValue = putIfAbsent(key, newValue)) == null) {
+                            // replaced
+                            return newValue;
+                        }
+
+                        // some other value replaced old value. try again.
+                    }
+                }
+            }
+        }
     }
 }
