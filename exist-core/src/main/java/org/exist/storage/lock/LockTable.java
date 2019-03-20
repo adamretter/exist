@@ -110,31 +110,15 @@ public class LockTable {
         this.traceStackDepth = traceStackDepth;
     }
 
-    public void attempt(final long groupId, final String id, final LockType lockType, final LockMode mode) {
-        event(Attempt, groupId, id, lockType, mode);
-    }
-
-    public void attemptFailed(final long groupId, final String id, final LockType lockType, final LockMode mode) {
-        event(AttemptFailed, groupId, id, lockType, mode);
-    }
-
-    public void acquired(final long groupId, final String id, final LockType lockType, final LockMode mode) {
-        event(Acquired, groupId, id, lockType, mode);
-    }
-
-    public void released(final long groupId, final String id, final LockType lockType, final LockMode mode) {
-        event(Released, groupId, id, lockType, mode);
-    }
-
-    private void event(final LockEventType lockEventType, final long groupId, final String id, final LockType lockType, final LockMode lockMode) {
-        if(disableEvents) {
+    public void attempt(final long groupId, final String id, final LockType lockType, final LockMode lockMode) {
+        if (disableEvents) {
             return;
         }
 
         final long timestamp = System.nanoTime();
         final Thread currentThread = Thread.currentThread();
 
-//        if(ignoreEvent(threadName, id)) {
+//        if (ignoreEvent(threadName, id)) {
 //            return;
 //        }
 
@@ -142,101 +126,140 @@ public class LockTable {
 //         * Very useful for debugging Lock life cycles
 //         */
 //        if (sanityCheck) {
-//            sanityCheckLockLifecycles(lockEventType, groupId, id, lockType, lockMode, threadName, 1, timestamp, stackTrace);
+//            sanityCheckLockLifecycles(Attempt, groupId, id, lockType, lockMode, threadName, 1, timestamp, getStackTrace(currentThread));
 //        }
 
-        switch (lockEventType) {
-            case Attempt:
-
-                Entry entry = attempting.get(currentThread);
-                if (entry == null) {
-                    // happens once per thread!
-                    entry = new Entry();
-                    attempting.put(currentThread, entry);
-                }
-
-                entry.id = id;
-                entry.lockType = lockType;
-                entry.lockMode = lockMode;
-                entry.owner = currentThread.getName();
-                if(traceStackDepth == 0) {
-                    entry.stackTraces = null;
-                } else {
-                    entry.stackTraces = new ArrayList<>();
-                    entry.stackTraces.add(getStackTrace(currentThread));
-                }
-                // write count last to ensure reader-thread visibility of above fields
-                entry.count = 1;
-
-                notifyListeners(lockEventType, timestamp, groupId, entry);
-
-                break;
-
-
-            case AttemptFailed:
-                final Entry attemptFailedEntry = attempting.get(currentThread);
-                if (attemptFailedEntry == null || attemptFailedEntry.count == 0) {
-                    LOG.error("No entry found when trying to remove failed `attempt` for: id={}, thread={}", id, currentThread.getName());
-                    break;
-                }
-
-                // mark attempt as usused
-                attemptFailedEntry.count = 0;
-
-                notifyListeners(lockEventType, timestamp, groupId, attemptFailedEntry);
-
-                break;
-
-
-            case Acquired:
-                final Entry attemptEntry = attempting.get(currentThread);
-                if (attemptEntry == null || attemptEntry.count == 0) {
-                    LOG.error("No entry found when trying to remove `attempt` to promote to `acquired` for: id={}, thread={}", id, currentThread.getName());
-
-                    break;
-                }
-
-                // we now either add or merge the `attemptEntry` with the `acquired` table
-                Entries acquiredEntries = acquired.get(currentThread);
-
-                if (acquiredEntries == null) {
-                    final Entry acquiredEntry = new Entry();
-                    acquiredEntry.setFrom(attemptEntry);
-
-                    acquiredEntries = new Entries(acquiredEntry);
-                    acquired.put(currentThread, acquiredEntries);
-
-                    notifyListeners(lockEventType, timestamp, groupId, acquiredEntry);
-
-                } else {
-
-                    final Entry acquiredEntry = acquiredEntries.merge(attemptEntry);
-                    notifyListeners(lockEventType, timestamp, groupId, acquiredEntry);
-                }
-
-                // mark attempt as usused
-                attemptEntry.count = 0;
-
-                break;
-
-
-            case Released:
-                final Entries entries = acquired.get(currentThread);
-                if (entries == null) {
-                    LOG.error("No entries found when trying to `release` for: id={}, thread={}", id, currentThread.getName());
-                    break;
-                }
-
-                final Entry releasedEntry = entries.unmerge(id, lockType, lockMode);
-                if (releasedEntry == null) {
-                    LOG.error("Unable to unmerge entry for `release`: id={}, threadName={}", id, currentThread.getName());
-                    break;
-                }
-
-                notifyListeners(lockEventType, timestamp, groupId, releasedEntry);
-
-                break;
+        Entry entry = attempting.get(currentThread);
+        if (entry == null) {
+            // happens once per thread!
+            entry = new Entry();
+            attempting.put(currentThread, entry);
         }
+
+        entry.id = id;
+        entry.lockType = lockType;
+        entry.lockMode = lockMode;
+        entry.owner = currentThread.getName();;
+        if(traceStackDepth == 0) {
+            entry.stackTraces = null;
+        } else {
+            entry.stackTraces = new ArrayList<>();
+            entry.stackTraces.add(getStackTrace(currentThread));
+        }
+        // write count last to ensure reader-thread visibility of above fields
+        entry.count = 1;
+
+        notifyListeners(Attempt, timestamp, groupId, entry);
+    }
+
+    public void attemptFailed(final long groupId, final String id, final LockType lockType, final LockMode mode) {
+        if (disableEvents) {
+            return;
+        }
+
+        final long timestamp = System.nanoTime();
+        final Thread currentThread = Thread.currentThread();
+
+//        if (ignoreEvent(threadName, id)) {
+//            return;
+//        }
+
+//        /**
+//         * Very useful for debugging Lock life cycles
+//         */
+//        if (sanityCheck) {
+//            sanityCheckLockLifecycles(Acquired, groupId, id, lockType, lockMode, threadName, 1, timestamp, getStackTrace(currentThread));
+//        }
+
+        final Entry attemptFailedEntry = attempting.get(currentThread);
+        if (attemptFailedEntry == null || attemptFailedEntry.count == 0) {
+            LOG.error("No entry found when trying to remove failed `attempt` for: id={}, thread={}", id, currentThread.getName());
+            return;
+        }
+
+        // mark attempt as usused
+        attemptFailedEntry.count = 0;
+
+        notifyListeners(AttemptFailed, timestamp, groupId, attemptFailedEntry);
+    }
+
+    public void acquired(final long groupId, final String id, final LockType lockType, final LockMode mode) {
+        if (disableEvents) {
+            return;
+        }
+
+        final long timestamp = System.nanoTime();
+        final Thread currentThread = Thread.currentThread();
+
+//        if (ignoreEvent(threadName, id)) {
+//            return;
+//        }
+
+//        /**
+//         * Very useful for debugging Lock life cycles
+//         */
+//        if (sanityCheck) {
+//            sanityCheckLockLifecycles(Acquired, groupId, id, lockType, lockMode, threadName, 1, timestamp, getStackTrace(currentThread));
+//        }
+
+        final Entry attemptEntry = attempting.get(currentThread);
+        if (attemptEntry == null || attemptEntry.count == 0) {
+            LOG.error("No entry found when trying to remove `attempt` to promote to `acquired` for: id={}, thread={}", id, currentThread.getName());
+            return;
+        }
+
+        // we now either add or merge the `attemptEntry` with the `acquired` table
+        Entries acquiredEntries = acquired.get(currentThread);
+
+        Entry acquiredEntry;
+        if (acquiredEntries == null) {
+            acquiredEntry = new Entry();
+            acquiredEntry.setFrom(attemptEntry);
+
+            acquiredEntries = new Entries(acquiredEntry);
+            acquired.put(currentThread, acquiredEntries);
+        } else {
+            acquiredEntry = acquiredEntries.merge(attemptEntry);
+        }
+
+        // mark attempt as unused
+        attemptEntry.count = 0;
+
+        notifyListeners(Acquired, timestamp, groupId, acquiredEntry);
+    }
+
+    public void released(final long groupId, final String id, final LockType lockType, final LockMode lockMode) {
+        if (disableEvents) {
+            return;
+        }
+
+        final long timestamp = System.nanoTime();
+        final Thread currentThread = Thread.currentThread();
+
+//        if (ignoreEvent(threadName, id)) {
+//            return;
+//        }
+
+//        /**
+//         * Very useful for debugging Lock life cycles
+//         */
+//        if (sanityCheck) {
+//            sanityCheckLockLifecycles(Acquired, groupId, id, lockType, lockMode, threadName, 1, timestamp, getStackTrace(currentThread));
+//        }
+
+        final Entries entries = acquired.get(currentThread);
+        if (entries == null) {
+            LOG.error("No entries found when trying to `release` for: id={}, thread={}", id, currentThread.getName());
+            return;
+        }
+
+        final Entry releasedEntry = entries.unmerge(id, lockType, lockMode);
+        if (releasedEntry == null) {
+            LOG.error("Unable to unmerge entry for `release`: id={}, threadName={}", id, currentThread.getName());
+            return;
+        }
+
+        notifyListeners(Released, timestamp, groupId, releasedEntry);
     }
 
     /**
@@ -308,48 +331,18 @@ public class LockTable {
 
         @Nullable
         public Entry unmerge(final String id, final LockType lockType, final LockMode lockMode) {
-            // optimistic read
-            long stamp = entriesLock.tryOptimisticRead();
-            for (int i = 0; i < entries.size(); i++) {
-                final Entry local = entries.get(i);
-                if (local.id.equals(id) && local.lockType == lockType && local.lockMode == lockMode) {
-
-                    // if count is equal to 1 we can just remove from the list rather than decrementing
-                    if (local.count == 1) {
-                        long writeStamp = entriesLock.tryConvertToWriteLock(stamp);
-                        if (writeStamp != 0l) {
-                            try {
-                                //TODO(AR) we need to recycle the entry here!    ... nope do it in the caller!
-                                local.count--;
-                                return entries.remove(i);
-                            } finally {
-                                entriesLock.unlockWrite(writeStamp);
-                            }
-                        }
-                    } else {
-                        if (entriesLock.validate(stamp)) {
-
-                            // do the unmerge bit
-                            if (local.stackTraces != null) {
-                                local.stackTraces.remove(local.stackTraces.size() - 1);
-                            }
-                            local.count = local.count - 1;
-
-                            //done
-                            return local;
-                        }
-                    }
-
-                    break;
-                }
+            // try optimistic first
+            Entry local = optimisticUnmerge(id, lockType, lockMode);
+            if (local != null) {
+                return local;
             }
 
             // otherwise... pessimistic read
             int foundIdx = -1;
-            stamp = entriesLock.readLock();
+            long stamp = entriesLock.readLock();
             try {
                 for (int i = 0; i < entries.size(); i++) {
-                    final Entry local = entries.get(i);
+                    local = entries.get(i);
                     if (local.id.equals(id) && local.lockType == lockType && local.lockMode == lockMode) {
 
                         // if count is equal to 1 we can just remove from the list rather than decrementing
@@ -358,7 +351,6 @@ public class LockTable {
                             long writeStamp = entriesLock.tryConvertToWriteLock(stamp);
                             if (writeStamp != 0l) {
                                 try {
-                                    //TODO(AR) we need to recycle the entry here!    ... nope do it in the caller!
                                     local.count--;
                                     return entries.remove(i);
                                 } finally {
@@ -386,17 +378,63 @@ public class LockTable {
             }
 
             if (foundIdx > -1) {
-                stamp = entriesLock.writeLock();
-                try {
-                    final Entry removed = entries.remove(foundIdx);
-                    removed.count--;
-                    return removed;
-                } finally {
-                    entriesLock.unlockWrite(stamp);
+                return pessimisticRemove(foundIdx);
+            }
+
+            return null;
+        }
+
+        @Nullable
+        private Entry optimisticUnmerge(final String id, final LockType lockType, final LockMode lockMode) {
+            // optimistic read
+            long stamp = entriesLock.tryOptimisticRead();
+            for (int i = 0; i < entries.size(); i++) {
+                final Entry local = entries.get(i);
+                if (local.id.equals(id) && local.lockType == lockType && local.lockMode == lockMode) {
+
+                    // if count is equal to 1 we can just remove from the list rather than decrementing
+                    if (local.count == 1) {
+                        long writeStamp = entriesLock.tryConvertToWriteLock(stamp);
+                        if (writeStamp != 0l) {
+                            try {
+                                local.count--;
+
+                                // done
+                                return entries.remove(i);
+                            } finally {
+                                entriesLock.unlockWrite(writeStamp);
+                            }
+                        }
+                    } else {
+                        if (entriesLock.validate(stamp)) {
+
+                            // do the unmerge bit
+                            if (local.stackTraces != null) {
+                                local.stackTraces.remove(local.stackTraces.size() - 1);
+                            }
+                            local.count = local.count - 1;
+
+                            // done
+                            return local;
+                        }
+                    }
+
+                    break;
                 }
             }
 
             return null;
+        }
+
+        private Entry pessimisticRemove(final int removeIdx) {
+            final long stamp = entriesLock.writeLock();
+            try {
+                final Entry removed = entries.remove(removeIdx);
+                removed.count--;
+                return removed;
+            } finally {
+                entriesLock.unlockWrite(stamp);
+            }
         }
 
         public void forEach(final Consumer<Entry> entryConsumer) {
@@ -537,8 +575,6 @@ public class LockTable {
     public Map<String, Map<LockType, Map<LockMode, Map<String, LockCountTraces>>>> getAcquired() {
         final Map<String, Map<LockType, Map<LockMode, Map<String, LockCountTraces>>>> result = new HashMap<>();
 
-        // TODO(AR) implement
-
         final Iterator<Entries> it = acquired.values().iterator();
         while (it.hasNext()) {
             final Entries entries = it.next();
@@ -585,6 +621,7 @@ public class LockTable {
 
                     return v;
                 });
+
             });
         }
 
