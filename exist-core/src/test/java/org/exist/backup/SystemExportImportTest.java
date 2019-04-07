@@ -50,10 +50,8 @@ import org.exist.test.ExistEmbeddedServer;
 import org.exist.util.DatabaseConfigurationException;
 import org.exist.util.LockException;
 import org.exist.xmldb.XmldbURI;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.*;
+import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
@@ -88,6 +86,12 @@ public class SystemExportImportTest {
 
     @Parameter(value = 2)
     public boolean zip;
+
+    @ClassRule
+    public static TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+    @Rule
+    public final ExistEmbeddedServer existEmbeddedServer = new ExistEmbeddedServer(true, true);
 
     private static String COLLECTION_CONFIG =
             "<collection xmlns=\"http://exist-db.org/collection-config/1.0\">" +
@@ -126,7 +130,8 @@ public class SystemExportImportTest {
             assertNotNull(test);
 
             final SystemExport sysexport = new SystemExport(broker, null, null, direct);
-            file = sysexport.export("backup", false, zip, null);
+            final String backupDir = temporaryFolder.newFolder().getAbsolutePath();
+            file = sysexport.export(backupDir, false, zip, null);
         }
 
         clean();
@@ -170,9 +175,6 @@ public class SystemExportImportTest {
 		serializer.setProperties(contentsOutputProps);
 		return serializer.serialize(document);
 	}
-
-    @Rule
-    public final ExistEmbeddedServer existEmbeddedServer = new ExistEmbeddedServer(true, true);
 
 	@Before
     public void startDB() throws DatabaseConfigurationException, EXistException, PermissionDeniedException, IOException, SAXException, CollectionConfigurationException, LockException, ClassNotFoundException, InstantiationException, XMLDBException, IllegalAccessException {
