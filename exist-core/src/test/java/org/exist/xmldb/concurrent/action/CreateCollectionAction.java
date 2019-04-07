@@ -27,7 +27,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
-import org.exist.TestUtils;
 import org.exist.util.FileUtils;
 import org.exist.util.MimeTable;
 import org.exist.xmldb.EXistCollectionManagementService;
@@ -36,7 +35,7 @@ import org.xmldb.api.DatabaseManager;
 import org.xmldb.api.base.Collection;
 import org.xmldb.api.base.XMLDBException;
 
-import static samples.Samples.SAMPLES;
+import static org.exist.samples.Samples.SAMPLES;
 
 public class CreateCollectionAction extends Action {
     

@@ -51,7 +51,7 @@ import static org.exist.test.TestConstants.TEST_COLLECTION_URI;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
-import static samples.Samples.SAMPLES;
+import static org.exist.samples.Samples.SAMPLES;
 
 /**
  * Tests for Transactional Operations on the database.

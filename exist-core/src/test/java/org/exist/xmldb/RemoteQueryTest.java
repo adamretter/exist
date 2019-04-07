@@ -24,7 +24,6 @@ package org.exist.xmldb;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
 
-import org.exist.TestUtils;
 import org.exist.test.TestConstants;
 import org.exist.util.MimeType;
 import org.exist.xmlrpc.XmlRpcTest;
@@ -45,7 +44,7 @@ import org.xmldb.api.modules.XQueryService;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static samples.Samples.SAMPLES;
+import static org.exist.samples.Samples.SAMPLES;
 
 public class RemoteQueryTest extends RemoteDBTest {
 	private Collection testCollection;

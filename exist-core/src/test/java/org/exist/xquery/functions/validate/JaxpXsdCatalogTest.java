@@ -27,7 +27,7 @@ import org.junit.*;
 
 import static org.junit.Assert.*;
 import static org.custommonkey.xmlunit.XMLAssert.assertXpathEvaluatesTo;
-import static samples.Samples.SAMPLES;
+import static org.exist.samples.Samples.SAMPLES;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -95,10 +95,10 @@ public class JaxpXsdCatalogTest {
         Collection parseCollection = null;
         try {
             parseCollection = existEmbeddedServer.createCollection(existEmbeddedServer.getRoot(), "parse");
-            final URL url = JingXsdTest.class.getResource("parse/catalog.xml");
-            assertNotNull(url);
+            final Path path = SAMPLES.getSample("validation/parse/catalog.xml");
+            assertNotNull(path);
 
-            final byte[] data = Files.readAllBytes(Paths.get(url.toURI()));
+            final byte[] data = Files.readAllBytes(path);
             ExistXmldbEmbeddedServer.storeResource(parseCollection, "catalog.xml", data);
         } finally {
             if(parseCollection != null) {
@@ -110,16 +110,16 @@ public class JaxpXsdCatalogTest {
         try {
             instanceCollection = existEmbeddedServer.createCollection(existEmbeddedServer.getRoot(), "parse/instance");
 
-            URL url = JingXsdTest.class.getResource("parse/instance/valid.xml");
-            assertNotNull(url);
+            Path path = SAMPLES.getSample("validation/parse/instance/valid.xml");
+            assertNotNull(path);
 
-            byte[] data = Files.readAllBytes(Paths.get(url.toURI()));
+            byte[] data = Files.readAllBytes(path);
             ExistXmldbEmbeddedServer.storeResource(instanceCollection, "valid.xml", data);
 
-            url = JingXsdTest.class.getResource("parse/instance/invalid.xml");
-            assertNotNull(url);
+            path = SAMPLES.getSample("validation/parse/instance/invalid.xml");
+            assertNotNull(path);
 
-            data = Files.readAllBytes(Paths.get(url.toURI()));
+            data = Files.readAllBytes(path);
             ExistXmldbEmbeddedServer.storeResource(instanceCollection, "invalid.xml", data);
         } finally {
             if(instanceCollection != null) {

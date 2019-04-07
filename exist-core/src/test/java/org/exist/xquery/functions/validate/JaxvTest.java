@@ -31,7 +31,7 @@ import org.junit.*;
 import static org.junit.Assert.*;
 
 import static org.custommonkey.xmlunit.XMLAssert.assertXpathEvaluatesTo;
-import static samples.Samples.SAMPLES;
+import static org.exist.samples.Samples.SAMPLES;
 
 import org.xml.sax.SAXException;
 import org.xmldb.api.base.Collection;

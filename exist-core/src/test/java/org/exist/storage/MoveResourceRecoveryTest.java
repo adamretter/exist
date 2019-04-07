@@ -46,7 +46,7 @@ import org.exist.xmldb.XmldbURI;
 import org.exist.xmldb.EXistCollectionManagementService;
 import org.junit.*;
 import static org.junit.Assert.assertNotNull;
-import static samples.Samples.SAMPLES;
+import static org.exist.samples.Samples.SAMPLES;
 
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
@@ -54,7 +54,6 @@ import org.xmldb.api.DatabaseManager;
 import org.xmldb.api.base.Database;
 import org.xmldb.api.base.Resource;
 import org.xmldb.api.base.XMLDBException;
-import samples.Samples;
 
 public class MoveResourceRecoveryTest {
 

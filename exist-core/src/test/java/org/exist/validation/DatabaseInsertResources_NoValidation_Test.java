@@ -42,7 +42,7 @@ import org.junit.Test;
 
 import static org.exist.TestUtils.*;
 import static org.exist.util.PropertiesBuilder.propertiesBuilder;
-import static samples.Samples.SAMPLES;
+import static org.exist.samples.Samples.SAMPLES;
 
 /**
  *  Insert documents for validation tests.

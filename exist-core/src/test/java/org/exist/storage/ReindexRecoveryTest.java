@@ -14,7 +14,7 @@ import org.exist.util.*;
 import org.exist.xmldb.XmldbURI;
 import org.junit.After;
 import static org.junit.Assert.*;
-import static samples.Samples.SAMPLES;
+import static org.exist.samples.Samples.SAMPLES;
 
 import org.junit.AfterClass;
 import org.junit.Test;

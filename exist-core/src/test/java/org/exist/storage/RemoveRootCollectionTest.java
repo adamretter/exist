@@ -1,12 +1,10 @@
 package org.exist.storage;
 
 import static org.junit.Assert.*;
-import static samples.Samples.SAMPLES;
+import static org.exist.samples.Samples.SAMPLES;
 
-import java.nio.file.Paths;
 import java.util.Optional;
 
-import org.exist.TestUtils;
 import org.exist.collections.*;
 import org.exist.storage.txn.*;
 import org.exist.test.ExistEmbeddedServer;

@@ -22,7 +22,6 @@ package org.exist.dom.persistent;
 
 import com.googlecode.junittoolbox.ParallelRunner;
 import org.exist.EXistException;
-import org.exist.TestUtils;
 import org.exist.collections.triggers.TriggerException;
 import org.exist.dom.QName;
 import org.exist.security.PermissionDeniedException;
@@ -67,7 +66,7 @@ import java.util.Optional;
 
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
-import static samples.Samples.SAMPLES;
+import static org.exist.samples.Samples.SAMPLES;
 
 
 /**

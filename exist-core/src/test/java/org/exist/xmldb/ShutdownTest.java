@@ -22,7 +22,6 @@
  */
 package org.exist.xmldb;
 
-import org.exist.TestUtils;
 import org.exist.test.ExistXmldbEmbeddedServer;
 import org.exist.xmldb.concurrent.DBUtils;
 import org.junit.*;
@@ -32,7 +31,7 @@ import org.xmldb.api.base.ResourceSet;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static samples.Samples.SAMPLES;
+import static org.exist.samples.Samples.SAMPLES;
 
 /**
  * Check if database shutdownDB/restart works properly. The test opens

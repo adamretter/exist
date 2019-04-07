@@ -26,7 +26,7 @@ import org.exist.test.ExistXmldbEmbeddedServer;
 import org.junit.*;
 import static org.junit.Assert.*;
 import static org.custommonkey.xmlunit.XMLAssert.assertXpathEvaluatesTo;
-import static samples.Samples.SAMPLES;
+import static org.exist.samples.Samples.SAMPLES;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -106,7 +106,7 @@ public class JaxpDtdCatalogTest {
             byte[] data = Files.readAllBytes(path);
             ExistXmldbEmbeddedServer.storeResource(instanceCollection, "valid-dtd.xml", data);
 
-            path = SAMPLES.getSample("validation/instance/invalid-dtd.xml");
+            path = SAMPLES.getSample("validation/parse/instance/invalid-dtd.xml");
             assertNotNull(path);
 
             data = Files.readAllBytes(path);

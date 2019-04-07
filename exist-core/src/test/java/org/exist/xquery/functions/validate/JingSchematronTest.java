@@ -24,12 +24,15 @@ package org.exist.xquery.functions.validate;
 import org.custommonkey.xmlunit.exceptions.XpathException;
 import org.exist.test.ExistXmldbEmbeddedServer;
 import org.junit.*;
+
+import static org.exist.samples.Samples.SAMPLES;
 import static org.junit.Assert.*;
 import static org.custommonkey.xmlunit.XMLAssert.assertXpathEvaluatesTo;
 
 import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 
 import org.xml.sax.SAXException;
@@ -74,10 +77,10 @@ public class JingSchematronTest {
             col15 = existEmbeddedServer.createCollection(existEmbeddedServer.getRoot(), "tournament/1.5");
 
             for (final String testResource : TEST_RESOURCES) {
-                final URL url = JingXsdTest.class.getResource("tournament/1.5/" + testResource);
-                assertNotNull(url);
+                final Path path = SAMPLES.getSample("validation/tournament/1.5/" + testResource);
+                assertNotNull(path);
 
-                final byte[] data = Files.readAllBytes(Paths.get(url.toURI()));
+                final byte[] data = Files.readAllBytes(path);
                 ExistXmldbEmbeddedServer.storeResource(col15, testResource, data);
             }
         } finally {
