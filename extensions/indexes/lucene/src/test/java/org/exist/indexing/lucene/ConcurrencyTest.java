@@ -24,6 +24,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -53,6 +54,8 @@ import org.xmldb.api.base.ResourceSet;
 import org.xmldb.api.base.XMLDBException;
 import org.xmldb.api.modules.XMLResource;
 import org.xmldb.api.modules.XUpdateQueryService;
+
+import static org.exist.samples.Samples.SAMPLES;
 
 public class ConcurrencyTest {
 
@@ -84,7 +87,7 @@ public class ConcurrencyTest {
             final Runnable run = () -> {
                 try {
                     storeRemoveDocs(name);
-                } catch(final XMLDBException | IOException e) {
+                } catch(final XMLDBException | IOException | URISyntaxException e) {
                     e.printStackTrace();
                     fail(e.getMessage());
                 }
@@ -111,7 +114,7 @@ public class ConcurrencyTest {
             Runnable run = () -> {
                 try {
                     xupdateDocs(name);
-                } catch (final XMLDBException | IOException e) {
+                } catch (final XMLDBException | IOException | URISyntaxException e) {
                     e.printStackTrace();
                     fail(e.getMessage());
                 }
@@ -140,7 +143,7 @@ public class ConcurrencyTest {
         });
     }
 
-    private void storeRemoveDocs(final String collectionName) throws XMLDBException, IOException {
+    private void storeRemoveDocs(final String collectionName) throws XMLDBException, IOException, URISyntaxException {
         storeDocs(collectionName);
 
         final EXistXQueryService xqs = (EXistXQueryService) test.getService("XQueryService", "1.0");
@@ -162,7 +165,7 @@ public class ConcurrencyTest {
         assertEquals(0, result.getSize());
     }
 
-    private void xupdateDocs(final String collectionName) throws XMLDBException, IOException {
+    private void xupdateDocs(final String collectionName) throws XMLDBException, IOException, URISyntaxException {
         storeDocs(collectionName);
 
         final EXistXQueryService xqs = (EXistXQueryService) test.getService("XQueryService", "1.0");
@@ -183,7 +186,7 @@ public class ConcurrencyTest {
         assertEquals(98, result.getSize());
     }
 
-    private void storeDocs(final String collectionName) throws XMLDBException, IOException {
+    private void storeDocs(final String collectionName) throws XMLDBException, IOException, URISyntaxException {
         Collection collection = null;
         try {
             collection = existEmbeddedServer.createCollection(test, collectionName);
@@ -191,7 +194,7 @@ public class ConcurrencyTest {
             final IndexQueryService iqs = (IndexQueryService) collection.getService("IndexQueryService", "1.0");
             iqs.configureCollection(COLLECTION_CONFIG1);
 
-            final Path samples = TestUtils.shakespeareSamples();
+            final Path samples = SAMPLES.getShakespeareSamples();
             final List<Path> files = FileUtils.list(samples);
             final MimeTable mimeTab = MimeTable.getInstance();
             for (final Path file : files) {

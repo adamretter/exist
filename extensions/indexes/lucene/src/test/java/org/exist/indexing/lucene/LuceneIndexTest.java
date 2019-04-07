@@ -25,6 +25,7 @@ import static org.junit.Assert.assertNotNull;
 
 import java.io.IOException;
 import java.io.StringReader;
+import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.util.*;
 import javax.xml.XMLConstants;
@@ -66,6 +67,8 @@ import org.junit.*;
 
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
+
+import static org.exist.samples.Samples.SAMPLES;
 
 
 public class LuceneIndexTest {
@@ -764,8 +767,8 @@ public class LuceneIndexTest {
     }
 
     @Test
-    public void dropDocuments() throws EXistException, CollectionConfigurationException, PermissionDeniedException, SAXException, TriggerException, LockException, IOException, XPathException {
-        configureAndStore(COLLECTION_CONFIG1, TestUtils.shakespeareSamples());
+    public void dropDocuments() throws EXistException, CollectionConfigurationException, PermissionDeniedException, SAXException, TriggerException, LockException, IOException, XPathException, URISyntaxException {
+        configureAndStore(COLLECTION_CONFIG1, SAMPLES.getShakespeareSamples());
         final BrokerPool pool = existEmbeddedServer.getBrokerPool();
         final TransactionManager transact = pool.getTransactionManager();
         try(final DBBroker broker = pool.get(Optional.of(pool.getSecurityManager().getSystemSubject()))) {
@@ -797,8 +800,8 @@ public class LuceneIndexTest {
     }
 
     @Test
-    public void removeCollection() throws EXistException, CollectionConfigurationException, PermissionDeniedException, SAXException, TriggerException, LockException, IOException, XPathException {
-        final DocumentSet docs = configureAndStore(COLLECTION_CONFIG1, TestUtils.shakespeareSamples());
+    public void removeCollection() throws EXistException, CollectionConfigurationException, PermissionDeniedException, SAXException, TriggerException, LockException, IOException, XPathException, URISyntaxException {
+        final DocumentSet docs = configureAndStore(COLLECTION_CONFIG1, SAMPLES.getShakespeareSamples());
         final BrokerPool pool = existEmbeddedServer.getBrokerPool();
         final TransactionManager transact = pool.getTransactionManager();
         try(final DBBroker broker = pool.get(Optional.of(pool.getSecurityManager().getSystemSubject()));
