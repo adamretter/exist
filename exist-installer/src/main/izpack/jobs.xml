@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<izpack:processing xmlns:izpack="http://izpack.org/schema/processing" version="5.0">
+
+    <logfiledir>$INSTALL_PATH/logs</logfiledir>
+
+    <job name="Setting data dir..." condition="!defaultDataDir">
+        <executefile name="java">
+            <arg>-cp</arg>
+            <arg>$INSTALL_PATH/lib/Saxon-HE-9.8.0-12.jar</arg>
+            <arg>net.sf.saxon.Transform</arg>
+            <arg>-s:$INSTALL_PATH/etc/conf.xml</arg>
+            <arg>-xsl:$tmpdir/conf.xslt</arg>
+            <arg>-o:$INSTALL_PATH/etc/conf.xml</arg>
+            <arg>dataDir=${dataDir}</arg>
+        </executefile>
+    </job>
+
+    <job name="Setting admin password..." condition="!dataDirExists">
+        <os family="windows"/>
+        <executefile name="$INSTALL_PATH/bin/client.bat">
+            <arg>-s</arg>
+            <arg>-l</arg>
+            <arg>--user</arg>
+            <arg>admin</arg>
+            <arg>--xpath</arg>
+            <arg>let $_ := sm:passwd('admin', '$adminPasswd') return "Changed 'admin' password OK!"</arg>
+        </executefile>
+    </job>
+
+    <job name="Setting admin password..." condition="!dataDirExists">
+        <os family="unix"/>
+        <executefile name="$INSTALL_PATH/bin/client.sh">
+            <arg>-s</arg>
+            <arg>-l</arg>
+            <arg>--user</arg>
+            <arg>admin</arg>
+            <arg>--xpath</arg>
+            <arg>let $_ := sm:passwd('admin', '$adminPasswd') return "Changed 'admin' password OK!"</arg>
+        </executefile>
+    </job>
+
+</izpack:processing>
