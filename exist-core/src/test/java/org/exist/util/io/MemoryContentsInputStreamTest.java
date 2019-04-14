@@ -108,20 +108,20 @@ public class MemoryContentsInputStreamTest {
         verify(memoryContents);
     }
 
-//    @Test
-//    public void transferTo​() throws IOException {
-//        try (final FastByteArrayOutputStream out = new FastByteArrayOutputStream()) {
-//
-//            expect(memoryContents.size()).andReturn(123L);
-//            expect(memoryContents.transferTo(out, 0L)).andReturn(123L);
-//
-//            replay(memoryContents);
-//
-//            assertEquals(123L, inputStream.transferTo​(out));
-//
-//            verify(memoryContents);
-//        }
-//    }
+    @Test
+    public void transferTo​() throws IOException {
+        try (final FastByteArrayOutputStream out = new FastByteArrayOutputStream()) {
+
+            expect(memoryContents.size()).andReturn(123L);
+            expect(memoryContents.transferTo(out, 0L)).andReturn(123L);
+
+            replay(memoryContents);
+
+            assertEquals(123L, inputStream.transferTo(out));
+
+            verify(memoryContents);
+        }
+    }
 
     static byte[] write(int ch) {
         reportMatcher(new IArgumentMatcher() {
