@@ -59,7 +59,7 @@ WORKDIR $EXIST_HOME
 # DP can't test this right now without db/apps but this might need to go before all COPYs
 
 COPY LICENSE $EXIST_HOME/LICENSE
-COPY autodeploy $EXIST_HOME/bin
+COPY autodeploy $EXIST_HOME/autodeploy
 COPY bin $EXIST_HOME/bin
 COPY etc $EXIST_HOME/etc
 COPY lib $EXIST_HOME/lib
