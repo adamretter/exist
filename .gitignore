@@ -13,13 +13,9 @@ src/*
 webapp/*
 test/*
 *.jar
-exist-core/backup/*
 *.log
 
 /client.properties
 /*.xml
 !/pom.xml
 /VERSION.txt
-
-tools/yajsw/conf/
-extensions/betterform/uninstall/
