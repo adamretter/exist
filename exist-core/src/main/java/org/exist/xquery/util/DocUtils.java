@@ -133,7 +133,7 @@ public class DocUtils {
                     }
                 }
 
-                final org.exist.dom.memtree.DocumentImpl memtreeDoc = parse(
+                final org.exist.dom.memory.DocumentImpl memtreeDoc = parse(
                         context.getBroker().getBrokerPool(),
                         context,
                         is);
@@ -200,7 +200,7 @@ public class DocUtils {
      * @return document The document that was parsed
      * @throws XPathException in case of dynamic error
      */
-    public static org.exist.dom.memtree.DocumentImpl parse(final XQueryContext context, final InputStream is) throws XPathException {
+    public static org.exist.dom.memory.DocumentImpl parse(final XQueryContext context, final InputStream is) throws XPathException {
         return parse(context.getBroker().getBrokerPool(), context, is);
     }
 
@@ -213,7 +213,7 @@ public class DocUtils {
      * @return document The document that was parsed
      * @throws XPathException in case of dynamic error
      */
-    public static org.exist.dom.memtree.DocumentImpl parse(final BrokerPool pool, final XQueryContext context,
+    public static org.exist.dom.memory.DocumentImpl parse(final BrokerPool pool, final XQueryContext context,
             final InputStream is) throws XPathException {
         // we use eXist's in-memory DOM implementation
         final XMLReaderPool parserPool = pool.getParserPool();

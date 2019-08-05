@@ -33,7 +33,7 @@ import org.apache.logging.log4j.LogManager;
 
 import org.exist.Namespaces;
 import org.exist.dom.QName;
-import org.exist.dom.memtree.DocumentImpl;
+import org.exist.dom.memory.DocumentImpl;
 import org.exist.dom.memtree.SAXAdapter;
 import org.exist.xquery.BasicFunction;
 import org.exist.xquery.Cardinality;

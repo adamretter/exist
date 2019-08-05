@@ -32,7 +32,7 @@ import javax.xml.validation.Validator;
 
 import org.exist.dom.QName;
 import org.exist.dom.memtree.MemTreeBuilder;
-import org.exist.dom.memtree.NodeImpl;
+import org.exist.dom.memory.NodeImpl;
 import org.exist.validation.ValidationReport;
 import org.exist.xquery.BasicFunction;
 import org.exist.xquery.Cardinality;

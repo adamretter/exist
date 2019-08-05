@@ -43,7 +43,7 @@ import org.apache.lucene.util.NumericUtils;
 import org.exist.collections.Collection;
 import org.exist.dom.QName;
 import org.exist.dom.memtree.MemTreeBuilder;
-import org.exist.dom.memtree.NodeImpl;
+import org.exist.dom.memory.NodeImpl;
 import org.exist.dom.persistent.*;
 import org.exist.indexing.*;
 import org.exist.indexing.StreamListener.ReindexMode;

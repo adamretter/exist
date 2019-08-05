@@ -22,7 +22,7 @@
  */
 package org.exist.xquery;
 
-import org.exist.dom.memtree.DocumentImpl;
+import org.exist.dom.memory.DocumentImpl;
 import org.exist.dom.memtree.MemTreeBuilder;
 import org.exist.util.XMLNames;
 import org.exist.xquery.util.ExpressionDumper;

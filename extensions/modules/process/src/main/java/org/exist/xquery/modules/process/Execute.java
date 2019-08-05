@@ -1,7 +1,7 @@
 package org.exist.xquery.modules.process;
 
 import org.exist.dom.QName;
-import org.exist.dom.memtree.ElementImpl;
+import org.exist.dom.memory.ElementImpl;
 import org.exist.dom.memtree.MemTreeBuilder;
 import org.exist.numbering.NodeId;
 import org.exist.stax.ExtendedXMLStreamReader;

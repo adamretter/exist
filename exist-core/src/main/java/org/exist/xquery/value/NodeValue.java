@@ -47,6 +47,11 @@ public interface NodeValue extends Item, Sequence {
     int PERSISTENT_NODE = 1;
 
     /**
+     * Node is a constructed in-memory node using Saxon's TinyTree
+     */
+    int IN_MEMORY_SAXON_NODE = 2;
+
+    /**
      * Returns true if this node has the same identity as another
      * node. Used to implement "is" and "isnot" comparisons.
      *

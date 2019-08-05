@@ -238,7 +238,7 @@ public class XQueryContext implements BinaryValueManager, Context {
      *
      * {@see https://www.w3.org/TR/xpath-31/#dt-available-docs}.
      */
-    private Map<String, TriFunctionE<DBBroker, Txn, String, Either<org.exist.dom.memtree.DocumentImpl, DocumentImpl>, XPathException>> dynamicDocuments = null;
+    private Map<String, TriFunctionE<DBBroker, Txn, String, Either<org.exist.dom.memory.DocumentImpl, DocumentImpl>, XPathException>> dynamicDocuments = null;
 
     /**
      * The available test resources of the dynamic context.
@@ -995,7 +995,7 @@ public class XQueryContext implements BinaryValueManager, Context {
     }
 
     public void addDynamicallyAvailableDocument(final String uri,
-            final TriFunctionE<DBBroker, Txn, String, Either<org.exist.dom.memtree.DocumentImpl, DocumentImpl>, XPathException> supplier) {
+            final TriFunctionE<DBBroker, Txn, String, Either<org.exist.dom.memory.DocumentImpl, DocumentImpl>, XPathException> supplier) {
         if (dynamicDocuments == null) {
             dynamicDocuments = new HashMap<>();
         }
@@ -1130,7 +1130,7 @@ public class XQueryContext implements BinaryValueManager, Context {
             return null;
         }
 
-        final TriFunctionE<DBBroker, Txn, String, Either<org.exist.dom.memtree.DocumentImpl, DocumentImpl>, XPathException> docSupplier
+        final TriFunctionE<DBBroker, Txn, String, Either<org.exist.dom.memory.DocumentImpl, DocumentImpl>, XPathException> docSupplier
                 = dynamicDocuments.get(uri);
         if (docSupplier == null) {
             return null;

@@ -300,7 +300,7 @@ public class PermissionsFunction extends BasicFunction {
         return result;
     }
 
-    private org.exist.dom.memtree.DocumentImpl functionGetPermissions(final XmldbURI pathUri) throws XPathException {
+    private org.exist.dom.memory.DocumentImpl functionGetPermissions(final XmldbURI pathUri) throws XPathException {
         try {
             return permissionsToXml(getPermissions(pathUri));
         } catch(final PermissionDeniedException pde) {
@@ -430,7 +430,7 @@ public class PermissionsFunction extends BasicFunction {
         return permissions;
     }
 
-    private org.exist.dom.memtree.DocumentImpl permissionsToXml(final Permission permission) {
+    private org.exist.dom.memory.DocumentImpl permissionsToXml(final Permission permission) {
         final MemTreeBuilder builder = context.getDocumentBuilder();
         builder.startDocument();
 

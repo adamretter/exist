@@ -22,7 +22,7 @@ package org.exist.xquery.modules.lucene;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.exist.dom.QName;
-import org.exist.dom.memtree.NodeImpl;
+import org.exist.dom.memory.NodeImpl;
 import org.exist.dom.persistent.NodeProxy;
 import org.exist.indexing.lucene.LuceneIndex;
 import org.exist.indexing.lucene.LuceneIndexWorker;

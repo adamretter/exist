@@ -44,7 +44,7 @@ import org.custommonkey.xmlunit.Diff;
 import org.exist.Namespaces;
 import org.exist.collections.Collection;
 import org.exist.dom.persistent.NodeProxy;
-import org.exist.dom.memtree.NodeImpl;
+import org.exist.dom.memory.NodeImpl;
 import org.exist.dom.memtree.SAXAdapter;
 import org.exist.security.Subject;
 import org.exist.storage.BrokerPool;

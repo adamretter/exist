@@ -22,6 +22,7 @@ package org.exist.dom.memtree;
 
 import com.googlecode.junittoolbox.ParallelParameterized;
 import org.exist.Namespaces;
+import org.exist.dom.memory.DocumentImpl;
 import org.exist.util.ExistSAXParserFactory;
 import org.junit.Test;
 import org.junit.runner.RunWith;

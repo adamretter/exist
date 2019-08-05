@@ -37,9 +37,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import org.exist.dom.persistent.NodeProxy;
-import org.exist.dom.memtree.DocumentImpl;
 import org.exist.dom.memtree.MemTreeBuilder;
-import org.exist.dom.memtree.NodeImpl;
+import org.exist.dom.memory.NodeImpl;
 import org.exist.storage.serializers.Serializer;
 import org.exist.util.io.FastByteArrayInputStream;
 import org.exist.validation.ValidationReport;

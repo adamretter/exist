@@ -65,7 +65,7 @@ public class IdFunction extends BasicFunction {
      * 
      * @return An in-memory document describing the accounts
      */
-    private org.exist.dom.memtree.DocumentImpl functionId() throws XPathException {
+    private org.exist.dom.memory.DocumentImpl functionId() throws XPathException {
         final MemTreeBuilder builder = context.getDocumentBuilder();
         builder.startDocument();
 

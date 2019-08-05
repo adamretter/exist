@@ -30,7 +30,7 @@ import org.exist.dom.persistent.DocumentImpl;
 import org.exist.dom.persistent.NodeProxy;
 import org.exist.dom.memtree.DocumentBuilderReceiver;
 import org.exist.dom.memtree.MemTreeBuilder;
-import org.exist.dom.memtree.NodeImpl;
+import org.exist.dom.memory.NodeImpl;
 import org.exist.numbering.NodeId;
 import org.exist.security.PermissionDeniedException;
 import org.exist.storage.DBBroker;

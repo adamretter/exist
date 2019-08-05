@@ -27,7 +27,7 @@ import java.util.Iterator;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.exist.dom.QName;
-import org.exist.dom.memtree.DocumentImpl;
+import org.exist.dom.memory.DocumentImpl;
 import org.exist.dom.memtree.MemTreeBuilder;
 import org.exist.xquery.*;
 import org.exist.xquery.Module;

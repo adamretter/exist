@@ -1081,20 +1081,23 @@ public abstract class Serializer implements XMLReader {
 		if(v.getImplementationType() == NodeValue.PERSISTENT_NODE)
 			{serializeToReceiver((NodeProxy)v, generateDocEvents, true);}
 		else
-			{serializeToReceiver((org.exist.dom.memtree.NodeImpl)v, generateDocEvents);}
+			{serializeToReceiver((org.exist.dom.memory.NodeImpl)v, generateDocEvents);}
 	}
 	
-	protected void serializeToReceiver(org.exist.dom.memtree.NodeImpl n, boolean generateDocEvents)
+	protected void serializeToReceiver(org.exist.dom.memory.NodeImpl n, boolean generateDocEvents)
 	throws SAXException {
 		if (generateDocEvents) {
 			receiver.startDocument();
 		}
         setDocument(null);
-		if(n.getNodeType() == Node.DOCUMENT_NODE) {
-			setXQueryContext(((org.exist.dom.memtree.DocumentImpl)n).getContext());
-		} else {
-			setXQueryContext(n.getOwnerDocument().getContext());
-		}
+
+		//TODO(AR) is this needed?
+//		if(n.getNodeType() == Node.DOCUMENT_NODE) {
+//			setXQueryContext(((org.exist.dom.memory.DocumentImpl)n).getContext());
+//		} else {
+//			setXQueryContext(n.getOwnerDocument().getContext());
+//		}
+
         n.streamTo(this, receiver);
 		if (generateDocEvents) {
 			receiver.endDocument();

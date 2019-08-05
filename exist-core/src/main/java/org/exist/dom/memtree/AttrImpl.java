@@ -61,11 +61,6 @@ public class AttrImpl extends NodeImpl implements Attr {
     }
 
     @Override
-    public int getType() {
-        return Type.ATTRIBUTE;
-    }
-
-    @Override
     public String getBaseURI() {
         final Node parent = document.getNode(document.attrParent[nodeNumber]);
         if(parent == null) {

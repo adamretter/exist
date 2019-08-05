@@ -52,7 +52,7 @@ import java.util.function.Function;
 import static org.exist.dom.QName.Validity.ILLEGAL_FORMAT;
 
 
-public class ElementImpl extends NodeImpl implements Element {
+public class ElementImpl extends NodeImpl<ElementImpl> implements Element {
 
     public ElementImpl(final DocumentImpl doc, final int nodeNumber) {
         super(doc, nodeNumber);

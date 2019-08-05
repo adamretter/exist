@@ -26,7 +26,7 @@ import org.apache.logging.log4j.Logger;
 import org.exist.Namespaces;
 import org.exist.dom.QName;
 import org.exist.dom.memtree.MemTreeBuilder;
-import org.exist.dom.memtree.NodeImpl;
+import org.exist.dom.memory.NodeImpl;
 import org.exist.util.XMLNames;
 import org.exist.xquery.util.ExpressionDumper;
 import org.exist.xquery.value.Item;

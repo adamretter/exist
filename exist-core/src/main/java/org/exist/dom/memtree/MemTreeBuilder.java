@@ -22,18 +22,23 @@
  */
 package org.exist.dom.memtree;
 
-import org.exist.Indexer;
-import org.exist.Namespaces;
+import net.sf.saxon.Configuration;
+import net.sf.saxon.event.PipelineConfiguration;
+import net.sf.saxon.om.FingerprintedQName;
+import net.sf.saxon.om.NamePool;
+import net.sf.saxon.om.NamespaceBinding;
+import net.sf.saxon.om.StructuredQName;
+import net.sf.saxon.tree.tiny.TinyBuilder;
+import net.sf.saxon.type.AnySimpleType;
+import net.sf.saxon.type.Untyped;
 import org.exist.dom.QName;
+import org.exist.dom.memory.TinyTreeWithId;
 import org.exist.dom.persistent.NodeProxy;
 import org.exist.xquery.Constants;
 import org.exist.xquery.XQueryContext;
-import org.w3c.dom.DOMException;
-import org.w3c.dom.Node;
 import org.xml.sax.Attributes;
 
 import javax.xml.XMLConstants;
-import java.util.Arrays;
 
 
 /**
@@ -44,9 +49,9 @@ import java.util.Arrays;
 public class MemTreeBuilder {
 
     private final XQueryContext context;
-    private DocumentImpl doc;
-    private short level = 1;
-    private int[] prevNodeInLevel;
+    private TinyBuilder tinyBuilder;
+//    private short level = 1;
+//    private int[] prevNodeInLevel;
     private String defaultNamespaceURI = XMLConstants.NULL_NS_URI;
 
     public MemTreeBuilder() {
@@ -55,11 +60,15 @@ public class MemTreeBuilder {
 
 
     public MemTreeBuilder(final XQueryContext context) {
-        super();
         this.context = context;
-        prevNodeInLevel = new int[15];
-        Arrays.fill(prevNodeInLevel, -1);
-        prevNodeInLevel[0] = 0;
+//        prevNodeInLevel = new int[15];
+//        Arrays.fill(prevNodeInLevel, -1);
+//        prevNodeInLevel[0] = 0;
+
+        this.tinyBuilder = new TinyBuilder(new PipelineConfiguration(Configuration.newConfiguration()));
+        this.tinyBuilder.setBaseURI("http://memtree");
+        this.tinyBuilder.setUseEventLocation(false);
+        this.tinyBuilder.open();
     }
 
     /**
@@ -67,8 +76,9 @@ public class MemTreeBuilder {
      *
      * @return DOCUMENT ME!
      */
-    public DocumentImpl getDocument() {
-        return doc;
+    public org.exist.dom.memory.DocumentImpl getDocument() {
+        final TinyTreeWithId tinyTreeWithId = new TinyTreeWithId(tinyBuilder.getTree());
+        return new org.exist.dom.memory.DocumentImpl(tinyTreeWithId, 0);
     }
 
 
@@ -78,7 +88,7 @@ public class MemTreeBuilder {
 
 
     public int getSize() {
-        return doc.getSize();
+        return tinyBuilder.getTree().getNumberOfNodes();
     }
 
 
@@ -86,7 +96,11 @@ public class MemTreeBuilder {
      * Start building the document.
      */
     public void startDocument() {
-        this.doc = new DocumentImpl(context, false);
+        try {
+            tinyBuilder.startDocument(0);
+        } catch (final net.sf.saxon.trans.XPathException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
 
@@ -96,7 +110,11 @@ public class MemTreeBuilder {
      * @param explicitCreation DOCUMENT ME!
      */
     public void startDocument(final boolean explicitCreation) {
-        this.doc = new DocumentImpl(context, explicitCreation);
+        try {
+            tinyBuilder.startDocument(0);
+        } catch (final net.sf.saxon.trans.XPathException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
 
@@ -104,6 +122,11 @@ public class MemTreeBuilder {
      * End building the document.
      */
     public void endDocument() {
+        try {
+            tinyBuilder.endDocument();
+        } catch (final net.sf.saxon.trans.XPathException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
 
@@ -149,7 +172,13 @@ public class MemTreeBuilder {
      * @return the node number of the created element
      */
     public int startElement(final QName qname, final Attributes attributes) {
-        final int nodeNr = doc.addNode(Node.ELEMENT_NODE, level, qname);
+        final NamePool pool = tinyBuilder.getConfiguration().getNamePool();
+        try {
+            final FingerprintedQName name = new FingerprintedQName(new StructuredQName(qname.getPrefix() != null ? qname.getPrefix() : "" , qname.getNamespaceURI(), qname.getLocalPart()), pool);
+            tinyBuilder.startElement(name, Untyped.INSTANCE, null, 0);
+        } catch (final net.sf.saxon.trans.XPathException e) {
+            throw new IllegalStateException(e);
+        }
 
         if(attributes != null) {
 
@@ -158,111 +187,122 @@ public class MemTreeBuilder {
                 final String attrQName = attributes.getQName(i);
 
                 // skip xmlns-attributes and attributes in eXist's namespace
-                if(!(attrQName.startsWith(XMLConstants.XMLNS_ATTRIBUTE))) {
+                if (!(attrQName.startsWith(XMLConstants.XMLNS_ATTRIBUTE))) {
 //                  || attrNS.equals(Namespaces.EXIST_NS))) {
                     final int p = attrQName.indexOf(':');
                     final String attrNS = attributes.getURI(i);
                     final String attrPrefix = (p != Constants.STRING_NOT_FOUND) ? attrQName.substring(0, p) : null;
                     final String attrLocalName = attributes.getLocalName(i);
+
                     final QName attrQn = new QName(attrLocalName, attrNS, attrPrefix);
-                    final int type = getAttribType(attrQn, attributes.getType(i));
-                    doc.addAttribute(nodeNr, attrQn, attributes.getValue(i), type);
+//                    final int type = getAttribType(attrQn, attributes.getType(i));
+                    //doc.addAttribute(nodeNr, attrQn, attributes.getValue(i), type);
+
+                    final FingerprintedQName name = new FingerprintedQName(new StructuredQName(attrQn.getPrefix() != null ? attrQn.getPrefix() : "", attrQn.getNamespaceURI(), attrQn.getLocalPart()), pool);
+                    try {
+                        tinyBuilder.attribute(name, AnySimpleType.INSTANCE, attributes.getValue(i), null, 0);
+                    } catch (final net.sf.saxon.trans.XPathException e) {
+                        throw new IllegalStateException(e);
+                    }
                 }
             }
         }
 
-        // update links
-        if((level + 1) >= prevNodeInLevel.length) {
-            final int[] t = new int[level + 2];
-            System.arraycopy(prevNodeInLevel, 0, t, 0, prevNodeInLevel.length);
-            prevNodeInLevel = t;
-        }
-        final int prevNr = prevNodeInLevel[level]; // TODO: remove potential ArrayIndexOutOfBoundsException
-
-        if(prevNr > -1) {
-            doc.next[prevNr] = nodeNr;
-        }
-        doc.next[nodeNr] = prevNodeInLevel[level - 1];
-        prevNodeInLevel[level] = nodeNr;
-        ++level;
-        return nodeNr;
+        return tinyBuilder.getTree().getNumberOfNodes();
     }
 
 
-    private int getAttribType(final QName qname, final String type) {
-        if(qname.equals(Namespaces.XML_ID_QNAME) || type.equals(Indexer.ATTR_ID_TYPE)) {
-            // an xml:id attribute.
-            return AttrImpl.ATTR_ID_TYPE;
-        } else if(type.equals(Indexer.ATTR_IDREF_TYPE)) {
-            return AttrImpl.ATTR_IDREF_TYPE;
-        } else if(type.equals(Indexer.ATTR_IDREFS_TYPE)) {
-            return AttrImpl.ATTR_IDREFS_TYPE;
-        } else {
-            return AttrImpl.ATTR_CDATA_TYPE;
-        }
-    }
+//    private int getAttribType(final QName qname, final String type) {
+//        if(qname.equals(Namespaces.XML_ID_QNAME) || type.equals(Indexer.ATTR_ID_TYPE)) {
+//            // an xml:id attribute.
+//            return AttrImpl.ATTR_ID_TYPE;
+//        } else if(type.equals(Indexer.ATTR_IDREF_TYPE)) {
+//            return AttrImpl.ATTR_IDREF_TYPE;
+//        } else if(type.equals(Indexer.ATTR_IDREFS_TYPE)) {
+//            return AttrImpl.ATTR_IDREFS_TYPE;
+//        } else {
+//            return AttrImpl.ATTR_CDATA_TYPE;
+//        }
+//    }
 
 
     /**
      * Close the last element created.
      */
     public void endElement() {
-//      System.out.println("end-element: level = " + level);
-        prevNodeInLevel[level] = -1;
-        --level;
+        try {
+            tinyBuilder.endElement();
+        } catch (final net.sf.saxon.trans.XPathException e) {
+            throw new IllegalStateException(e);
+        }
+////      System.out.println("end-element: level = " + level);
+//        prevNodeInLevel[level] = -1;
+//        --level;
     }
 
 
     public int addReferenceNode(final NodeProxy proxy) {
-        final int lastNode = doc.getLastNode();
-
-        if((lastNode > 0) && (level == doc.getTreeLevel(lastNode))) {
-
-            if((doc.getNodeType(lastNode) == Node.TEXT_NODE) && (proxy.getNodeType() == Node.TEXT_NODE)) {
-
-                // if the last node is a text node, we have to append the
-                // characters to this node. XML does not allow adjacent text nodes.
-                doc.appendChars(lastNode, proxy.getNodeValue());
-                return lastNode;
-            }
-
-            if(doc.getNodeType(lastNode) == NodeImpl.REFERENCE_NODE) {
-
-                // check if the previous node is a reference node. if yes, check if it is a text node
-                final int p = doc.alpha[lastNode];
-
-                if((doc.references[p].getNodeType() == Node.TEXT_NODE) && (proxy.getNodeType() == Node.TEXT_NODE)) {
-
-                    // found a text node reference. create a new char sequence containing
-                    // the concatenated text of both nodes
-                    final String s = doc.references[p].getStringValue() + proxy.getStringValue();
-                    doc.replaceReferenceNode(lastNode, s);
-                    return lastNode;
-                }
-            }
-        }
-        final int nodeNr = doc.addNode(NodeImpl.REFERENCE_NODE, level, null);
-        doc.addReferenceNode(nodeNr, proxy);
-        linkNode(nodeNr);
-        return nodeNr;
+        //TODO(AR) implement this
+        return -1;
+//        final int lastNode = doc.getLastNode();
+//
+//        if((lastNode > 0) && (level == doc.getTreeLevel(lastNode))) {
+//
+//            if((doc.getNodeType(lastNode) == Node.TEXT_NODE) && (proxy.getNodeType() == Node.TEXT_NODE)) {
+//
+//                // if the last node is a text node, we have to append the
+//                // characters to this node. XML does not allow adjacent text nodes.
+//                doc.appendChars(lastNode, proxy.getNodeValue());
+//                return lastNode;
+//            }
+//
+//            if(doc.getNodeType(lastNode) == NodeImpl.REFERENCE_NODE) {
+//
+//                // check if the previous node is a reference node. if yes, check if it is a text node
+//                final int p = doc.alpha[lastNode];
+//
+//                if((doc.references[p].getNodeType() == Node.TEXT_NODE) && (proxy.getNodeType() == Node.TEXT_NODE)) {
+//
+//                    // found a text node reference. create a new char sequence containing
+//                    // the concatenated text of both nodes
+//                    final String s = doc.references[p].getStringValue() + proxy.getStringValue();
+//                    doc.replaceReferenceNode(lastNode, s);
+//                    return lastNode;
+//                }
+//            }
+//        }
+//        final int nodeNr = doc.addNode(NodeImpl.REFERENCE_NODE, level, null);
+//        doc.addReferenceNode(nodeNr, proxy);
+//        linkNode(nodeNr);
+//        return nodeNr;
     }
 
 
     public int addAttribute(final QName qname, final String value) {
-        final int lastNode = doc.getLastNode();
+//        final int lastNode = doc.getLastNode();
+//
+//        //if(0 < lastNode && doc.nodeKind[lastNode] != Node.ELEMENT_NODE) {
+//        //Definitely wrong !
+//        //lastNode = characters(value);
+//        //} else {
+//        //lastNode = doc.addAttribute(lastNode, qname, value);
+//        //}
+//        final int nodeNr = doc.addAttribute(lastNode, qname, value, getAttribType(qname, Indexer.ATTR_CDATA_TYPE));
+//
+//        //TODO :
+//        //1) call linkNode(nodeNr); ?
+//        //2) is there a relationship between lastNode and nodeNr ?
+//        return nodeNr;
 
-        //if(0 < lastNode && doc.nodeKind[lastNode] != Node.ELEMENT_NODE) {
-        //Definitely wrong !
-        //lastNode = characters(value);
-        //} else {
-        //lastNode = doc.addAttribute(lastNode, qname, value);
-        //}
-        final int nodeNr = doc.addAttribute(lastNode, qname, value, getAttribType(qname, Indexer.ATTR_CDATA_TYPE));
+        final NamePool pool = tinyBuilder.getTree().getNamePool();
+        final FingerprintedQName name = new FingerprintedQName(new StructuredQName(qname.getPrefix(), qname.getNamespaceURI(), qname.getLocalPart()), pool);
+        try {
+            tinyBuilder.attribute(name, AnySimpleType.INSTANCE, value, null, 0);
+        } catch (final net.sf.saxon.trans.XPathException e) {
+            throw new IllegalStateException(e);
+        }
 
-        //TODO :
-        //1) call linkNode(nodeNr); ?
-        //2) is there a relationship between lastNode and nodeNr ?
-        return nodeNr;
+        return tinyBuilder.getTree().getNumberOfNodes();
     }
 
 
@@ -275,39 +315,13 @@ public class MemTreeBuilder {
      * @return the node number of the created node
      */
     public int characters(final char[] ch, final int start, final int len) {
-        final int lastNode = doc.getLastNode();
-
-        if((lastNode > 0) && (level == doc.getTreeLevel(lastNode))) {
-
-            if(doc.getNodeType(lastNode) == Node.TEXT_NODE) {
-
-                // if the last node is a text node, we have to append the
-                // characters to this node. XML does not allow adjacent text nodes.
-                doc.appendChars(lastNode, ch, start, len);
-                return lastNode;
-            }
-
-            if(doc.getNodeType(lastNode) == NodeImpl.REFERENCE_NODE) {
-
-                // check if the previous node is a reference node. if yes, check if it is a text node
-                final int p = doc.alpha[lastNode];
-
-                if(doc.references[p].getNodeType() == Node.TEXT_NODE) {
-
-                    // found a text node reference. create a new char sequence containing
-                    // the concatenated text of both nodes
-                    final StringBuilder s = new StringBuilder(doc.references[p].getStringValue());
-                    s.append(ch, start, len);
-                    doc.replaceReferenceNode(lastNode, s);
-                    return lastNode;
-                }
-                // fall through and add the node below
-            }
+        try {
+            tinyBuilder.characters(new String(ch, start, len), null, 0);
+        } catch (final net.sf.saxon.trans.XPathException e) {
+            throw new IllegalStateException(e);
         }
-        final int nodeNr = doc.addNode(Node.TEXT_NODE, level, null);
-        doc.addChars(nodeNr, ch, start, len);
-        linkNode(nodeNr);
-        return nodeNr;
+
+        return tinyBuilder.getTree().getNumberOfNodes();
     }
 
 
@@ -322,107 +336,95 @@ public class MemTreeBuilder {
             return -1;
         }
 
-        final int lastNode = doc.getLastNode();
-
-        if((lastNode > 0) && (level == doc.getTreeLevel(lastNode))) {
-
-            if((doc.getNodeType(lastNode) == Node.TEXT_NODE) || (doc.getNodeType(lastNode) == Node.CDATA_SECTION_NODE)) {
-
-                // if the last node is a text node, we have to append the
-                // characters to this node. XML does not allow adjacent text nodes.
-                doc.appendChars(lastNode, s);
-                return lastNode;
-            }
-
-            if(doc.getNodeType(lastNode) == NodeImpl.REFERENCE_NODE) {
-
-                // check if the previous node is a reference node. if yes, check if it is a text node
-                final int p = doc.alpha[lastNode];
-
-                if((doc.references[p].getNodeType() == Node.TEXT_NODE) || (doc.references[p].getNodeType() == Node.CDATA_SECTION_NODE)) {
-
-                    // found a text node reference. create a new char sequence containing
-                    // the concatenated text of both nodes
-                    doc.replaceReferenceNode(lastNode, doc.references[p].getStringValue() + s);
-                    return lastNode;
-                }
-                // fall through and add the node below
-            }
+        try {
+            tinyBuilder.characters(s, null, 0);
+        } catch (final net.sf.saxon.trans.XPathException e) {
+            throw new IllegalStateException(e);
         }
-        final int nodeNr = doc.addNode(Node.TEXT_NODE, level, null);
-        doc.addChars(nodeNr, s);
-        linkNode(nodeNr);
-        return nodeNr;
+
+        return tinyBuilder.getTree().getNumberOfNodes();
     }
 
 
     public int comment(final CharSequence data) {
-        final int nodeNr = doc.addNode(Node.COMMENT_NODE, level, null);
-        doc.addChars(nodeNr, data);
-        linkNode(nodeNr);
-        return nodeNr;
+        try {
+            tinyBuilder.comment(data, null, 0);
+        } catch (final net.sf.saxon.trans.XPathException e) {
+            throw new IllegalStateException(e);
+        }
+
+        return tinyBuilder.getTree().getNumberOfNodes();
     }
 
 
     public int comment(final char[] ch, final int start, final int len) {
-        final int nodeNr = doc.addNode(Node.COMMENT_NODE, level, null);
-        doc.addChars(nodeNr, ch, start, len);
-        linkNode(nodeNr);
-        return nodeNr;
+        try {
+            tinyBuilder.comment(new String(ch, start, len), null, 0);
+        } catch (final net.sf.saxon.trans.XPathException e) {
+            throw new IllegalStateException(e);
+        }
+
+        return tinyBuilder.getTree().getNumberOfNodes();
     }
 
 
     public int cdataSection(final CharSequence data) {
-        final int lastNode = doc.getLastNode();
 
-        if((lastNode > 0) && (level == doc.getTreeLevel(lastNode))) {
+        //TODO(AR) figure this out!!!
+        return tinyBuilder.getTree().getNumberOfNodes();
 
-            if((doc.getNodeType(lastNode) == Node.TEXT_NODE) || (doc.getNodeType(lastNode) == Node.CDATA_SECTION_NODE)) {
-
-                // if the last node is a text node, we have to append the
-                // characters to this node. XML does not allow adjacent text nodes.
-                doc.appendChars(lastNode, data);
-                return lastNode;
-            }
-
-            if(doc.getNodeType(lastNode) == NodeImpl.REFERENCE_NODE) {
-
-                // check if the previous node is a reference node. if yes, check if it is a text node
-                final int p = doc.alpha[lastNode];
-
-                if((doc.references[p].getNodeType() == Node.TEXT_NODE) || (doc.references[p].getNodeType() == Node.CDATA_SECTION_NODE)) {
-
-                    // found a text node reference. create a new char sequence containing
-                    // the concatenated text of both nodes
-                    doc.replaceReferenceNode(lastNode, doc.references[p].getStringValue() + data);
-                    return lastNode;
-                }
-                // fall through and add the node below
-            }
-        }
-        final int nodeNr = doc.addNode(Node.CDATA_SECTION_NODE, level, null);
-        doc.addChars(nodeNr, data);
-        linkNode(nodeNr);
-        return nodeNr;
+//        final int lastNode = doc.getLastNode();
+//
+//        if((lastNode > 0) && (level == doc.getTreeLevel(lastNode))) {
+//
+//            if((doc.getNodeType(lastNode) == Node.TEXT_NODE) || (doc.getNodeType(lastNode) == Node.CDATA_SECTION_NODE)) {
+//
+//                // if the last node is a text node, we have to append the
+//                // characters to this node. XML does not allow adjacent text nodes.
+//                doc.appendChars(lastNode, data);
+//                return lastNode;
+//            }
+//
+//            if(doc.getNodeType(lastNode) == NodeImpl.REFERENCE_NODE) {
+//
+//                // check if the previous node is a reference node. if yes, check if it is a text node
+//                final int p = doc.alpha[lastNode];
+//
+//                if((doc.references[p].getNodeType() == Node.TEXT_NODE) || (doc.references[p].getNodeType() == Node.CDATA_SECTION_NODE)) {
+//
+//                    // found a text node reference. create a new char sequence containing
+//                    // the concatenated text of both nodes
+//                    doc.replaceReferenceNode(lastNode, doc.references[p].getStringValue() + data);
+//                    return lastNode;
+//                }
+//                // fall through and add the node below
+//            }
+//        }
+//        final int nodeNr = doc.addNode(Node.CDATA_SECTION_NODE, level, null);
+//        doc.addChars(nodeNr, data);
+//        linkNode(nodeNr);
+//        return nodeNr;
     }
 
 
     public int processingInstruction(final String target, final String data) {
-        final QName qname = new QName(target, null, null);
-        final int nodeNr = doc.addNode(Node.PROCESSING_INSTRUCTION_NODE, level, qname);
-        doc.addChars(nodeNr, (data == null) ? "" : data);
-        linkNode(nodeNr);
-        return nodeNr;
+        try {
+            tinyBuilder.processingInstruction(target, data, null, 0);
+        } catch (final net.sf.saxon.trans.XPathException e) {
+            throw new IllegalStateException(e);
+        }
+
+        return tinyBuilder.getTree().getNumberOfNodes();
     }
 
     public int namespaceNode(final String prefix, final String uri) {
-        final QName qname;
-        if(prefix == null || prefix.isEmpty()) {
-            qname = new QName(XMLConstants.XMLNS_ATTRIBUTE, uri);
-        } else {
-            qname = new QName(prefix, uri, XMLConstants.XMLNS_ATTRIBUTE);
+        try {
+            tinyBuilder.namespace(new NamespaceBinding(prefix, uri), 0);
+        } catch (final net.sf.saxon.trans.XPathException e) {
+            throw new IllegalStateException(e);
         }
-        return namespaceNode(qname);
+
+        return tinyBuilder.getTree().getNumberOfNodes();
     }
 
     public int namespaceNode(final QName qname) {
@@ -430,31 +432,13 @@ public class MemTreeBuilder {
     }
 
     public int namespaceNode(final QName qname, final boolean checkNS) {
-        final int lastNode = doc.getLastNode();
-        boolean addNode = true;
-        if(doc.nodeName != null) {
-            final QName elemQN = doc.nodeName[lastNode];
-            if(elemQN != null) {
-                final String elemPrefix = (elemQN.getPrefix() == null) ? XMLConstants.DEFAULT_NS_PREFIX : elemQN.getPrefix();
-                final String elemNs = (elemQN.getNamespaceURI() == null) ? XMLConstants.NULL_NS_URI : elemQN.getNamespaceURI();
-                final String qnPrefix = (qname.getPrefix() == null) ? XMLConstants.DEFAULT_NS_PREFIX : qname.getPrefix();
-                if (checkNS
-                    && XMLConstants.DEFAULT_NS_PREFIX.equals(elemPrefix)
-                    && XMLConstants.NULL_NS_URI.equals(elemNs)
-                    && XMLConstants.DEFAULT_NS_PREFIX.equals(qnPrefix)
-                    && XMLConstants.XMLNS_ATTRIBUTE.equals(qname.getLocalPart())) {
-
-                    throw new DOMException(
-                        DOMException.NAMESPACE_ERR,
-                        "Cannot output a namespace node for the default namespace when the element is in no namespace."
-                    );
-                }
-                if(elemPrefix.equals(qname.getLocalPart()) && (elemQN.getNamespaceURI() != null)) {
-                    addNode = false;
-                }
-            }
+        try {
+            tinyBuilder.namespace(new NamespaceBinding(qname.getLocalPart(), qname.getNamespaceURI()), 0);
+        } catch (final net.sf.saxon.trans.XPathException e) {
+            throw new IllegalStateException(e);
         }
-        return (addNode ? doc.addNamespace(lastNode, qname) : -1);
+
+        return tinyBuilder.getTree().getNumberOfNodes();
     }
 
 
@@ -471,19 +455,8 @@ public class MemTreeBuilder {
     }
 
 
-    private void linkNode(final int nodeNr) {
-        final int prevNr = prevNodeInLevel[level];
-
-        if(prevNr > -1) {
-            doc.next[prevNr] = nodeNr;
-        }
-        doc.next[nodeNr] = prevNodeInLevel[level - 1];
-        prevNodeInLevel[level] = nodeNr;
-    }
-
-
     public void setReplaceAttributeFlag(final boolean replaceAttribute) {
-        doc.replaceAttribute = replaceAttribute;
+        //doc.replaceAttribute = replaceAttribute;
     }
 
     public void setDefaultNamespace(final String defaultNamespaceURI) {

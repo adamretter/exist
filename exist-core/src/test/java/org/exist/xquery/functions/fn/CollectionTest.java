@@ -22,7 +22,7 @@ package org.exist.xquery.functions.fn;
 
 import org.exist.EXistException;
 import org.exist.Namespaces;
-import org.exist.dom.memtree.DocumentImpl;
+import org.exist.dom.memory.DocumentImpl;
 import org.exist.dom.memtree.SAXAdapter;
 import org.exist.security.PermissionDeniedException;
 import org.exist.storage.BrokerPool;

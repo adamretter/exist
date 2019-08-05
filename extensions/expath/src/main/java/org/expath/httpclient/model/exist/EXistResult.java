@@ -32,7 +32,7 @@ import javax.xml.transform.Source;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.exist.dom.memtree.DocumentImpl;
+import org.exist.dom.memory.DocumentImpl;
 import org.exist.util.io.TemporaryFileManager;
 import org.exist.xquery.NodeTest;
 import org.exist.xquery.TypeTest;

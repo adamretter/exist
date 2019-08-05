@@ -281,7 +281,7 @@ public class XIncludeFilter implements Receiver {
 
         Map<String, String> params = null;
         DocumentImpl doc = null;
-        org.exist.dom.memtree.DocumentImpl memtreeDoc = null;
+        org.exist.dom.memory.DocumentImpl memtreeDoc = null;
         boolean xqueryDoc = false;
 
         if (docUri != null) {
@@ -354,7 +354,7 @@ public class XIncludeFilter implements Receiver {
                     }
                 }
                 if (doc == null) {
-                    final Either<ResourceError, org.exist.dom.memtree.DocumentImpl> external = parseExternal(externalUri);
+                    final Either<ResourceError, org.exist.dom.memory.DocumentImpl> external = parseExternal(externalUri);
                     if (external.isLeft()) {
                         return Optional.of(external.left().get());
                     } else {
@@ -477,7 +477,7 @@ public class XIncludeFilter implements Receiver {
         return Optional.empty();
     }
 
-    private Either<ResourceError, org.exist.dom.memtree.DocumentImpl> parseExternal(final URI externalUri) throws ParserConfigurationException, SAXException {
+    private Either<ResourceError, org.exist.dom.memory.DocumentImpl> parseExternal(final URI externalUri) throws ParserConfigurationException, SAXException {
         try {
             final URLConnection con = externalUri.toURL().openConnection();
             if (con instanceof HttpURLConnection) {
@@ -498,7 +498,7 @@ public class XIncludeFilter implements Receiver {
                 reader.setContentHandler(adapter);
                 reader.setProperty(Namespaces.SAX_LEXICAL_HANDLER, adapter);
                 reader.parse(src);
-                final org.exist.dom.memtree.DocumentImpl doc = adapter.getDocument();
+                final org.exist.dom.memory.DocumentImpl doc = adapter.getDocument();
                 doc.setDocumentURI(externalUri.toString());
                 return Either.Right(doc);
             } finally {

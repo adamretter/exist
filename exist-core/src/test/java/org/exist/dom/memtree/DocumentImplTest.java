@@ -23,6 +23,7 @@ package org.exist.dom.memtree;
 import com.googlecode.junittoolbox.ParallelRunner;
 import org.apache.xerces.dom.AttrNSImpl;
 import org.exist.Namespaces;
+import org.exist.dom.memory.DocumentImpl;
 import org.exist.util.ExistSAXParserFactory;
 import org.exist.util.io.FastByteArrayInputStream;
 import org.junit.Test;
