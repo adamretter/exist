@@ -1161,10 +1161,9 @@ public class DocumentImpl extends NodeImpl<DocumentImpl> implements Document {
             } catch(final SAXException e) {
                 throw new DOMException(DOMException.INVALID_STATE_ERR, e.getMessage());
             }
-//            final DocumentImpl newDoc = builder.getDocument();
-//            newDoc.computeNodeIds();
-//            return newDoc;
-            throw new UnsupportedOperationException("NO LONGER IMPLEMENTED - AR");
+            final DocumentImpl newDoc = builder.getDocument();
+            newDoc.computeNodeIds();
+            return newDoc;
         } catch(final EXistException e) {
             throw new DOMException(DOMException.INVALID_STATE_ERR, e.getMessage());
         }
