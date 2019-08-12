@@ -1028,7 +1028,7 @@ public abstract class DBBroker implements AutoCloseable {
      * @throws LockException If an exception occurs whilst acquiring locks
 	 */
 	public abstract @EnsureUnlocked DocumentImpl storeTempResource(
-			org.exist.dom.memtree.DocumentImpl doc) throws EXistException,
+			org.exist.dom.memory.DocumentImpl doc) throws EXistException,
 			PermissionDeniedException, LockException;
 		
 	/**

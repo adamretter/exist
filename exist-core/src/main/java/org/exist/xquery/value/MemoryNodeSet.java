@@ -1,6 +1,6 @@
 package org.exist.xquery.value;
 
-import org.exist.dom.memtree.NodeImpl;
+import org.exist.dom.memory.NodeImpl;
 import org.exist.xquery.NodeTest;
 import org.exist.xquery.XPathException;
 

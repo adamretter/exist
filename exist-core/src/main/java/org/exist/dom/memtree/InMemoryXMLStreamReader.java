@@ -23,10 +23,15 @@ package org.exist.dom.memtree;
 
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import net.sf.saxon.om.NamespaceBinding;
+import net.sf.saxon.type.BuiltInAtomicType;
+import net.sf.saxon.type.SimpleType;
+import net.sf.saxon.type.Type;
 import org.exist.dom.QName;
+import org.exist.dom.memory.DocumentImpl;
+import org.exist.dom.memory.NodeImpl;
 import org.exist.numbering.NodeId;
 import org.exist.stax.ExtendedXMLStreamReader;
-import org.w3c.dom.Node;
 
 import javax.annotation.Nullable;
 import javax.xml.namespace.NamespaceContext;
@@ -61,12 +66,12 @@ public class InMemoryXMLStreamReader implements ExtendedXMLStreamReader {
     @Override
     public Object getProperty(final String name) throws IllegalArgumentException {
         if(name.equals(PROPERTY_NODE_ID)) {
-
-            if(currentNode < 0 || currentNode >= doc.size) {
+            if(currentNode < 0 || currentNode >= doc.getTree().tinyTree.getNumberOfNodes()) {
                 return null;
             }
             doc.expand();
-            return doc.nodeId[currentNode];
+
+            return doc.getTree().getNodeId(currentNode);
         }
         return null;
     }
@@ -77,7 +82,7 @@ public class InMemoryXMLStreamReader implements ExtendedXMLStreamReader {
             int next = -1;
 
             if(state == XMLStreamReader.START_ELEMENT || state == XMLStreamReader.START_DOCUMENT) {
-                next = doc.getFirstChildFor(currentNode);
+                next = doc.getTree().getFirstChildFor(currentNode);
 
                 if(next < 0) { // no child nodes
                     state = XMLStreamReader.END_ELEMENT;
@@ -89,7 +94,7 @@ public class InMemoryXMLStreamReader implements ExtendedXMLStreamReader {
             }
 
             if(next < 0) {
-                next = doc.next[currentNode];
+                next = doc.getTree().getNextFor(currentNode);
 
                 if(next < currentNode) {
 
@@ -118,29 +123,29 @@ public class InMemoryXMLStreamReader implements ExtendedXMLStreamReader {
             inScopeNamespaces.pop(getQName());
         }
 
-        switch(doc.nodeKind[currentNode]) {
+        switch(doc.getTree().tinyTree.getNodeKind(currentNode)) {
 
-            case Node.TEXT_NODE: {
+            case Type.TEXT: {
                 state = XMLStreamReader.CHARACTERS;
                 break;
             }
 
-            case Node.CDATA_SECTION_NODE: {
-                state = XMLStreamReader.CDATA;
-                break;
-            }
+//            case Type.CDATA_SECTION_NODE: {
+//                state = XMLStreamReader.CDATA;
+//                break;
+//            }
 
-            case Node.COMMENT_NODE: {
+            case Type.COMMENT: {
                 state = XMLStreamReader.COMMENT;
                 break;
             }
 
-            case Node.PROCESSING_INSTRUCTION_NODE: {
+            case Type.PROCESSING_INSTRUCTION: {
                 state = XMLStreamReader.PROCESSING_INSTRUCTION;
                 break;
             }
 
-            case Node.ELEMENT_NODE: {
+            case Type.ELEMENT: {
                 state = XMLStreamReader.START_ELEMENT;
                 break;
             }
@@ -219,18 +224,20 @@ public class InMemoryXMLStreamReader implements ExtendedXMLStreamReader {
 
     @Override
     public String getAttributeValue(final String namespaceURI, final String localName) {
-        final int attrCount = doc.getAttributesCountFor(currentNode);
+        final int attrCount = doc.getTree().getAttributesCountFor(currentNode);
 
         if(attrCount == 0) {
             return null;
         }
-        final int attrStart = doc.alpha[currentNode];
+        final int attrStart = doc.getTree().tinyTree.getAlphaArray()[currentNode];
 
         for(int i = 0; i < attrCount; i++) {
-            final QName qname = doc.attrName[attrStart + i];
+
+            final int attrNameCode = doc.getTree().tinyTree.getAttributeNameCodeArray()[attrStart + i];
+            final QName qname = QName.fromJavaQName(doc.getTree().tinyTree.getNamePool().getUnprefixedQName(attrNameCode).toJaxpQName());
 
             if((namespaceURI == null || namespaceURI.equals(qname.getNamespaceURI())) && localName.equals(qname.getLocalPart())) {
-                return doc.attrValue[attrStart + i];
+                return doc.getTree().tinyTree.getAttributeValueArray()[attrStart + i].toString();
             }
         }
         return null;
@@ -241,7 +248,7 @@ public class InMemoryXMLStreamReader implements ExtendedXMLStreamReader {
         if(state != START_ELEMENT) {
             throw new IllegalStateException(NOT_START_ELEMENT);
         }
-        return doc.getAttributesCountFor(currentNode);
+        return doc.getTree().getAttributesCountFor(currentNode);
     }
 
     @Override
@@ -253,8 +260,10 @@ public class InMemoryXMLStreamReader implements ExtendedXMLStreamReader {
         if(index > getAttributeCount()) {
             throw new ArrayIndexOutOfBoundsException();
         }
-        final int attr = doc.alpha[currentNode];
-        return doc.attrName[attr + index];
+        final int attr = doc.getTree().tinyTree.getAlphaArray()[currentNode];
+        final int attrNameCode = doc.getTree().tinyTree.getAttributeNameCodeArray()[attr];
+        final QName qname = QName.fromJavaQName(doc.getTree().tinyTree.getNamePool().getUnprefixedQName(attrNameCode).toJaxpQName());
+        return qname;
     }
 
     @Override
@@ -296,8 +305,8 @@ public class InMemoryXMLStreamReader implements ExtendedXMLStreamReader {
             throw new ArrayIndexOutOfBoundsException();
         }
         doc.expand();
-        final int attr = doc.alpha[currentNode];
-        return doc.attrNodeId[attr + index];
+        final int attr = doc.getTree().tinyTree.getAlphaArray()[currentNode];
+        return doc.getTree().getAttrNodeId(attr);
     }
 
     @Override
@@ -309,26 +318,17 @@ public class InMemoryXMLStreamReader implements ExtendedXMLStreamReader {
         if(index > getAttributeCount()) {
             throw new ArrayIndexOutOfBoundsException();
         }
-        final int attr = doc.alpha[currentNode];
-        final int type = doc.attrType[attr + index];
+        final int attr = doc.getTree().tinyTree.getAlphaArray()[currentNode];
+        final SimpleType type = doc.getTree().tinyTree.getAttributeTypeArray()[attr + index];
 
-        switch(type) {
-
-            case AttrImpl.ATTR_ID_TYPE: {
-                return "ID";
-            }
-
-            case AttrImpl.ATTR_IDREF_TYPE: {
-                return "IDREF";
-            }
-
-            case AttrImpl.ATTR_IDREFS_TYPE: {
-                return "IDREFS";
-            }
-
-            default: {
-                return "CDATA";
-            }
+        if (type.equals(BuiltInAtomicType.ID)) {
+            return "ID";
+        } else if (type.equals(BuiltInAtomicType.IDREF)) {
+            return "IDREF";
+//        } else if (type.equals(BuiltInAtomicType.IDREFS)) {
+//            return "IDREFS";
+        } else {
+            return "CDATA";
         }
     }
 
@@ -341,8 +341,9 @@ public class InMemoryXMLStreamReader implements ExtendedXMLStreamReader {
         if(index > getAttributeCount()) {
             throw new ArrayIndexOutOfBoundsException();
         }
-        final int attr = doc.alpha[currentNode];
-        return doc.attrValue[attr + index];
+        final int attr = doc.getTree().tinyTree.getAlphaArray()[currentNode];
+
+        return doc.getTree().tinyTree.getAttributeValueArray()[attr + index].toString();
     }
 
     @Override
@@ -358,7 +359,7 @@ public class InMemoryXMLStreamReader implements ExtendedXMLStreamReader {
         if(state != START_ELEMENT && state != END_ELEMENT && state != NAMESPACE) {
             throw new IllegalStateException("Cursor is not at an element or namespace");
         }
-        return doc.getNamespacesCountFor(currentNode);
+        return doc.getTree().getNamespacesCountFor(currentNode);
     }
 
     @Override
@@ -366,9 +367,9 @@ public class InMemoryXMLStreamReader implements ExtendedXMLStreamReader {
         if(index > getNamespaceCount()) {
             throw new ArrayIndexOutOfBoundsException();
         }
-        final int ns = doc.alphaLen[currentNode];
-        final QName nsQName = doc.namespaceCode[ns + index];
-        return nsQName.getLocalPart();
+        final int ns = doc.getTree().tinyTree.getBetaArray()[currentNode];
+        final NamespaceBinding namespaceBinding = doc.getTree().tinyTree.getNamespaceBindings()[ns + index];
+        return namespaceBinding.getPrefix();
     }
 
     @Override
@@ -376,9 +377,9 @@ public class InMemoryXMLStreamReader implements ExtendedXMLStreamReader {
         if(index > getNamespaceCount()) {
             throw new ArrayIndexOutOfBoundsException();
         }
-        final int ns = doc.alphaLen[currentNode];
-        final QName nsQName = doc.namespaceCode[ns + index];
-        return nsQName.getNamespaceURI();
+        final int ns = doc.getTree().tinyTree.getBetaArray()[currentNode];
+        final NamespaceBinding namespaceBinding = doc.getTree().tinyTree.getNamespaceBindings()[ns + index];
+        return namespaceBinding.getURI();
     }
 
     @Override
@@ -394,16 +395,18 @@ public class InMemoryXMLStreamReader implements ExtendedXMLStreamReader {
     @Override
     public String getText() {
         if(state == CHARACTERS || state == COMMENT || state == CDATA) {
-            return new String(doc.characters, doc.alpha[currentNode], doc.alphaLen[currentNode]);
+            final int start = doc.getTree().tinyTree.getAlphaArray()[currentNode];
+            final int len = doc.getTree().tinyTree.getBetaArray()[currentNode];
+            return doc.getTree().tinyTree.getCharacterBuffer().subSequence(start, start + len).toString();
         }
         return "";
     }
 
     @Override
     public char[] getTextCharacters() {
-        final char[] ch = new char[doc.alphaLen[currentNode]];
-        System.arraycopy(doc.characters, doc.alpha[currentNode], ch, 0, ch.length);
-        return ch;
+        final int start = doc.getTree().tinyTree.getAlphaArray()[currentNode];
+        final int len = doc.getTree().tinyTree.getBetaArray()[currentNode];
+        return doc.getTree().tinyTree.getCharacterBuffer().subSequence(start, start + len).toString().toCharArray();
     }
 
     @Override
@@ -439,7 +442,9 @@ public class InMemoryXMLStreamReader implements ExtendedXMLStreamReader {
     @Override
     public QName getQName() {
         if(state == START_ELEMENT || state == END_ELEMENT) {
-            return doc.nodeName[currentNode];
+            final int nameCode = doc.getTree().tinyTree.getNameCode(currentNode);
+            final QName qname = QName.fromJavaQName(doc.getTree().tinyTree.getNamePool().getUnprefixedQName(nameCode).toJaxpQName());
+            return qname;
         }
         throw new IllegalStateException("Cursor is not at the start of end of an element");
     }
@@ -491,13 +496,15 @@ public class InMemoryXMLStreamReader implements ExtendedXMLStreamReader {
 
     @Override
     public String getPITarget() {
-        final QName qn = doc.nodeName[currentNode];
-        return qn != null ? qn.getLocalPart() : null;
+        final int nameCode = doc.getTree().tinyTree.getNameCode(currentNode);
+        return doc.getTree().tinyTree.getNamePool().getLocalName(nameCode);
     }
 
     @Override
     public String getPIData() {
-        return new String(doc.characters, doc.alpha[currentNode], doc.alphaLen[currentNode]);
+        final int start = doc.getTree().tinyTree.getAlphaArray()[currentNode];
+        final int len = doc.getTree().tinyTree.getBetaArray()[currentNode];
+        return doc.getTree().tinyTree.getCharacterBuffer().subSequence(start, start + len).toString();
     }
 
     /**

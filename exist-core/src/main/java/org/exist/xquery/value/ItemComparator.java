@@ -29,7 +29,7 @@ import java.util.Comparator;
  * Comparator for comparing instances of Item
  * apart from the XQuery atomic types there are
  * two Node types in eXist org.exist.dom.persistent.*
- * and org.exist.dom.memtree.* this class is
+ * and org.exist.dom.memory.* this class is
  * used so that both types can be compared to each other
  * as Item even though they have quite different inheritance
  * hierarchies.
@@ -45,7 +45,7 @@ public class ItemComparator implements Comparator<Item> {
 
     @Override
     public int compare(final Item n1, final Item n2) {
-        if (n1 instanceof org.exist.dom.memtree.NodeImpl && (!(n2 instanceof org.exist.dom.memtree.NodeImpl))) {
+        if (n1 instanceof org.exist.dom.memory.NodeImpl && (!(n2 instanceof org.exist.dom.memory.NodeImpl))) {
             return Constants.INFERIOR;
         } else if (n1 instanceof Comparable) {
             return ((Comparable) n1).compareTo(n2);

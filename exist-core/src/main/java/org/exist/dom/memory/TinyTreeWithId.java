@@ -1,5 +1,6 @@
 package org.exist.dom.memory;
 
+import net.sf.saxon.dom.NodeOverNodeInfo;
 import net.sf.saxon.om.NamePool;
 import net.sf.saxon.om.NamespaceBinding;
 import net.sf.saxon.om.StructuredQName;
@@ -20,6 +21,7 @@ import org.xml.sax.SAXException;
 
 import javax.annotation.Nullable;
 import javax.xml.XMLConstants;
+import java.util.Map;
 
 public class TinyTreeWithId {
 
@@ -37,6 +39,19 @@ public class TinyTreeWithId {
             calculateNodeIds();
         }
         return nodeId[nodeNr];
+    }
+
+    public NodeImpl getNodeById(final NodeId id) {
+        if (nodeId == null) {
+            calculateNodeIds();
+        }
+
+        for(int i = 0; i < tinyTree.getNumberOfNodes(); i++) {
+            if(id.equals(nodeId[i])) {
+                return getNode(i);
+            }
+        }
+        return null;
     }
 
     public NodeId getAttrNodeId(final int nodeNr) {
@@ -81,7 +96,7 @@ public class TinyTreeWithId {
         return nextNr < node.getNodeNumber() ? null : tinyTree.getNode(nextNr);
     }
 
-    private int getNextSibling(final int nodeNr) {
+    public int getNextSibling(final int nodeNr) {
         // TODO(AR) is this check needed here?
         if (tinyTree.getNodeKind(nodeNr) == Type.ATTRIBUTE) {
             return -1;
@@ -91,7 +106,7 @@ public class TinyTreeWithId {
         return nextNr < nodeNr ? -1 : nextNr;
     }
 
-    private int getFirstChildFor(final int nodeNr) {
+    public int getFirstChildFor(final int nodeNr) {
         final short level = tinyTree.getNodeDepthArray()[nodeNr];
         final int nextNode = nodeNr + 1;
         if((nextNode < tinyTree.getNumberOfNodes()) && (tinyTree.getNodeDepthArray()[nextNode] > level)) {
@@ -100,7 +115,22 @@ public class TinyTreeWithId {
         return -1;
     }
 
-    private int getParentNode(final int nodeNr) {
+    public int getNextFor(final int nodeNr) {
+        return tinyTree.getNextPointerArray()[nodeNr];
+    }
+
+    public int getAttributesCountFor(final int nodeNumber) {
+        int count = 0;
+        int attr = tinyTree.getAlphaArray()[nodeNumber];
+        if(-1 < attr) {
+            while((attr < tinyTree.getNumberOfAttributes()) && (tinyTree.getAttributeParentArray()[attr++] == nodeNumber)) {
+                ++count;
+            }
+        }
+        return count;
+    }
+
+    public int getParentNode(final int nodeNr) {
         int next = tinyTree.getNextPointerArray()[nodeNr];
         while (next > nodeNr) {
             next = tinyTree.getNextPointerArray()[next];
@@ -109,6 +139,16 @@ public class TinyTreeWithId {
             return -1;
         }
         return next;
+    }
+
+    public int getChildCountFor(final int nodeNr) {
+        int count = 0;
+        int nextNode = getFirstChildFor(nodeNr);
+        while (nextNode > nodeNr) {
+            ++count;
+            nextNode = tinyTree.getNextPointerArray()[nextNode];
+        }
+        return count;
     }
 
     private void computeNodeIds(final NodeId id, final int nodeNr) {
@@ -144,6 +184,9 @@ public class TinyTreeWithId {
      * @throws SAXException DOCUMENT ME!
      */
     public void copyTo(final int nodeNr, final DocumentBuilderReceiver receiver) throws SAXException {
+
+        //TODO(AR) replace with tinyNode.copy(new NodeImpl.ReceiverAdapter(tinyNode, receiver), 0, tinyNode);
+
         copyTo(nodeNr, receiver, false);
     }
 
@@ -291,31 +334,44 @@ public class TinyTreeWithId {
             throw new DOMException(DOMException.HIERARCHY_REQUEST_ERR, "node not found");
         }
 
-        final NodeImpl node;
-        switch (tinyTree.getNodeKind(nodeNr)) {
+        return wrap(this, nodeNr);
+    }
+
+    static NodeImpl wrap(final TinyTreeWithId tinyTreeWithId, final int nodeNr) {
+        final NodeImpl wrapped;
+        switch (tinyTreeWithId.tinyTree.getNodeKind(nodeNr)) {
+            case Type.DOCUMENT:
+                wrapped = new DocumentImpl(tinyTreeWithId, nodeNr);
+                break;
+
             case Type.ELEMENT:
-                node = new ElementImpl(this, nodeNr);
+                wrapped = new ElementImpl(tinyTreeWithId, nodeNr);
+                break;
+
+            case Type.ATTRIBUTE:
+                wrapped = new AttrImpl(tinyTreeWithId, nodeNr, null);
+                break;
+
+            case Type.COMMENT:
+                wrapped = new CommentImpl(tinyTreeWithId, nodeNr);
+                break;
+
+            case Node.CDATA_SECTION_NODE:
+                wrapped = new CDATASectionImpl(tinyTreeWithId, nodeNr);
+                break;
+
+            case Type.PROCESSING_INSTRUCTION:
+                wrapped = new ProcessingInstructionImpl(tinyTreeWithId, nodeNr);
+                break;
+
+            case Type.TEXT:
+                wrapped = new TextImpl(tinyTreeWithId, nodeNr);
                 break;
 
             default:
                 throw new UnsupportedOperationException("TODO AR implement");
 
-//                case Type.TEXT:
-//                    node = new TextImpl(this, nodeNr);
-//                    break;
-//
-//                case Type.COMMENT:
-//                    node = new CommentImpl(this, nodeNr);
-//                    break;
-//
-//                case Type.PROCESSING_INSTRUCTION:
-//                    node = new ProcessingInstructionImpl(this, nodeNr);
-//                    break;
-
-        //TODO(AR) figure out!
-//                case Node.CDATA_SECTION_NODE:
-//                    node = new CDATASectionImpl(this, nodeNr);
-//                    break;
+                //TODO(AR) figure out!
 //                case NodeImpl.REFERENCE_NODE:
 //                    node = new ReferenceNode(this, nodeNr);
 //                    break;
@@ -323,130 +379,89 @@ public class TinyTreeWithId {
 //                default:
 //                    throw new DOMException(DOMException.NOT_FOUND_ERR, "node not found");
         }
-        return node;
+        return wrapped;
     }
 
-    /**
-     * Stream the specified document fragment to a receiver. This method
-     * is called by the serializer to output in-memory nodes.
-     *
-     * @param serializer the serializer
-     * @param nodeNr node to be serialized
-     * @param receiver the receiveer
-     * @throws SAXException DOCUMENT ME
-     */
-    public void streamTo(final Serializer serializer, int nodeNr, final Receiver receiver)
-            throws SAXException {
-        final int top = nodeNr;
-        while (nodeNr != -1) {
-            startNode(serializer, nodeNr, receiver);
-            int nextNode;
-//            if(node instanceof ReferenceNode) {
-//                //Nothing more to stream ?
-//                nextNode = null;
-//            } else {
-                nextNode = getFirstChildFor(nodeNr);
-//            }
-            while (nextNode == -1) {
-                endNode(nodeNr, receiver);
-                if(top != -1 && top == nodeNr) {
+    static NodeImpl wrap(final TinyTreeWithId tinyTreeWithId, final Node node) {
+        if (node == null) {
+            return null;
+        } else if (node instanceof NodeImpl) {
+            return (NodeImpl)node;
+        } else if (node instanceof NodeOverNodeInfo) {
+            final NodeImpl wrapped;
+            switch (node.getNodeType()) {
+                case Node.DOCUMENT_NODE:
+                    wrapped = new DocumentImpl(tinyTreeWithId, (NodeOverNodeInfo)node);
                     break;
-                }
-                nextNode = getNextSibling(nodeNr);
-                if(nextNode == -1) {
-                    nodeNr = getParentNode(nodeNr);
-                    if((nodeNr == -1) || ((top != -1) && (top == nodeNr))) {
-                        endNode(nodeNr, receiver);
-                        break;
-                    }
-                }
+
+                case Node.ELEMENT_NODE:
+                    wrapped = new ElementImpl(tinyTreeWithId, (NodeOverNodeInfo)node);
+                    break;
+
+                case Node.ATTRIBUTE_NODE:
+                    wrapped = new AttrImpl(tinyTreeWithId, (NodeOverNodeInfo)node, null);
+                    break;
+
+                case Node.COMMENT_NODE:
+                    wrapped = new CommentImpl(tinyTreeWithId, (NodeOverNodeInfo)node);
+                    break;
+
+                case Node.CDATA_SECTION_NODE:
+                    wrapped = new CDATASectionImpl(tinyTreeWithId, (NodeOverNodeInfo)node);
+                    break;
+
+                case Node.PROCESSING_INSTRUCTION_NODE:
+                    wrapped = new ProcessingInstructionImpl(tinyTreeWithId, (NodeOverNodeInfo)node);
+                    break;
+
+                case Node.TEXT_NODE:
+                    wrapped = new TextImpl(tinyTreeWithId, (NodeOverNodeInfo)node);
+                    break;
+
+                default:
+                    throw new UnsupportedOperationException("TODO AR implement");
             }
-            nodeNr = nextNode;
+            return wrapped;
+
+        } else {
+            throw new UnsupportedOperationException("TODO AR implement");
         }
     }
 
-    private void startNode(final Serializer serializer, final int nodeNr, final Receiver receiver)
-            throws SAXException {
-        switch(tinyTree.getNodeKind(nodeNr)) {
-            case Type.ELEMENT:
-                final QName nodeName = getQName(nodeNr);
-                //Output required namespace declarations
-                int ns = tinyTree.getBetaArray()[nodeNr];
-                if(ns > -1) {
-                    while((ns < tinyTree.getNumberOfNamespaces()) && (tinyTree.getNamespaceParentArray()[ns] == nodeNr)) {
-                        final NamespaceBinding namespaceBinding = tinyTree.getNamespaceBindings()[ns];
-                        final QName nsQName = new QName(namespaceBinding.getPrefix(), namespaceBinding.getURI());
-                        if(XMLConstants.XMLNS_ATTRIBUTE.equals(nsQName.getLocalPart())) {
-                            receiver.startPrefixMapping(XMLConstants.DEFAULT_NS_PREFIX, nsQName.getNamespaceURI());
-                        } else {
-                            receiver.startPrefixMapping(nsQName.getLocalPart(), nsQName.getNamespaceURI());
-                        }
-                        ++ns;
-                    }
-                }
-                //Create the attribute list
-                AttrList attribs = null;
-                int attr = tinyTree.getAlphaArray()[nodeNr];
-                if(attr > -1) {
-                    attribs = new AttrList();
-                    while((attr < tinyTree.getNumberOfAttributes()) && (tinyTree.getAttributeParentArray()[attr] == nodeNr)) {
-                        final QName attrQName = getAttrQName(attr);
-                        attribs.addAttribute(attrQName, tinyTree.getAttributeValueArray()[attr].toString());
-                        ++attr;
-                    }
-                }
-                receiver.startElement(nodeName, attribs);
-                break;
-
-            case Type.TEXT:
-                receiver.characters(tinyTree.getCharacterBuffer().subSequence(tinyTree.getAlphaArray()[nodeNr], tinyTree.getAlphaArray()[nodeNr] + tinyTree.getBetaArray()[nodeNr]));
-                break;
-
-            case Type.ATTRIBUTE:
-                final QName attrQName = getAttrQName(nodeNr);
-                receiver.attribute(attrQName, tinyTree.getAttributeValueArray()[nodeNr].toString());
-                break;
-
-            case Type.COMMENT:
-                final CharSequence cs = tinyTree.getCharacterBuffer().subSequence(tinyTree.getAlphaArray()[nodeNr], tinyTree.getAlphaArray()[nodeNr] + tinyTree.getBetaArray()[nodeNr]);
-                receiver.comment(cs.toString().toCharArray(), 0, cs.length());
-                break;
-
-            case Type.PROCESSING_INSTRUCTION:
-                final QName piQName = getQName(nodeNr);
-                final String data = tinyTree.getCharacterBuffer().subSequence(tinyTree.getAlphaArray()[nodeNr], tinyTree.getAlphaArray()[nodeNr] + tinyTree.getBetaArray()[nodeNr]).toString();
-                receiver.processingInstruction(piQName.getLocalPart(), data);
-                break;
-
-                //TODO(AR) figure this out!
-//            case Node.CDATA_SECTION_NODE:
-//                receiver.cdataSection(document.characters, document.alpha[nodeNr], document.alphaLen[nodeNr]);
-//                break;
-//
-//            case org.exist.dom.memtree.NodeImpl.REFERENCE_NODE:
-//                serializer.toReceiver(document.references[document.alpha[nodeNr]], true, false);
-//                break;
-        }
-    }
-
-    private void endNode(final int nodeNr, final Receiver receiver) throws SAXException {
-        if(tinyTree.getNodeKind(nodeNr) == Type.ELEMENT) {
-            receiver.endElement(getQName(nodeNr));
-
-            //End all prefix mappings used for the element
-            int ns = tinyTree.getBetaArray()[nodeNr];
-            if(ns > -1) {
-                while ((ns < tinyTree.getNumberOfNamespaces()) && (tinyTree.getNamespaceParentArray()[ns] == nodeNr)) {
-                    final NamespaceBinding namespaceBinding = tinyTree.getNamespaceBindings()[ns];
-                    final QName nsQName = new QName(namespaceBinding.getPrefix(), namespaceBinding.getURI());
-                    if(XMLConstants.XMLNS_ATTRIBUTE.equals(nsQName.getLocalPart())) {
-                        receiver.endPrefixMapping(XMLConstants.DEFAULT_NS_PREFIX);
-                    } else {
-                        receiver.endPrefixMapping(nsQName.getLocalPart());
-                    }
-                    ++ns;
-                }
+    public int getNamespacesCountFor(final int nodeNr) {
+        int count = 0;
+        int ns = tinyTree.getBetaArray()[nodeNr];
+        if(-1 < ns) {
+            while((ns < tinyTree.getNumberOfNamespaces()) && (tinyTree.getNamespaceParentArray()[ns++] == nodeNr)) {
+                ++count;
             }
         }
+        return count;
+    }
+
+    public Map<String, String> getNamespaceMap(final Map<String, String> map, final int nodeNr) {
+        int ns = tinyTree.getBetaArray()[nodeNr];
+        if(-1 < ns) {
+            while(ns < tinyTree.getNumberOfNamespaces() && tinyTree.getNamespaceParentArray()[ns] == nodeNr) {
+                final NamespaceBinding binding = tinyTree.getNamespaceBindings()[ns];
+                map.put(binding.getPrefix(), binding.getURI());
+                ++ns;
+            }
+        }
+
+        int attr = tinyTree.getAlphaArray()[nodeNr];
+        if(-1 < attr) {
+            while(attr < tinyTree.getNumberOfAttributes() && tinyTree.getAttributeParentArray()[attr] == nodeNr) {
+                final int attrNameCode = tinyTree.getAttributeNameCodeArray()[attr];
+                final StructuredQName attrName = tinyTree.getNamePool().getUnprefixedQName(attrNameCode);
+                final QName qname = QName.fromJavaQName(attrName.toJaxpQName());
+                if(qname.getPrefix() != null && !qname.getPrefix().isEmpty()) {
+                    map.put(qname.getPrefix(), qname.getNamespaceURI());
+                }
+                ++attr;
+            }
+        }
+
+        return map;
     }
 }

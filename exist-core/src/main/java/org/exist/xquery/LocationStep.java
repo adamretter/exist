@@ -30,7 +30,7 @@ import org.exist.dom.persistent.NewArrayNodeSet;
 import org.exist.dom.persistent.NodeSet;
 import org.exist.indexing.StructuralIndex;
 import org.exist.dom.memtree.InMemoryNodeSet;
-import org.exist.dom.memtree.NodeImpl;
+import org.exist.dom.memory.NodeImpl;
 import org.exist.numbering.NodeId;
 import org.exist.stax.*;
 import org.exist.storage.ElementValue;

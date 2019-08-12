@@ -377,7 +377,7 @@ public class XSLTServlet extends HttpServlet {
                 Object value = request.getAttribute(name);
                 if (value instanceof NodeValue) {
                     final NodeValue nv = (NodeValue) value;
-                    if (nv.getImplementationType() == NodeValue.IN_MEMORY_NODE) {
+                    if (nv.getImplementationType() == NodeValue.IN_MEMORY_SAXON_NODE) {
                         value = nv.toMemNodeSet();
                     }
                 }

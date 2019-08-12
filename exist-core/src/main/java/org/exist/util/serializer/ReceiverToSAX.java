@@ -43,6 +43,8 @@ public class ReceiverToSAX implements Receiver {
 
     private final char[] charBuf = new char[2048];
 
+    private DeferredStartElement deferredStartElement = null;
+
     /**
      * @param handler the content handler
      */
@@ -94,24 +96,51 @@ public class ReceiverToSAX implements Receiver {
 
     @Override
     public void startElement(final QName qname, final AttrList attribs) throws SAXException {
-        final AttributesImpl a = new AttributesImpl();
+        if (deferredStartElement != null) {
+            deferredStartElement.apply();
+            deferredStartElement = null;
+        }
+
+        deferredStartElement = new DeferredStartElement(qname);
         if (attribs != null) {
             for (int i = 0; i < attribs.getLength(); i++) {
                 final QName attrQName = attribs.getQName(i);
-                a.addAttribute(attrQName.getNamespaceURI(), attrQName.getLocalPart(), attrQName.getStringValue(),
+                deferredStartElement.attributes.addAttribute(attrQName.getNamespaceURI(), attrQName.getLocalPart(), attrQName.getStringValue(),
                         "CDATA", attribs.getValue(i));
             }
         }
-        contentHandler.startElement(qname.getNamespaceURI(), qname.getLocalPart(), qname.getStringValue(), a);
+    }
+
+    private class DeferredStartElement {
+        final QName qname;
+        final AttributesImpl attributes = new AttributesImpl();
+
+        private DeferredStartElement(final QName qname) {
+            this.qname = qname;
+        }
+
+        public void apply() throws SAXException {
+            contentHandler.startElement(qname.getNamespaceURI(), qname.getLocalPart(), qname.getStringValue(), attributes);
+        }
     }
 
     @Override
     public void endElement(final QName qname) throws SAXException {
+        if (deferredStartElement != null) {
+            deferredStartElement.apply();
+            deferredStartElement = null;
+        }
+
         contentHandler.endElement(qname.getNamespaceURI(), qname.getLocalPart(), qname.getStringValue());
     }
 
     @Override
     public void characters(final CharSequence seq) throws SAXException {
+        if (deferredStartElement != null) {
+            deferredStartElement.apply();
+            deferredStartElement = null;
+        }
+
         final int len = seq.length();
         if (len < charBuf.length) {
             for (int i = 0; i < len; i++) {
@@ -125,11 +154,22 @@ public class ReceiverToSAX implements Receiver {
 
     @Override
     public void attribute(final QName qname, final String value) throws SAXException {
-        contentHandler.characters(value.toCharArray(), 0, value.length());
+        if (deferredStartElement == null) {
+            throw new SAXException("Cannot serialize an attribute by itself");
+        }
+
+        deferredStartElement.attributes.addAttribute(
+                qname.getNamespaceURI(), qname.getLocalPart(), qname.getStringValue(),
+                "CDATA", value);
     }
 
     @Override
     public void comment(final char[] ch, final int start, final int length) throws SAXException {
+        if (deferredStartElement != null) {
+            deferredStartElement.apply();
+            deferredStartElement = null;
+        }
+
         if (lexicalHandler != null) {
             lexicalHandler.comment(ch, start, length);
         }
@@ -138,11 +178,21 @@ public class ReceiverToSAX implements Receiver {
     @Override
     public void processingInstruction(final String target, final String data)
             throws SAXException {
+        if (deferredStartElement != null) {
+            deferredStartElement.apply();
+            deferredStartElement = null;
+        }
+
         contentHandler.processingInstruction(target, data);
     }
 
     @Override
     public void cdataSection(final char[] ch, final int start, final int len) throws SAXException {
+        if (deferredStartElement != null) {
+            deferredStartElement.apply();
+            deferredStartElement = null;
+        }
+
         if (lexicalHandler != null) {
             lexicalHandler.startCDATA();
         }

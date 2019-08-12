@@ -1,10 +1,23 @@
 package org.exist.dom.memory;
 
-import net.sf.saxon.dom.AttrOverNodeInfo;
 import net.sf.saxon.dom.DOMNodeList;
+import net.sf.saxon.dom.ElementOverNodeInfo;
+import net.sf.saxon.dom.NodeOverNodeInfo;
+import net.sf.saxon.om.AxisInfo;
+import net.sf.saxon.om.NodeInfo;
+import net.sf.saxon.pattern.NodeKindTest;
+import net.sf.saxon.tree.iter.AxisIterator;
 import net.sf.saxon.tree.tiny.TinyNodeImpl;
+import org.exist.dom.QName;
+import org.exist.storage.ElementValue;
+import org.exist.xquery.NodeTest;
+import org.exist.xquery.XPathException;
+import org.exist.xquery.value.Sequence;
 import org.exist.xquery.value.Type;
 import org.w3c.dom.*;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public class ElementImpl extends NodeImpl<ElementImpl, Element> implements Element {
 
@@ -17,6 +30,13 @@ public class ElementImpl extends NodeImpl<ElementImpl, Element> implements Eleme
 
     ElementImpl(final TinyTreeWithId tinyTreeWithId, final TinyNodeImpl tinyNode) {
         super(tinyTreeWithId, tinyNode);
+        if (node.getNodeType() != NodeImpl.ELEMENT_NODE) {
+            throw new IllegalArgumentException("element argument must be of Element type");
+        }
+    }
+
+    ElementImpl(final TinyTreeWithId tinyTreeWithId, final NodeOverNodeInfo nodeOverNodeInfo) {
+        super(tinyTreeWithId, nodeOverNodeInfo);
         if (node.getNodeType() != NodeImpl.ELEMENT_NODE) {
             throw new IllegalArgumentException("element argument must be of Element type");
         }
@@ -49,7 +69,7 @@ public class ElementImpl extends NodeImpl<ElementImpl, Element> implements Eleme
         if (attr == null) {
             return null;
         }
-        return new AttrImpl(tinyTreeWithId, (TinyNodeImpl)((AttrOverNodeInfo)attr).getUnderlyingNodeInfo(), this);
+        return new AttrImpl(tinyTreeWithId, getTinyNode(attr), this);
     }
 
     @Override
@@ -97,7 +117,7 @@ public class ElementImpl extends NodeImpl<ElementImpl, Element> implements Eleme
         if (attr == null) {
             return null;
         }
-        return new AttrImpl(tinyTreeWithId, (TinyNodeImpl)((AttrOverNodeInfo)attr).getUnderlyingNodeInfo(), this);
+        return new AttrImpl(tinyTreeWithId, getTinyNode(attr), this);
     }
 
     @Override
@@ -144,4 +164,78 @@ public class ElementImpl extends NodeImpl<ElementImpl, Element> implements Eleme
         return Type.ELEMENT;
     }
     // </editor-fold>
+
+
+    @Override
+    public void selectAttributes(final NodeTest test, final Sequence result) throws XPathException {
+        try (final AxisIterator iterator = ((NodeOverNodeInfo) node).getUnderlyingNodeInfo().iterateAxis(AxisInfo.ATTRIBUTE)) {
+            NodeInfo item;
+            while ((item = iterator.next()) != null) {
+                final AttrImpl attrib = new AttrImpl(tinyTreeWithId, (TinyNodeImpl) item, this);
+                if (test.matches(attrib)) {
+                    result.add(attrib);
+                }
+            }
+        }
+    }
+
+    @Override
+    public void selectDescendantAttributes(final NodeTest test, final Sequence result) throws XPathException {
+        try (final AxisIterator iterator = ((NodeOverNodeInfo) node).getUnderlyingNodeInfo().iterateAxis(AxisInfo.DESCENDANT, NodeKindTest.ATTRIBUTE)) {
+            NodeInfo item;
+            while ((item = iterator.next()) != null) {
+                final AttrImpl attrib = new AttrImpl(tinyTreeWithId, (TinyNodeImpl) item, this);
+                if (test.matches(attrib)) {
+                    result.add(attrib);
+                }
+            }
+        }
+    }
+
+    @Override
+    public void selectChildren(final NodeTest test, final Sequence result) throws XPathException {
+        try (final AxisIterator iterator = ((NodeOverNodeInfo) node).getUnderlyingNodeInfo().iterateAxis(AxisInfo.CHILD)) {
+            NodeInfo item;
+            while ((item = iterator.next()) != null) {
+                final NodeImpl node = TinyTreeWithId.wrap(tinyTreeWithId, NodeOverNodeInfo.wrap(item));
+                if (test.matches(node)) {
+                    result.add(node);
+                }
+            }
+        }
+    }
+
+    @Override
+    public void selectDescendants(final boolean includeSelf, final NodeTest test, final Sequence result)
+            throws XPathException {
+        try (final AxisIterator iterator = ((NodeOverNodeInfo) node).getUnderlyingNodeInfo().iterateAxis(includeSelf ? AxisInfo.DESCENDANT_OR_SELF : AxisInfo.DESCENDANT)) {
+            NodeInfo item;
+            while ((item = iterator.next()) != null) {
+                final NodeImpl node = TinyTreeWithId.wrap(tinyTreeWithId, NodeOverNodeInfo.wrap(item));
+                if (test.matches(node)) {
+                    result.add(node);
+                }
+            }
+        }
+    }
+
+    // <editor-fold desc="INode implementation">
+    @Override
+    public QName getQName() {
+        final TinyNodeImpl tinyNode = getTinyNode(node);
+        return new QName(tinyNode.getLocalPart(), tinyNode.getURI(), tinyNode.getPrefix(), ElementValue.ELEMENT);
+    }
+    // </editor-fold>
+
+    public boolean declaresNamespacePrefixes() {
+        return tinyTreeWithId.getNamespacesCountFor(nodeNr) > 0;
+    }
+
+    public Map<String, String> getNamespaceMap() {
+        return getNamespaceMap(new HashMap<>());
+    }
+
+    public Map<String, String> getNamespaceMap(final Map<String, String> map) {
+        return tinyTreeWithId.getNamespaceMap(map, nodeNr);
+    }
 }

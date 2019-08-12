@@ -63,7 +63,7 @@ public class PlainTextIndexConfig {
      */
     boolean parse(NodeValue descriptor) {
         
-        if (descriptor.getImplementationType() == NodeValue.IN_MEMORY_NODE)
+        if (descriptor.getImplementationType() == NodeValue.IN_MEMORY_SAXON_NODE)
         	((NodeImpl)descriptor).expand();
         
         /* Check <doc> and retrieve boost value */

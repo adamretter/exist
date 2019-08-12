@@ -160,7 +160,7 @@ public abstract class Modification extends AbstractExpression
                         item.getStringValue());
                 }
                 final NodeValue nv = (NodeValue)item;
-                if (nv.getImplementationType() == NodeValue.IN_MEMORY_NODE) {
+                if (nv.getImplementationType() == NodeValue.IN_MEMORY_SAXON_NODE) {
                     throw new XPathException(this, "XQuery update expressions can not be applied to in-memory nodes.");
                 }
                 final Node n = nv.getNode();
@@ -207,7 +207,7 @@ public abstract class Modification extends AbstractExpression
                         else
                             {item = builder.getDocument().getNode(last + 1);}
                     } else {
-                        ((org.exist.dom.memtree.NodeImpl)item).deepCopy();
+                        ((org.exist.dom.memory.NodeImpl)item).deepCopy();
                     }
                 }
                 out.add(item);

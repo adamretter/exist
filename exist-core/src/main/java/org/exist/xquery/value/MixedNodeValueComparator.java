@@ -21,7 +21,7 @@
  */
 package org.exist.xquery.value;
 
-import org.exist.dom.memtree.NodeImpl;
+import org.exist.dom.memory.NodeImpl;
 import org.exist.dom.persistent.NodeProxy;
 
 import java.util.Comparator;
@@ -37,8 +37,8 @@ public class MixedNodeValueComparator implements Comparator {
     public int compare(Object o1, Object o2) {
         final NodeValue n1 = (NodeValue) o1;
         final NodeValue n2 = (NodeValue) o2;
-        if (n1.getImplementationType() == NodeValue.IN_MEMORY_NODE) {
-            if (n2.getImplementationType() == NodeValue.IN_MEMORY_NODE) {
+        if (n1.getImplementationType() == NodeValue.IN_MEMORY_SAXON_NODE) {
+            if (n2.getImplementationType() == NodeValue.IN_MEMORY_SAXON_NODE) {
                 return ((NodeImpl) n1).compareTo((NodeImpl) n2);
             } else {
                 return -1;

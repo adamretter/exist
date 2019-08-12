@@ -23,7 +23,7 @@ package org.exist.xquery;
 
 import org.exist.dom.persistent.DocumentSet;
 import org.exist.dom.QName;
-import org.exist.dom.memtree.NodeImpl;
+import org.exist.dom.memory.NodeImpl;
 import org.exist.xquery.util.Error;
 import org.exist.xquery.util.Messages;
 import org.exist.xquery.value.Item;

@@ -24,8 +24,8 @@ package org.exist.xquery.functions.fn;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.exist.dom.QName;
-import org.exist.dom.memtree.DocumentImpl;
-import org.exist.dom.memtree.NodeImpl;
+import org.exist.dom.memory.DocumentImpl;
+import org.exist.dom.memory.NodeImpl;
 import org.exist.dom.persistent.*;
 import org.exist.util.XMLNames;
 import org.exist.xquery.*;
@@ -114,7 +114,7 @@ public class FunId extends Function {
                 	throw new XPathException(this, ErrorCodes.XPTY0004, "XPTY0004: fn:id() argument is not a node", nodes);
                 }
                 NodeValue node = (NodeValue)nodes.itemAt(0);
-                if (node.getImplementationType() == NodeValue.IN_MEMORY_NODE)
+                if (node.getImplementationType() == NodeValue.IN_MEMORY_SAXON_NODE)
                 	//TODO : how to enforce this ?
                 	//If $node, or the context item if the second argument is omitted, 
                 	//is a node in a tree whose root is not a document node [err:FODC0001] is raised                    processInMem = true;

@@ -208,7 +208,7 @@ public class MemTreeBuilder {
             }
         }
 
-        return tinyBuilder.getTree().getNumberOfNodes();
+        return tinyBuilder.getTree().getNumberOfNodes() - 1;
     }
 
 
@@ -295,14 +295,14 @@ public class MemTreeBuilder {
 //        return nodeNr;
 
         final NamePool pool = tinyBuilder.getTree().getNamePool();
-        final FingerprintedQName name = new FingerprintedQName(new StructuredQName(qname.getPrefix(), qname.getNamespaceURI(), qname.getLocalPart()), pool);
+        final FingerprintedQName name = new FingerprintedQName(new StructuredQName(qname.getPrefix() != null ? qname.getPrefix() : "", qname.getNamespaceURI(), qname.getLocalPart()), pool);
         try {
             tinyBuilder.attribute(name, AnySimpleType.INSTANCE, value, null, 0);
         } catch (final net.sf.saxon.trans.XPathException e) {
             throw new IllegalStateException(e);
         }
 
-        return tinyBuilder.getTree().getNumberOfNodes();
+        return tinyBuilder.getTree().getNumberOfNodes() - 1;
     }
 
 
@@ -321,7 +321,7 @@ public class MemTreeBuilder {
             throw new IllegalStateException(e);
         }
 
-        return tinyBuilder.getTree().getNumberOfNodes();
+        return tinyBuilder.getTree().getNumberOfNodes() - 1;
     }
 
 
@@ -342,7 +342,7 @@ public class MemTreeBuilder {
             throw new IllegalStateException(e);
         }
 
-        return tinyBuilder.getTree().getNumberOfNodes();
+        return tinyBuilder.getTree().getNumberOfNodes() - 1;
     }
 
 
@@ -353,7 +353,7 @@ public class MemTreeBuilder {
             throw new IllegalStateException(e);
         }
 
-        return tinyBuilder.getTree().getNumberOfNodes();
+        return tinyBuilder.getTree().getNumberOfNodes() - 1;
     }
 
 
@@ -364,14 +364,14 @@ public class MemTreeBuilder {
             throw new IllegalStateException(e);
         }
 
-        return tinyBuilder.getTree().getNumberOfNodes();
+        return tinyBuilder.getTree().getNumberOfNodes() - 1;
     }
 
 
     public int cdataSection(final CharSequence data) {
 
         //TODO(AR) figure this out!!!
-        return tinyBuilder.getTree().getNumberOfNodes();
+        return tinyBuilder.getTree().getNumberOfNodes() - 1;
 
 //        final int lastNode = doc.getLastNode();
 //
@@ -414,17 +414,17 @@ public class MemTreeBuilder {
             throw new IllegalStateException(e);
         }
 
-        return tinyBuilder.getTree().getNumberOfNodes();
+        return tinyBuilder.getTree().getNumberOfNodes() - 1;
     }
 
     public int namespaceNode(final String prefix, final String uri) {
         try {
-            tinyBuilder.namespace(new NamespaceBinding(prefix, uri), 0);
+            tinyBuilder.namespace(new NamespaceBinding(prefix == null ? "" : prefix, uri), 0);
         } catch (final net.sf.saxon.trans.XPathException e) {
             throw new IllegalStateException(e);
         }
 
-        return tinyBuilder.getTree().getNumberOfNodes();
+        return tinyBuilder.getTree().getNumberOfNodes() - 1;
     }
 
     public int namespaceNode(final QName qname) {
@@ -438,7 +438,7 @@ public class MemTreeBuilder {
             throw new IllegalStateException(e);
         }
 
-        return tinyBuilder.getTree().getNumberOfNodes();
+        return tinyBuilder.getTree().getNumberOfNodes() - 1;
     }
 
 

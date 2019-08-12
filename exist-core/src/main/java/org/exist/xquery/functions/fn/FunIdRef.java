@@ -133,7 +133,7 @@ public class FunIdRef extends Function {
                 			"fn:idref() argument is not a node");}
                 
                 NodeValue node = (NodeValue)nodes.itemAt(0);
-                if (node.getImplementationType() == NodeValue.IN_MEMORY_NODE)
+                if (node.getImplementationType() == NodeValue.IN_MEMORY_SAXON_NODE)
                 	//TODO : how to enforce this ?
                 	//If $node, or the context item if the second argument is omitted, 
                 	//is a node in a tree whose root is not a document node [err:FODC0001] is raised                    processInMem = true;
@@ -191,12 +191,12 @@ public class FunIdRef extends Function {
 	}
 
     private void getIdRef(Sequence result, Sequence seq, String id) throws XPathException {
-        final Set<org.exist.dom.memtree.DocumentImpl> visitedDocs = new TreeSet<org.exist.dom.memtree.DocumentImpl>();
+        final Set<org.exist.dom.memory.DocumentImpl> visitedDocs = new TreeSet<>();
         for (final SequenceIterator i = seq.iterate(); i.hasNext();) {
-            final org.exist.dom.memtree.NodeImpl v = (org.exist.dom.memtree.NodeImpl) i.nextItem();
-            final org.exist.dom.memtree.DocumentImpl doc = v.getOwnerDocument();
+            final org.exist.dom.memory.NodeImpl v = (org.exist.dom.memory.NodeImpl) i.nextItem();
+            final org.exist.dom.memory.DocumentImpl doc = v.getOwnerDocument();
             if (!visitedDocs.contains(doc)) {
-                final org.exist.dom.memtree.NodeImpl node = doc.selectByIdref(id);
+                final org.exist.dom.memory.NodeImpl node = doc.selectByIdRef(id);
                 if (node != null)
                     {result.add(node);}
                 visitedDocs.add(doc);

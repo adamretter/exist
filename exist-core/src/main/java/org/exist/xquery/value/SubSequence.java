@@ -24,8 +24,8 @@ import com.evolvedbinary.j8fu.tuple.Tuple2;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.exist.collections.Collection;
-import org.exist.dom.memtree.DocumentImpl;
-import org.exist.dom.memtree.NodeImpl;
+import org.exist.dom.memory.DocumentImpl;
+import org.exist.dom.memory.NodeImpl;
 import org.exist.dom.persistent.*;
 import org.exist.numbering.NodeId;
 import org.exist.xquery.Cardinality;
@@ -315,7 +315,7 @@ public class SubSequence extends AbstractSequence {
                         " a MemoryNodeSet. It contains nodes from stored resources.");
             }
 
-            final org.exist.dom.memtree.NodeImpl node = (org.exist.dom.memtree.NodeImpl)item;
+            final org.exist.dom.memory.NodeImpl node = (org.exist.dom.memory.NodeImpl)item;
             final DocumentImpl ownerDoc = node.getNodeType() == Node.DOCUMENT_NODE ? (DocumentImpl) node : node.getOwnerDocument();
 
             if (ownerDoc.hasReferenceNodes()  && !expandedDocs.contains(ownerDoc)) {

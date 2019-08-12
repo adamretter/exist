@@ -75,6 +75,7 @@ import java.nio.file.Paths;
 import java.util.*;
 import java.util.Map.Entry;
 
+import javax.annotation.Nullable;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParser;
@@ -285,11 +286,12 @@ public class Configuration implements ErrorHandler
         }
     }
 
-    private void configureRepository(Element element) {
+    private void configureRepository(final Element element) {
         String root = element.getAttribute("root");
-        if (root != null && root.length() > 0) {
-            if (!root.endsWith("/"))
-                {root += "/";}
+        if (isNotNullOrEmpty(root)) {
+            if (!root.endsWith("/")) {
+                root += "/";
+            }
             config.put(Deployment.PROPERTY_APP_ROOT, root);
         }
     }
@@ -365,7 +367,9 @@ public class Configuration implements ErrorHandler
      *
      * @throws  DatabaseConfigurationException
      */
-    private void loadModuleClasses( Element xquery, Map<String, Class<?>> modulesClassMap, Map<String, String> modulesSourceMap, Map<String, Map<String, List<? extends Object>>> moduleParameters) throws DatabaseConfigurationException {
+    private void loadModuleClasses(final Element xquery, final Map<String, Class<?>> modulesClassMap,
+            final Map<String, String> modulesSourceMap, final Map<String, Map<String, List<? extends Object>>> moduleParameters)
+            throws DatabaseConfigurationException {
         // add the standard function module
         modulesClassMap.put(Namespaces.XPATH_FUNCTIONS_NS, org.exist.xquery.functions.fn.FnModule.class);
 
@@ -373,39 +377,39 @@ public class Configuration implements ErrorHandler
         final NodeList builtins = xquery.getElementsByTagName(XQUERY_BUILTIN_MODULES_CONFIGURATION_MODULES_ELEMENT_NAME);
 
         // search under <builtin-modules>
-        if(builtins.getLength() > 0) {
+        if (builtins.getLength() > 0) {
             Element  elem    = (Element)builtins.item(0);
             final NodeList modules = elem.getElementsByTagName(XQUERY_BUILTIN_MODULES_CONFIGURATION_MODULE_ELEMENT_NAME);
 
-            if(modules.getLength() > 0) {
+            if (modules.getLength() > 0) {
 
                 // iterate over all <module src= uri= class=> entries
-                for(int i = 0; i < modules.getLength(); i++) {
+                for (int i = 0; i < modules.getLength(); i++) {
 
                     // Get element.
                     elem = (Element)modules.item(i);
 
                     // Get attributes uri class and src
-                    final String uri    = elem.getAttribute(XQueryContext.BUILT_IN_MODULE_URI_ATTRIBUTE);
-                    final String clazz  = elem.getAttribute(XQueryContext.BUILT_IN_MODULE_CLASS_ATTRIBUTE);
+                    final String uri = elem.getAttribute(XQueryContext.BUILT_IN_MODULE_URI_ATTRIBUTE);
+                    final String clazz = elem.getAttribute(XQueryContext.BUILT_IN_MODULE_CLASS_ATTRIBUTE);
                     final String source = elem.getAttribute(XQueryContext.BUILT_IN_MODULE_SOURCE_ATTRIBUTE);
 
                     // uri attribute is the identifier and is always required
-                    if(uri == null) {
-                        throw(new DatabaseConfigurationException("element 'module' requires an attribute 'uri'" ));
+                    if (isNullOrEmpty(uri)) {
+                        throw new DatabaseConfigurationException("element 'module' requires an attribute 'uri'");
                     }
 
                     // either class or source attribute must be present
-                    if((clazz == null) && (source == null)) {
-                        throw(new DatabaseConfigurationException("element 'module' requires either an attribute " + "'class' or 'src'" ));
+                    if (isNullOrEmpty(clazz) && isNullOrEmpty(source)) {
+                        throw new DatabaseConfigurationException("element 'module' requires either an attribute " + "'class' or 'src'");
                     }
 
-                    if(source != null) {
+                    if (isNotNullOrEmpty(source)) {
                         // Store src attribute info
 
                         modulesSourceMap.put(uri, source);
 
-                        if(LOG.isDebugEnabled()) {
+                        if (LOG.isDebugEnabled()) {
                             LOG.debug( "Registered mapping for module '" + uri + "' to '" + source + "'");
                         }
 
@@ -416,11 +420,11 @@ public class Configuration implements ErrorHandler
                         final Class<?> moduleClass = lookupModuleClass(uri, clazz);
 
                         // Store class if thw module class actually exists
-                        if( moduleClass != null) {
+                        if (moduleClass != null) {
                             modulesClassMap.put(uri, moduleClass);
                         }
 
-                        if(LOG.isDebugEnabled()) {
+                        if (LOG.isDebugEnabled()) {
                             LOG.debug("Configured module '" + uri + "' implemented in '" + clazz + "'");
                         }
                     }
@@ -430,6 +434,14 @@ public class Configuration implements ErrorHandler
                 }
             }
         }
+    }
+
+    private static boolean isNullOrEmpty(@Nullable final String s) {
+        return s == null || s.isEmpty();
+    }
+
+    private static boolean isNotNullOrEmpty(@Nullable final String s) {
+        return s != null && !s.isEmpty();
     }
 
     /**
@@ -495,58 +507,60 @@ public class Configuration implements ErrorHandler
     }
 
 
-    private void configureTransformer( Element transformer )
-    {
+    private void configureTransformer(final Element transformer) {
         final String className = getConfigAttributeValue( transformer, TransformerFactoryAllocator.TRANSFORMER_CLASS_ATTRIBUTE );
 
-        if( className != null ) {
-            config.put( TransformerFactoryAllocator.PROPERTY_TRANSFORMER_CLASS, className );
-            LOG.debug( TransformerFactoryAllocator.PROPERTY_TRANSFORMER_CLASS + ": " + config.get( TransformerFactoryAllocator.PROPERTY_TRANSFORMER_CLASS ) );
+        if (className != null) {
+            config.put(TransformerFactoryAllocator.PROPERTY_TRANSFORMER_CLASS, className);
+            if (LOG.isDebugEnabled()) {
+                LOG.debug(TransformerFactoryAllocator.PROPERTY_TRANSFORMER_CLASS + ": " + config.get(TransformerFactoryAllocator.PROPERTY_TRANSFORMER_CLASS));
+            }
 
             // Process any specified attributes that should be passed to the transformer factory
 
-            final NodeList                  attrs      = transformer.getElementsByTagName( TransformerFactoryAllocator.CONFIGURATION_TRANSFORMER_ATTRIBUTE_ELEMENT_NAME );
+            final NodeList attrs = transformer.getElementsByTagName(TransformerFactoryAllocator.CONFIGURATION_TRANSFORMER_ATTRIBUTE_ELEMENT_NAME);
             final Hashtable<Object, Object> attributes = new Properties();
 
-            for( int a = 0; a < attrs.getLength(); a++ ) {
-                final Element attr  = (Element)attrs.item( a );
-                final String  name  = attr.getAttribute( "name" );
-                final String  value = attr.getAttribute( "value" );
-                final String  type  = attr.getAttribute( "type" );
+            for (int a = 0; a < attrs.getLength(); a++) {
+                final Element attr  = (Element)attrs.item(a);
+                final String name = attr.getAttribute("name");
+                final String value = attr.getAttribute("value");
+                final String type = attr.getAttribute("type");
 
-                if( ( name == null ) || ( name.length() == 0 ) ) {
-                    LOG.warn( "Discarded invalid attribute for TransformerFactory: '" + className + "', name not specified" );
+                if (isNullOrEmpty(name)) {
+                    LOG.warn("Discarded invalid attribute for TransformerFactory: '" + className + "', name not specified");
 
-                } else if( ( type == null ) || ( type.length() == 0 ) || type.equalsIgnoreCase( "string" ) ) {
-                    attributes.put( name, value );
+                } else if (isNullOrEmpty(type) || type.equalsIgnoreCase("string")) {
+                    attributes.put(name, value);
 
-                } else if( type.equalsIgnoreCase( "boolean" ) ) {
-                    attributes.put( name, Boolean.valueOf( value ) );
+                } else if (type.equalsIgnoreCase("boolean")) {
+                    attributes.put(name, Boolean.valueOf(value));
 
-                } else if( type.equalsIgnoreCase( "integer" ) ) {
+                } else if(type.equalsIgnoreCase("integer")) {
 
                     try {
-                        attributes.put( name, Integer.valueOf( value ) );
-                    }
-                    catch( final NumberFormatException nfe ) {
+                        attributes.put(name, Integer.valueOf(value));
+                    } catch (final NumberFormatException nfe) {
                         LOG.warn("Discarded invalid attribute for TransformerFactory: '" + className + "', name: " + name + ", value not integer: " + value, nfe);
                     }
 
                 } else {
 
                     // Assume string type
-                    attributes.put( name, value );
+                    attributes.put(name, value);
                 }
             }
 
-            config.put( TransformerFactoryAllocator.PROPERTY_TRANSFORMER_ATTRIBUTES, attributes );
+            config.put(TransformerFactoryAllocator.PROPERTY_TRANSFORMER_ATTRIBUTES, attributes);
         }
 
-        final String cachingValue = getConfigAttributeValue( transformer, TransformerFactoryAllocator.TRANSFORMER_CACHING_ATTRIBUTE );
+        final String cachingValue = getConfigAttributeValue(transformer, TransformerFactoryAllocator.TRANSFORMER_CACHING_ATTRIBUTE);
 
-        if( cachingValue != null ) {
-            config.put( TransformerFactoryAllocator.PROPERTY_CACHING_ATTRIBUTE, parseBoolean( cachingValue, false ) );
-            LOG.debug( TransformerFactoryAllocator.PROPERTY_CACHING_ATTRIBUTE + ": " + config.get( TransformerFactoryAllocator.PROPERTY_CACHING_ATTRIBUTE ) );
+        if (cachingValue != null) {
+            config.put(TransformerFactoryAllocator.PROPERTY_CACHING_ATTRIBUTE, parseBoolean(cachingValue, false));
+            if (LOG.isDebugEnabled()) {
+                LOG.debug(TransformerFactoryAllocator.PROPERTY_CACHING_ATTRIBUTE + ": " + config.get(TransformerFactoryAllocator.PROPERTY_CACHING_ATTRIBUTE));
+            }
         }
     }
 
@@ -666,9 +680,11 @@ public class Configuration implements ErrorHandler
                 final Element filterElem = (Element) nlFilters.item(i);
                 final String filterClass = filterElem.getAttribute(CustomMatchListenerFactory.CONFIGURATION_ATTR_CLASS);
 
-                if (filterClass != null) {
+                if (isNotNullOrEmpty(filterClass)) {
                     filters.add(filterClass);
-                    LOG.debug(CustomMatchListenerFactory.CONFIG_MATCH_LISTENERS + ": " + filterClass);
+                    if (LOG.isDebugEnabled()) {
+                        LOG.debug(CustomMatchListenerFactory.CONFIG_MATCH_LISTENERS + ": " + filterClass);
+                    }
                 } else {
                     LOG.warn("Configuration element " + CustomMatchListenerFactory.CONFIGURATION_ELEMENT + " needs an attribute 'class'");
                 }
@@ -676,23 +692,27 @@ public class Configuration implements ErrorHandler
             config.put(CustomMatchListenerFactory.CONFIG_MATCH_LISTENERS, filters);
         }
 
-        final NodeList backupFilters = serializer.getElementsByTagName( SystemExport.CONFIGURATION_ELEMENT );
+        final NodeList backupFilters = serializer.getElementsByTagName(SystemExport.CONFIGURATION_ELEMENT);
 
-        if( backupFilters != null ) {
+        if (backupFilters != null) {
             final List<String> filters = new ArrayList<>(backupFilters.getLength());
 
             for (int i = 0; i < backupFilters.getLength(); i++) {
                 final Element filterElem = (Element) backupFilters.item(i);
                 final String filterClass = filterElem.getAttribute(CustomMatchListenerFactory.CONFIGURATION_ATTR_CLASS);
 
-                if (filterClass != null) {
+                if (isNotNullOrEmpty(filterClass)) {
                     filters.add(filterClass);
-                    LOG.debug(CustomMatchListenerFactory.CONFIG_MATCH_LISTENERS + ": " + filterClass);
+                    if (LOG.isDebugEnabled()) {
+                        LOG.debug(CustomMatchListenerFactory.CONFIG_MATCH_LISTENERS + ": " + filterClass);
+                    }
                 } else {
                     LOG.warn("Configuration element " + SystemExport.CONFIGURATION_ELEMENT + " needs an attribute 'class'");
                 }
             }
-            if (!filters.isEmpty()) config.put(SystemExport.CONFIG_FILTERS, filters);
+            if (!filters.isEmpty()) {
+                config.put(SystemExport.CONFIG_FILTERS, filters);
+            }
         }
     }
 
@@ -942,7 +962,7 @@ public class Configuration implements ErrorHandler
         }
 
         final String docIds = con.getAttribute(BrokerPool.DOC_ID_MODE_ATTRIBUTE);
-        if (docIds != null) {
+        if (isNotNullOrEmpty(docIds)) {
         	config.put(BrokerPool.DOC_ID_MODE_PROPERTY, docIds);
         }
         
@@ -1474,21 +1494,21 @@ public class Configuration implements ErrorHandler
             modules = ( (Element)modules.item( 0 ) ).getElementsByTagName( IndexManager.CONFIGURATION_MODULE_ELEMENT_NAME );
             final IndexModuleConfig[] modConfig = new IndexModuleConfig[modules.getLength()];
 
-            for( int i = 0; i < modules.getLength(); i++ ) {
-                final Element elem      = (Element)modules.item( i );
-                final String  className = elem.getAttribute( IndexManager.INDEXER_MODULES_CLASS_ATTRIBUTE );
-                final String  id        = elem.getAttribute( IndexManager.INDEXER_MODULES_ID_ATTRIBUTE );
+            for (int i = 0; i < modules.getLength(); i++) {
+                final Element elem = (Element)modules.item(i);
+                final String className = elem.getAttribute(IndexManager.INDEXER_MODULES_CLASS_ATTRIBUTE);
+                final String id = elem.getAttribute(IndexManager.INDEXER_MODULES_ID_ATTRIBUTE);
 
-                if( ( className == null ) || ( className.length() == 0 ) ) {
-                    throw( new DatabaseConfigurationException( "Required attribute class is missing for module" ) );
+                if (isNullOrEmpty(className)) {
+                    throw new DatabaseConfigurationException("Required attribute class is missing for module");
                 }
 
-                if( ( id == null ) || ( id.length() == 0 ) ) {
-                    throw( new DatabaseConfigurationException( "Required attribute id is missing for module" ) );
+                if (isNullOrEmpty(id)) {
+                    throw new DatabaseConfigurationException("Required attribute id is missing for module");
                 }
-                modConfig[i] = new IndexModuleConfig( id, className, elem );
+                modConfig[i] = new IndexModuleConfig(id, className, elem);
             }
-            config.put( IndexManager.PROPERTY_INDEXER_MODULES, modConfig );
+            config.put(IndexManager.PROPERTY_INDEXER_MODULES, modConfig);
         }
     }
 
@@ -1535,9 +1555,9 @@ public class Configuration implements ErrorHandler
             final List<String> allURIs = new ArrayList<>();
 
             for( int i = 0; i < catalogs.getLength(); i++ ) {
-                String uri = ( (Element)catalogs.item( i ) ).getAttribute( "uri" );
+                String uri = ((Element)catalogs.item( i )).getAttribute("uri");
 
-                if( uri != null ) { // when uri attribute is filled in
+                if (isNotNullOrEmpty(uri)) { // when uri attribute is filled in
 
                     // Substitute string, creating an uri from a local file
                     if( uri.indexOf( "${WEBAPP_HOME}" ) != -1 ) {
@@ -1579,25 +1599,25 @@ public class Configuration implements ErrorHandler
      *
      * @return  The value of the attribute
      */
-    private String getConfigAttributeValue( Element element, String attributeName )
+    private String getConfigAttributeValue(final Element element, final String attributeName )
     {
     	String value = null;
     	
-    	if( element != null && attributeName != null ) {
-    		final String property = getAttributeSystemPropertyName( element, attributeName );
+    	if (element != null && attributeName != null) {
+    		final String property = getAttributeSystemPropertyName(element, attributeName);
     		
     		value = System.getProperty( property );
     		
     		// If the value has not been overriden in a system property, then get it from the configuration
     		
-    		if( value != null ) {
-    			LOG.warn( "Configuration value overriden by system property: " + property + ", with value: " + value );
+    		if (value != null) {
+    			LOG.warn("Configuration value overriden by system property: " + property + ", with value: " + value);
     		} else {
-    			value = element.getAttribute( attributeName );
+    			value = element.getAttribute(attributeName);
     		}
     	}
     	
-    	return( value );
+    	return value;
     }
     
     /**

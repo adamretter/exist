@@ -25,8 +25,8 @@ package org.exist.xquery;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.exist.dom.memory.NodeImpl;
 import org.exist.dom.persistent.NodeSet;
-import org.exist.dom.memtree.NodeImpl;
 import org.exist.xquery.util.ExpressionDumper;
 import org.exist.xquery.value.*;
 

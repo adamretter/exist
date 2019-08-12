@@ -1161,9 +1161,10 @@ public class DocumentImpl extends NodeImpl<DocumentImpl> implements Document {
             } catch(final SAXException e) {
                 throw new DOMException(DOMException.INVALID_STATE_ERR, e.getMessage());
             }
-            final DocumentImpl newDoc = builder.getDocument();
-            newDoc.computeNodeIds();
-            return newDoc;
+//            final DocumentImpl newDoc = builder.getDocument();
+//            newDoc.computeNodeIds();
+//            return newDoc;
+            throw new UnsupportedOperationException("NO LONGER IMPLEMENTED - AR");
         } catch(final EXistException e) {
             throw new DOMException(DOMException.INVALID_STATE_ERR, e.getMessage());
         }
@@ -1371,7 +1372,8 @@ public class DocumentImpl extends NodeImpl<DocumentImpl> implements Document {
         if(size <= 1) {
             return null;
         }
-        return context.storeTemporaryDoc(this);
+        //return context.storeTemporaryDoc(this);
+        throw new UnsupportedOperationException("TODO AR - No longer implemented");
     }
 
     public int getChildCount() {

@@ -2,7 +2,7 @@ package org.exist.xquery.functions.fn;
 
 import org.exist.dom.QName;
 import org.exist.dom.memtree.DocumentBuilderReceiver;
-import org.exist.dom.memtree.DocumentImpl;
+import org.exist.dom.memory.DocumentImpl;
 import org.exist.dom.memtree.MemTreeBuilder;
 import org.exist.util.serializer.XQuerySerializer;
 import org.exist.xquery.*;

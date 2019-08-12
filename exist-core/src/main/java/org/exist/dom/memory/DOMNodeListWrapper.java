@@ -21,13 +21,7 @@ public class DOMNodeListWrapper implements NodeList {
     @Override
     public Node item(final int index) {
         final Node node = nodeList.item(index);
-        switch (node.getNodeType()) {
-            case Node.ELEMENT_NODE:
-                return new ElementImpl(tinyTreeWithId, (TinyNodeImpl)((NodeOverNodeInfo)node).getUnderlyingNodeInfo());
-
-            default:
-                throw new UnsupportedOperationException("TODO AR implement this");
-        }
+        return TinyTreeWithId.wrap(tinyTreeWithId, node);
     }
 
     @Override

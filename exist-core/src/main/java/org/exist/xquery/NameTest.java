@@ -21,7 +21,7 @@ package org.exist.xquery;
 
 import org.exist.dom.persistent.NodeProxy;
 import org.exist.dom.QName;
-import org.exist.dom.memtree.NodeImpl;
+import org.exist.dom.memory.NodeImpl;
 import org.exist.dom.memtree.ReferenceNode;
 import org.exist.xquery.util.ExpressionDumper;
 import org.exist.xquery.value.Type;
@@ -69,7 +69,7 @@ public class NameTest extends TypeTest {
 
     @Override
     public boolean matches(final Node other) {
-        if (other.getNodeType() == NodeImpl.REFERENCE_NODE) {
+        if (other.getNodeType() == org.exist.dom.memtree.NodeImpl.REFERENCE_NODE) {
             return matches(((ReferenceNode) other).getReference());
         }
 
@@ -86,7 +86,7 @@ public class NameTest extends TypeTest {
     }
 
     public boolean matchesName(final Node other) {
-        if (other.getNodeType() == NodeImpl.REFERENCE_NODE) {
+        if (other.getNodeType() == org.exist.dom.memtree.NodeImpl.REFERENCE_NODE) {
             return matchesName(((ReferenceNode) other).getReference().getNode());
         }
 

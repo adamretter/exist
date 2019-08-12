@@ -828,7 +828,7 @@ public interface Context {
      *
      * @throws XPathException if an exception occurs whilst storing the temporary document
      */
-    DocumentImpl storeTemporaryDoc(org.exist.dom.memtree.DocumentImpl doc) throws XPathException;
+    DocumentImpl storeTemporaryDoc(org.exist.dom.memory.DocumentImpl doc) throws XPathException;
 
     void setAttribute(String attribute, Object value);
 

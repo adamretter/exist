@@ -1,5 +1,7 @@
 package org.exist.dom.memtree;
 
+import org.exist.dom.memory.DocumentImpl;
+import org.exist.dom.memory.NodeImpl;
 import org.exist.xquery.NodeTest;
 import org.exist.xquery.XPathException;
 import org.exist.xquery.value.Sequence;

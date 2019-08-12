@@ -104,7 +104,7 @@ public class CreateOrderIndex extends BasicFunction {
 
         for (final SequenceIterator nodesIter = args[1].iterate(); nodesIter.hasNext(); ) {
             final NodeValue nv = (NodeValue) nodesIter.nextItem();
-            if (nv.getImplementationType() == NodeValue.IN_MEMORY_NODE)
+            if (nv.getImplementationType() == NodeValue.IN_MEMORY_SAXON_NODE)
                 throw new XPathException(this, "Cannot create order-index on an in-memory node");
             final NodeProxy node = (NodeProxy) nv;
             final SortItem si = new SortItemImpl(node);

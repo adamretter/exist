@@ -1912,7 +1912,7 @@ public class NativeBroker extends DBBroker {
      * @return The document stored in the temp collection
      */
     @Override
-    public DocumentImpl storeTempResource(final org.exist.dom.memtree.DocumentImpl doc)
+    public DocumentImpl storeTempResource(final org.exist.dom.memory.DocumentImpl doc)
         throws EXistException, PermissionDeniedException, LockException {
 
         try {

@@ -84,7 +84,7 @@ public class RootNode extends Step {
                     if (node.getType() == Type.DOCUMENT) {
                         return node;
                     }
-                    return (org.exist.dom.memtree.DocumentImpl) node.getOwnerDocument();
+                    return (org.exist.dom.memory.DocumentImpl) node.getOwnerDocument();
                 }
             }
             return Sequence.EMPTY_SEQUENCE;

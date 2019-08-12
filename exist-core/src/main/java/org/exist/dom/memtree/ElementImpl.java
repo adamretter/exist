@@ -326,7 +326,8 @@ public class ElementImpl extends NodeImpl<ElementImpl> implements Element {
     public NodeImpl getFirstChild(final NodeTest test) throws XPathException {
         final ValueSequence seq = new ValueSequence();
         selectChildren(test, seq);
-        return seq.isEmpty() ? null : seq.get(0);
+        //return seq.isEmpty() ? null : (NodeImpl)seq.get(0);
+        throw new UnsupportedOperationException("AR - No Longer Supported");
     }
 
     @Override

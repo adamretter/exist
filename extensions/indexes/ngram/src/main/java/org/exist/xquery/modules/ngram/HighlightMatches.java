@@ -91,7 +91,7 @@ public class HighlightMatches extends BasicFunction {
                 NodeValue v = (NodeValue) i.nextItem();
                 try {
                     int nodeNr = builder.getDocument().getLastNode();
-                    if (v.getImplementationType() == NodeValue.IN_MEMORY_NODE) {
+                    if (v.getImplementationType() == NodeValue.IN_MEMORY_SAXON_NODE) {
                         ((NodeImpl) v).copyTo(context.getBroker(), docBuilder);
                     } else {
                         NodeProxy p = (NodeProxy) v;

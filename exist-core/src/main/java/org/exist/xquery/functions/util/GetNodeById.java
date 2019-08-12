@@ -27,7 +27,7 @@ import org.apache.logging.log4j.Logger;
 import org.exist.dom.persistent.DocumentImpl;
 import org.exist.dom.persistent.NodeProxy;
 import org.exist.dom.QName;
-import org.exist.dom.memtree.NodeImpl;
+import org.exist.dom.memory.NodeImpl;
 import org.exist.numbering.NodeId;
 import org.exist.xquery.BasicFunction;
 import org.exist.xquery.Cardinality;
@@ -77,7 +77,7 @@ public class GetNodeById extends BasicFunction {
         final String id = args[1].itemAt(0).getStringValue();
         final NodeId nodeId = context.getBroker().getBrokerPool().getNodeFactory().createFromString(id);
         final NodeValue docNode = (NodeValue) args[0].itemAt(0);
-        if (docNode.getImplementationType() == NodeValue.IN_MEMORY_NODE) {
+        if (docNode.getImplementationType() == NodeValue.IN_MEMORY_SAXON_NODE) {
             return ((NodeImpl) docNode).getOwnerDocument().getNodeById(nodeId);
         } else {
             final DocumentImpl doc = ((NodeProxy)docNode).getOwnerDocument();

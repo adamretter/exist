@@ -180,7 +180,7 @@ public class FunInScopePrefixes extends BasicFunction {
                     //get the top-most ancestor
                     final Deque<Element> stack = new ArrayDeque<>();
                     do {
-                        if (node.getParentNode() == null || node.getParentNode() instanceof org.exist.dom.memtree.DocumentImpl) {
+                        if (node.getParentNode() == null || node.getParentNode() instanceof org.exist.dom.memory.DocumentImpl) {
                             stack.add((Element) node);
                         }
                         node = node.getParentNode();
@@ -216,8 +216,8 @@ public class FunInScopePrefixes extends BasicFunction {
             prefixes.put(prefix == null ? XMLConstants.DEFAULT_NS_PREFIX : prefix, namespaceURI);
         }
 
-        if (element instanceof org.exist.dom.memtree.ElementImpl) {
-            ((org.exist.dom.memtree.ElementImpl) element).getNamespaceMap(prefixes);
+        if (element instanceof org.exist.dom.memory.ElementImpl) {
+            ((org.exist.dom.memory.ElementImpl) element).getNamespaceMap(prefixes);
 
         } else {
             final ElementImpl elementImpl = (org.exist.dom.persistent.ElementImpl) element;

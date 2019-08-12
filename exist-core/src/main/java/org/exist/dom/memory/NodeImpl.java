@@ -1,9 +1,14 @@
 package org.exist.dom.memory;
 
+import net.sf.saxon.dom.DOMNodeList;
 import net.sf.saxon.dom.NodeOverNodeInfo;
+import net.sf.saxon.event.PipelineConfiguration;
+import net.sf.saxon.expr.parser.Location;
+import net.sf.saxon.om.*;
+import net.sf.saxon.tree.iter.AxisIterator;
 import net.sf.saxon.tree.tiny.TinyNodeImpl;
-import net.sf.saxon.tree.tiny.TinyTree;
-import net.sf.saxon.type.Type;
+import net.sf.saxon.type.SchemaType;
+import net.sf.saxon.type.SimpleType;
 import org.exist.collections.Collection;
 import org.exist.dom.INode;
 import org.exist.dom.QName;
@@ -18,14 +23,15 @@ import org.exist.storage.serializers.Serializer;
 import org.exist.util.serializer.Receiver;
 import org.exist.xquery.*;
 import org.exist.xquery.value.*;
+import org.exist.xquery.value.Item;
+import org.exist.xquery.value.Sequence;
+import org.exist.xquery.value.SequenceIterator;
 import org.w3c.dom.*;
 import org.xml.sax.ContentHandler;
 import org.xml.sax.SAXException;
 import org.xml.sax.ext.LexicalHandler;
 
-import java.util.Iterator;
-import java.util.Objects;
-import java.util.Properties;
+import java.util.*;
 
 public abstract class NodeImpl<T extends org.exist.dom.memory.NodeImpl, N extends org.w3c.dom.Node> implements INode<DocumentImpl, T>, NodeValue {
     protected final TinyTreeWithId tinyTreeWithId;
@@ -44,6 +50,17 @@ public abstract class NodeImpl<T extends org.exist.dom.memory.NodeImpl, N extend
         this.tinyTreeWithId = tinyTreeWithId;
         this.nodeNr = Objects.requireNonNull(tinyNode).getNodeNumber();
         this.node = (N) NodeOverNodeInfo.wrap(tinyNode);
+    }
+
+    public NodeImpl(final TinyTreeWithId tinyTreeWithId, final NodeOverNodeInfo nodeOverNodeInfo) {
+        this.tinyTreeWithId = tinyTreeWithId;
+        final NodeInfo underlyingNode = Objects.requireNonNull(nodeOverNodeInfo).getUnderlyingNodeInfo();
+        if (underlyingNode instanceof net.sf.saxon.tree.NamespaceNode) {
+            this.nodeNr = -1;
+        } else {
+            this.nodeNr = ((TinyNodeImpl) underlyingNode).getNodeNumber();
+        }
+        this.node = (N) nodeOverNodeInfo;
     }
 
     @Override
@@ -68,57 +85,61 @@ public abstract class NodeImpl<T extends org.exist.dom.memory.NodeImpl, N extend
 
     @Override
     public Node getParentNode() {
-        return node.getParentNode();
+        return TinyTreeWithId.wrap(tinyTreeWithId, node.getParentNode());
     }
 
     @Override
     public NodeList getChildNodes() {
-        return node.getChildNodes();
+        return new DOMNodeListWrapper(tinyTreeWithId, (DOMNodeList) node.getChildNodes());
     }
 
     @Override
     public Node getFirstChild() {
-        return null;
+        return TinyTreeWithId.wrap(tinyTreeWithId, node.getFirstChild());
     }
 
     @Override
     public Node getLastChild() {
-        return node.getLastChild();
+        return TinyTreeWithId.wrap(tinyTreeWithId, node.getLastChild());
     }
 
     @Override
     public Node getPreviousSibling() {
-        return node.getPreviousSibling();
+        return TinyTreeWithId.wrap(tinyTreeWithId, node.getPreviousSibling());
     }
 
     @Override
     public Node getNextSibling() {
-        return node.getNextSibling();
+        return TinyTreeWithId.wrap(tinyTreeWithId, node.getNextSibling());
     }
 
     @Override
     public NamedNodeMap getAttributes() {
-        return node.getAttributes();
+        final NamedNodeMap namedNodeMap = node.getAttributes();
+        if (namedNodeMap == null) {
+            return null;
+        }
+        return new DOMAttributeMapWrapper(tinyTreeWithId, namedNodeMap);
     }
 
     @Override
     public Node insertBefore(final Node newChild, final Node refChild) throws DOMException {
-        return node.insertBefore(newChild, refChild);
+        return TinyTreeWithId.wrap(tinyTreeWithId, node.insertBefore(newChild, refChild));
     }
 
     @Override
     public Node replaceChild(final Node newChild, final Node oldChild) throws DOMException {
-        return node.replaceChild(newChild, oldChild);
+        return TinyTreeWithId.wrap(tinyTreeWithId, node.replaceChild(newChild, oldChild));
     }
 
     @Override
     public Node removeChild(final Node oldChild) throws DOMException {
-        return node.removeChild(oldChild);
+        return TinyTreeWithId.wrap(tinyTreeWithId, node.removeChild(oldChild));
     }
 
     @Override
     public Node appendChild(final Node newChild) throws DOMException {
-        return node.appendChild(newChild);
+        return TinyTreeWithId.wrap(tinyTreeWithId, node.appendChild(newChild));
     }
 
     @Override
@@ -128,7 +149,7 @@ public abstract class NodeImpl<T extends org.exist.dom.memory.NodeImpl, N extend
 
     @Override
     public Node cloneNode(final boolean deep) {
-        return node.cloneNode(deep);
+        return TinyTreeWithId.wrap(tinyTreeWithId, node.cloneNode(deep));
     }
 
     @Override
@@ -237,14 +258,13 @@ public abstract class NodeImpl<T extends org.exist.dom.memory.NodeImpl, N extend
     @Override
     public DocumentImpl getOwnerDocument() {
         if (node instanceof Document) {
-            return (DocumentImpl)this;
+            return (DocumentImpl) this;
         } else {
             final Document ownerDocument = node.getOwnerDocument();
             if (ownerDocument == null) {
                 return null;
             }
-            final int docNodeNumber = ((TinyNodeImpl)((NodeOverNodeInfo)ownerDocument).getUnderlyingNodeInfo()).getNodeNumber();
-            return new DocumentImpl(tinyTreeWithId, docNodeNumber);
+            return (DocumentImpl) TinyTreeWithId.wrap(tinyTreeWithId, ownerDocument);
         }
     }
     // </editor-fold>
@@ -262,11 +282,20 @@ public abstract class NodeImpl<T extends org.exist.dom.memory.NodeImpl, N extend
     }
     // </editor-fold>
 
+    @Override
+    public boolean equals(final Object other) {
+        if(!(other instanceof NodeImpl)) {
+            return false;
+        }
+        final NodeImpl o = (NodeImpl) other;
+        return tinyTreeWithId == o.tinyTreeWithId && nodeNr == o.nodeNr &&
+                getNodeType() == o.getNodeType();
+    }
 
     // <editor-fold desc="NodeValue implementation">
     @Override
     public boolean equals(final NodeValue other) throws XPathException {
-        if(other.getImplementationType() != NodeValue.IN_MEMORY_SAXON_NODE) {
+        if (other.getImplementationType() != NodeValue.IN_MEMORY_SAXON_NODE) {
             return false;
         }
         final NodeImpl o = (NodeImpl) other;
@@ -279,7 +308,7 @@ public abstract class NodeImpl<T extends org.exist.dom.memory.NodeImpl, N extend
         if (other.getImplementationType() != NodeValue.IN_MEMORY_SAXON_NODE) {
             throw new XPathException("cannot compare persistent node with in-memory Saxon node");
         }
-        return nodeNr < ((NodeImpl)other).nodeNr;
+        return nodeNr < ((NodeImpl) other).nodeNr;
     }
 
     @Override
@@ -287,7 +316,7 @@ public abstract class NodeImpl<T extends org.exist.dom.memory.NodeImpl, N extend
         if (other.getImplementationType() != NodeValue.IN_MEMORY_SAXON_NODE) {
             throw new XPathException("cannot compare persistent node with in-memory Saxon node");
         }
-        return nodeNr > ((NodeImpl)other).nodeNr;
+        return nodeNr > ((NodeImpl) other).nodeNr;
     }
 
     @Override
@@ -310,65 +339,7 @@ public abstract class NodeImpl<T extends org.exist.dom.memory.NodeImpl, N extend
     // <editor-fold desc="org.exist.xquery.value.Item implementation">
     @Override
     public String getStringValue() {
-        final TinyTree tt = tinyTreeWithId.tinyTree;
-        final int level = tt.getNodeDepthArray()[nodeNr];
-        int next = nodeNr + 1;
-        int startOffset = 0;
-        int len = -1;
-
-        while (next < tt.getNumberOfNodes() && tt.getNodeDepthArray()[next] > level) {
-            if(
-                    (tt.getNodeKind(next) == Node.TEXT_NODE)
-                            || (tt.getNodeKind(next) == Node.CDATA_SECTION_NODE)
-                            || (tt.getNodeKind(next) == Node.PROCESSING_INSTRUCTION_NODE)
-            ) {
-                if (len < 0) {
-                    startOffset = tt.getAlphaArray()[next];
-                    len = tt.getBetaArray()[next];
-                } else {
-                    len += tt.getBetaArray()[next];
-                }
-            } else {
-                return getStringValueSlow();
-            }
-            ++next;
-        }
-
-        return len < 0 ? "" : tt.getCharacterBuffer().subSequence(startOffset, startOffset + len).toString();
-    }
-
-    private String getStringValueSlow() {
-        final TinyTree tt = tinyTreeWithId.tinyTree;
-        final int level = tt.getNodeDepthArray()[nodeNr];
-        StringBuilder buf = null;
-        int next = nodeNr + 1;
-
-        while (next < tt.getNumberOfNodes() && tt.getNodeDepthArray()[next] > level) {
-            switch (tt.getNodeKind(next)) {
-                case Type.TEXT:
-                //case Type.CDATA_SECTION_NODE:
-                case Type.PROCESSING_INSTRUCTION: {
-                    if(buf == null) {
-                        buf = new StringBuilder();
-                    }
-
-                    buf.append(
-                            tt.getCharacterBuffer().subSequence(tt.getAlphaArray()[next], tt.getAlphaArray()[next] + tt.getBetaArray()[next])
-                    );
-                    break;
-                }
-                //TODO(AR) figure this out
-//                case REFERENCE_NODE: {
-//                    if(buf == null) {
-//                        buf = new StringBuilder();
-//                    }
-//                    buf.append(document.references[document.alpha[next]].getStringValue());
-//                    break;
-//                }
-            }
-            ++next;
-        }
-        return ((buf == null) ? "" : buf.toString());
+        return getTinyNode(node).getStringValue();
     }
 
     @Override
@@ -412,11 +383,172 @@ public abstract class NodeImpl<T extends org.exist.dom.memory.NodeImpl, N extend
 
     @Override
     public void copyTo(final DBBroker broker, final DocumentBuilderReceiver receiver) throws SAXException {
-        tinyTreeWithId.copyTo(nodeNr, receiver);
+        //TODO(AR) replace with  tinyNode.copy(new ReceiverAdapter(tinyNode, receiver), 0, tinyNode);
+        //tinyTreeWithId.copyTo(nodeNr, receiver);
+
+        final TinyNodeImpl tinyNode = getTinyNode(node);
+        try {
+            tinyNode.copy(new ReceiverAdapter(tinyNode, receiver), 0, tinyNode);
+        } catch (net.sf.saxon.trans.XPathException e) {
+            if (e.getCause() instanceof SAXException) {
+                throw (SAXException)e.getCause();
+            } else {
+                throw new SAXException(e);
+            }
+        }
     }
 
     public void streamTo(final Serializer serializer, final Receiver receiver) throws SAXException {
-        tinyTreeWithId.streamTo(serializer, nodeNr, receiver);
+        final TinyNodeImpl tinyNode = getTinyNode(node);
+        try {
+            tinyNode.copy(new ReceiverAdapter(tinyNode, receiver), 0, tinyNode);
+        } catch (net.sf.saxon.trans.XPathException e) {
+            if (e.getCause() instanceof SAXException) {
+                throw (SAXException)e.getCause();
+            } else {
+                throw new SAXException(e);
+            }
+        }
+    }
+
+    private static class ReceiverAdapter implements net.sf.saxon.event.Receiver {
+        private final Receiver receiver;
+        private PipelineConfiguration pipe;
+        private String systemId;
+        private final Deque<QName> elemNames = new ArrayDeque<>();
+
+        public ReceiverAdapter(final TinyNodeImpl tinyNode, final Receiver receiver) {
+            this.pipe = tinyNode.getConfiguration().makePipelineConfiguration();
+            this.receiver = receiver;
+        }
+
+        @Override
+        public void setPipelineConfiguration(final PipelineConfiguration pipe) {
+            this.pipe = pipe;
+        }
+
+        @Override
+        public PipelineConfiguration getPipelineConfiguration() {
+            return pipe;
+        }
+
+        @Override
+        public void setSystemId(final String systemId) {
+            this.systemId = systemId;
+        }
+
+        @Override
+        public String getSystemId() {
+            return systemId;
+        }
+
+        @Override
+        public void open() throws net.sf.saxon.trans.XPathException {
+        }
+
+        @Override
+        public void startDocument(int properties) throws net.sf.saxon.trans.XPathException {
+            try {
+                receiver.startDocument();
+            } catch (SAXException e) {
+                throw new net.sf.saxon.trans.XPathException(e);
+            }
+        }
+
+        @Override
+        public void endDocument() throws net.sf.saxon.trans.XPathException {
+            try {
+                receiver.endDocument();
+            } catch (SAXException e) {
+                throw new net.sf.saxon.trans.XPathException(e);
+            }
+        }
+
+        @Override
+        public void setUnparsedEntity(String name, String systemID, String publicID) throws net.sf.saxon.trans.XPathException {
+
+        }
+
+        @Override
+        public void startElement(NodeName elemName, SchemaType typeCode, Location location, int properties) throws net.sf.saxon.trans.XPathException {
+            try {
+                final QName name = QName.fromJavaQName(elemName.getStructuredQName().toJaxpQName());
+                receiver.startElement(name, null);
+                elemNames.push(name);
+            } catch (SAXException e) {
+                throw new net.sf.saxon.trans.XPathException(e);
+            }
+        }
+
+        @Override
+        public void namespace(NamespaceBindingSet namespaceBindings, int properties) throws net.sf.saxon.trans.XPathException {
+            //TODO(AR) implement
+            final Iterator<NamespaceBinding> iterator = namespaceBindings.iterator();
+            try {
+                while (iterator.hasNext()) {
+                    final NamespaceBinding binding = iterator.next();
+                    receiver.startPrefixMapping(binding.getPrefix(), binding.getURI());
+                }
+            } catch (SAXException e) {
+                throw new net.sf.saxon.trans.XPathException(e);
+            }
+        }
+
+        @Override
+        public void attribute(NodeName attName, SimpleType typeCode, CharSequence value, Location location, int properties) throws net.sf.saxon.trans.XPathException {
+            try {
+                receiver.attribute(QName.fromJavaQName(attName.getStructuredQName().toJaxpQName()), value.toString());
+            } catch (SAXException e) {
+                throw new net.sf.saxon.trans.XPathException(e);
+            }
+        }
+
+        @Override
+        public void startContent() throws net.sf.saxon.trans.XPathException {
+
+        }
+
+        @Override
+        public void endElement() throws net.sf.saxon.trans.XPathException {
+            try {
+                receiver.endElement(elemNames.pop());
+            } catch (SAXException e) {
+                throw new net.sf.saxon.trans.XPathException(e);
+            }
+        }
+
+        @Override
+        public void characters(CharSequence chars, Location location, int properties) throws net.sf.saxon.trans.XPathException {
+            try {
+                receiver.characters(chars);
+            } catch (SAXException e) {
+                throw new net.sf.saxon.trans.XPathException(e);
+            }
+        }
+
+        @Override
+        public void processingInstruction(String name, CharSequence data, Location location, int properties) throws net.sf.saxon.trans.XPathException {
+            try {
+                receiver.processingInstruction(name, data.toString());
+            } catch (SAXException e) {
+                throw new net.sf.saxon.trans.XPathException(e);
+            }
+        }
+
+        @Override
+        public void comment(CharSequence content, Location location, int properties) throws net.sf.saxon.trans.XPathException {
+            final char[] data = content.toString().toCharArray();
+            try {
+                receiver.comment(data, 0, data.length);
+            } catch (SAXException e) {
+                throw new net.sf.saxon.trans.XPathException(e);
+            }
+        }
+
+        @Override
+        public void close() throws net.sf.saxon.trans.XPathException {
+
+        }
     }
 
     @Override
@@ -636,6 +768,11 @@ public abstract class NodeImpl<T extends org.exist.dom.memory.NodeImpl, N extend
         return new DOMException(DOMException.NOT_SUPPORTED_ERR, "not implemented on class: " + getClass().getName());
     }
 
+    // TODO(AR) this really shouldn't be public!
+    public int getNodeNumber() {
+        return nodeNr;
+    }
+
     private final static class SingleNodeIterator implements SequenceIterator {
         private NodeImpl node;
 
@@ -679,10 +816,131 @@ public abstract class NodeImpl<T extends org.exist.dom.memory.NodeImpl, N extend
 
     //TODO(AR) TEMP BELOW this line <--- until we figure out a better interface - we shouldn't always have to build a DocumentImpl for just a node
 
+    static TinyNodeImpl getTinyNode(final Node node) {
+        return (TinyNodeImpl) ((NodeOverNodeInfo)node).getUnderlyingNodeInfo();
+    }
+
+    public abstract void selectAttributes(final NodeTest test, final Sequence result) throws XPathException;
+
+    public abstract void selectDescendantAttributes(final NodeTest test, final Sequence result) throws XPathException;
+
+    public abstract void selectChildren(final NodeTest test, final Sequence result) throws XPathException;
+
     public void selectDescendants(final boolean includeSelf, final NodeTest test, final Sequence result)
             throws XPathException {
         if(includeSelf && test.matches(this)) {
             result.add(this);
         }
+    }
+
+    public void selectAncestors(final boolean includeSelf, final NodeTest test, final Sequence result)
+            throws XPathException {
+        try (final AxisIterator iterator = ((NodeOverNodeInfo) node).getUnderlyingNodeInfo().iterateAxis(includeSelf ? AxisInfo.ANCESTOR_OR_SELF : AxisInfo.ANCESTOR)) {
+            NodeInfo item;
+            while ((item = iterator.next()) != null) {
+                final NodeImpl node = TinyTreeWithId.wrap(tinyTreeWithId, NodeOverNodeInfo.wrap(item));
+                if (test.matches(node)) {
+                    result.add(node);
+                }
+            }
+        }
+    }
+
+    public void selectPrecedingSiblings(final NodeTest test, final Sequence result)
+            throws XPathException {
+        try (final AxisIterator iterator = ((NodeOverNodeInfo) node).getUnderlyingNodeInfo().iterateAxis(AxisInfo.PRECEDING_SIBLING)) {
+            NodeInfo item;
+            while ((item = iterator.next()) != null) {
+                final NodeImpl node = TinyTreeWithId.wrap(tinyTreeWithId, NodeOverNodeInfo.wrap(item));
+                if (test.matches(node)) {
+                    result.add(node);
+                }
+            }
+        }
+    }
+
+    public void selectPreceding(final NodeTest test, final Sequence result, final int position)
+            throws XPathException {
+        final NodeId myNodeId = getNodeId();
+        int count = 0;
+
+        try (final AxisIterator iterator = ((NodeOverNodeInfo) node).getUnderlyingNodeInfo().iterateAxis(AxisInfo.PRECEDING)) {
+            NodeInfo item;
+            while ((item = iterator.next()) != null) {
+                final NodeImpl node = TinyTreeWithId.wrap(tinyTreeWithId, NodeOverNodeInfo.wrap(item));
+
+                if (!myNodeId.isDescendantOf(node.getNodeId()) && test.matches(node)) {
+                    if ((position < 0) || (++count == position)) {
+                        result.add(node);
+                    }
+                    if (count == position) {
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    public void selectFollowingSiblings(final NodeTest test, final Sequence result)
+            throws XPathException {
+        try (final AxisIterator iterator = ((NodeOverNodeInfo) node).getUnderlyingNodeInfo().iterateAxis(AxisInfo.FOLLOWING_SIBLING)) {
+            NodeInfo item;
+            while ((item = iterator.next()) != null) {
+                final NodeImpl node = TinyTreeWithId.wrap(tinyTreeWithId, NodeOverNodeInfo.wrap(item));
+                if (test.matches(node)) {
+                    result.add(node);
+                }
+            }
+        }
+    }
+
+    public void selectFollowing(final NodeTest test, final Sequence result, final int position)
+            throws XPathException {
+        try (final AxisIterator iterator = ((NodeOverNodeInfo) node).getUnderlyingNodeInfo().iterateAxis(AxisInfo.FOLLOWING)) {
+            NodeInfo item;
+            while ((item = iterator.next()) != null) {
+                final NodeImpl node = TinyTreeWithId.wrap(tinyTreeWithId, NodeOverNodeInfo.wrap(item));
+                if (test.matches(node)) {
+                    result.add(node);
+                }
+            }
+        }
+    }
+
+    public Node selectParentNode() {
+        final NodeInfo parent = ((NodeOverNodeInfo) node).getUnderlyingNodeInfo().getParent();
+        if (parent == null) {
+            return null;
+        } else {
+            return TinyTreeWithId.wrap(tinyTreeWithId, NodeOverNodeInfo.wrap(parent));
+        }
+    }
+
+    public boolean matchAttributes(final NodeTest test) {
+        // do nothing
+        return false;
+    }
+
+    public boolean matchDescendantAttributes(final NodeTest test) throws XPathException {
+        // do nothing
+        return false;
+    }
+
+    public boolean matchChildren(final NodeTest test) throws XPathException {
+        return false;
+    }
+
+    public boolean matchDescendants(final boolean includeSelf, final NodeTest test) throws XPathException {
+        return includeSelf && test.matches(this);
+    }
+
+    public void deepCopy() throws DOMException {
+//        final DocumentImpl newDoc = document.expandRefs(this);
+//        if(newDoc != document) {
+//            // we received a new document
+//            this.nodeNumber = 1;
+//            this.document = newDoc;
+//        }
+        throw new UnsupportedOperationException("TODO(AR) - implement");
     }
 }

@@ -145,7 +145,7 @@ public class FunSort extends BasicFunction {
           Item item2 = seq2.itemAt(pos);
 
 //          int res;
-//          if (item1 instanceof org.exist.dom.memtree.NodeImpl && (!(item2 instanceof org.exist.dom.memtree.NodeImpl))) {
+//          if (item1 instanceof org.exist.dom.memory.NodeImpl && (!(item2 instanceof org.exist.dom.memory.NodeImpl))) {
 //            res = Constants.INFERIOR;
 //          } else if (item1 instanceof Comparable && item2 instanceof Comparable) {
 //            res = ((Comparable) item1).compareTo(item2);

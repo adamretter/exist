@@ -65,7 +65,7 @@ import org.exist.http.servlets.*;
 import org.exist.interpreter.Context;
 import org.exist.dom.memtree.InMemoryXMLStreamReader;
 import org.exist.dom.memtree.MemTreeBuilder;
-import org.exist.dom.memtree.NodeImpl;
+import org.exist.dom.memory.NodeImpl;
 import org.exist.numbering.NodeId;
 import org.exist.repo.ExistRepository;
 import org.exist.security.AuthenticationException;
@@ -1190,9 +1190,9 @@ public class XQueryContext implements BinaryValueManager, Context {
     @Override
     public ExtendedXMLStreamReader getXMLStreamReader(final NodeValue nv) throws XMLStreamException, IOException {
         final ExtendedXMLStreamReader reader;
-        if (nv.getImplementationType() == NodeValue.IN_MEMORY_NODE) {
+        if (nv.getImplementationType() == NodeValue.IN_MEMORY_SAXON_NODE) {
             final NodeImpl node = (NodeImpl) nv;
-            final org.exist.dom.memtree.DocumentImpl ownerDoc = node.getNodeType() == Node.DOCUMENT_NODE ? (org.exist.dom.memtree.DocumentImpl) node : node.getOwnerDocument();
+            final org.exist.dom.memory.DocumentImpl ownerDoc = node.getNodeType() == Node.DOCUMENT_NODE ? (org.exist.dom.memory.DocumentImpl) node : node.getOwnerDocument();
             reader = new InMemoryXMLStreamReader(ownerDoc, ownerDoc);
         } else {
             final NodeProxy proxy = (NodeProxy) nv;
@@ -2780,7 +2780,7 @@ public class XQueryContext implements BinaryValueManager, Context {
     }
 
     @Override
-    public DocumentImpl storeTemporaryDoc(final org.exist.dom.memtree.DocumentImpl doc) throws XPathException {
+    public DocumentImpl storeTemporaryDoc(final org.exist.dom.memory.DocumentImpl doc) throws XPathException {
         try {
             final DocumentImpl targetDoc = getBroker().storeTempResource(doc);
 

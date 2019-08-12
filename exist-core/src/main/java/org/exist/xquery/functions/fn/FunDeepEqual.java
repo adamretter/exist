@@ -29,7 +29,7 @@ import org.apache.logging.log4j.Logger;
 import org.exist.Namespaces;
 import org.exist.dom.persistent.NodeProxy;
 import org.exist.dom.QName;
-import org.exist.dom.memtree.NodeImpl;
+import org.exist.dom.memory.NodeImpl;
 import org.exist.dom.memtree.ReferenceNode;
 import org.exist.xquery.Cardinality;
 import org.exist.xquery.Constants.Comparison;
@@ -208,7 +208,7 @@ public class FunDeepEqual extends CollatingFunction {
             try {
                 //Don't use this shortcut for in-memory nodes
                 //since the symbol table is ignored.
-                if (nva.getImplementationType() != NodeValue.IN_MEMORY_NODE &&
+                if (nva.getImplementationType() != NodeValue.IN_MEMORY_SAXON_NODE &&
                     nva.equals(nvb))
                     {return true;} // shortcut!
             } catch (final XPathException e) {
@@ -264,16 +264,16 @@ public class FunDeepEqual extends CollatingFunction {
                 {return false;}
             switch (nodeTypeA) {
             case Node.TEXT_NODE:
-                if (a.getNodeType() == NodeImpl.REFERENCE_NODE &&
-                        b.getNodeType() == NodeImpl.REFERENCE_NODE) {
+                if (a.getNodeType() == org.exist.dom.memtree.NodeImpl.REFERENCE_NODE &&
+                        b.getNodeType() == org.exist.dom.memtree.NodeImpl.REFERENCE_NODE) {
                     if (!safeEquals(((ReferenceNode)a).getReference().getNodeValue(),
                             ((ReferenceNode)b).getReference().getNodeValue()))
                         {return false;}
-                } else if (a.getNodeType() == NodeImpl.REFERENCE_NODE) {
+                } else if (a.getNodeType() == org.exist.dom.memtree.NodeImpl.REFERENCE_NODE) {
                     if (!safeEquals(((ReferenceNode)a).getReference().getNodeValue(),
                             b.getNodeValue()))
                         {return false;}
-                } else if (b.getNodeType() == NodeImpl.REFERENCE_NODE) {
+                } else if (b.getNodeType() == org.exist.dom.memtree.NodeImpl.REFERENCE_NODE) {
                     if (!safeEquals(a.getNodeValue(), 
                             ((ReferenceNode)b).getReference().getNodeValue()))
                         {return false;}
@@ -308,7 +308,7 @@ public class FunDeepEqual extends CollatingFunction {
 
     private static int getEffectiveNodeType(Node n) {
         int nodeType = n.getNodeType();
-        if (nodeType == NodeImpl.REFERENCE_NODE) {
+        if (nodeType == org.exist.dom.memtree.NodeImpl.REFERENCE_NODE) {
             nodeType = ((ReferenceNode) n).getReference().getNode().getNodeType();
         }
         return nodeType;

@@ -21,12 +21,17 @@
  */
 package org.exist.dom.memtree;
 
+import net.sf.saxon.om.NamespaceBinding;
+import net.sf.saxon.om.StructuredQName;
+import net.sf.saxon.type.Type;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.exist.EXistException;
 import org.exist.Namespaces;
 import org.exist.collections.CollectionConfiguration;
 import org.exist.dom.QName;
+import org.exist.dom.memory.DocumentImpl;
+import org.exist.dom.memory.NodeImpl;
 import org.exist.dom.persistent.AttrImpl;
 import org.exist.dom.persistent.CommentImpl;
 import org.exist.dom.persistent.DocumentTypeImpl;
@@ -109,7 +114,7 @@ public class DOMIndexer {
         final ElementImpl elem = new ElementImpl(ROOT_QNAME, broker.getBrokerPool().getSymbols());
         elem.setNodeId(broker.getBrokerPool().getNodeFactory().createInstance());
         elem.setOwnerDocument(targetDoc);
-        elem.setChildCount(doc.getChildCount());
+        elem.setChildCount(doc.getTree().getChildCountFor(doc.getNodeNumber()));
         elem.addNamespaceMapping(Namespaces.EXIST_NS_PREFIX, Namespaces.EXIST_NS);
         final NodePath path = new NodePath();
         path.addComponent(ROOT_QNAME);
@@ -118,10 +123,10 @@ public class DOMIndexer {
         targetDoc.appendChild((NodeHandle) elem);
         elem.setChildCount(0);
         // store the document nodes
-        int top = (doc.size > 1) ? 1 : -1;
+        int top = (doc.getTree().getChildCountFor(doc.getNodeNumber()) > 1) ? 1 : -1;
         while(top > 0) {
             store(top, path);
-            top = doc.getNextSiblingFor(top);
+            top = doc.getTree().getNextSibling(top);
         }
         //Close the wrapper element
         stack.pop();
@@ -134,7 +139,7 @@ public class DOMIndexer {
 
         while(nodeNr > 0) {
             startNode(nodeNr, currentPath);
-            int nextNode = doc.getFirstChildFor(nodeNr);
+            int nextNode = doc.getTree().getFirstChildFor(nodeNr);
 
             while(nextNode == -1) {
                 endNode(nodeNr, currentPath);
@@ -142,10 +147,10 @@ public class DOMIndexer {
                 if(top == nodeNr) {
                     break;
                 }
-                nextNode = doc.getNextSiblingFor(nodeNr);
+                nextNode = doc.getTree().getNextSibling(nodeNr);
 
                 if(nextNode == -1) {
-                    nodeNr = doc.getParentNodeFor(nodeNr);
+                    nodeNr = doc.getTree().getParentNode(nodeNr);
 
                     if((nodeNr == -1) || (top == nodeNr)) {
                         endNode(nodeNr, currentPath);
@@ -165,9 +170,10 @@ public class DOMIndexer {
      * @param currentPath DOCUMENT ME!
      */
     private void startNode(final int nodeNr, final NodePath currentPath) {
-        switch(doc.nodeKind[nodeNr]) {
+        final int nodeKind = doc.getTree().tinyTree.getNodeKind(nodeNr);
+        switch(nodeKind) {
 
-            case Node.ELEMENT_NODE: {
+            case Type.ELEMENT: {
                 final ElementImpl elem = (ElementImpl) NodePool.getInstance().borrowNode(Node.ELEMENT_NODE);
                 if(stack.isEmpty()) {
                     elem.setNodeId(broker.getBrokerPool().getNodeFactory().createInstance());
@@ -190,12 +196,16 @@ public class DOMIndexer {
                 break;
             }
 
-            case Node.TEXT_NODE: {
+            case Type.TEXT: {
                 if((prevNode != null) && ((prevNode.getNodeType() == Node.TEXT_NODE) || (prevNode.getNodeType() == Node.CDATA_SECTION_NODE))) {
                     break;
                 }
                 final ElementImpl last = stack.peek();
-                text.setData(new String(doc.characters, doc.alpha[nodeNr], doc.alphaLen[nodeNr]));
+
+                final int start = doc.getTree().tinyTree.getAlphaArray()[nodeNr];
+                final int len = doc.getTree().tinyTree.getBetaArray()[nodeNr];
+                final String data = doc.getTree().tinyTree.getCharacterBuffer().subSequence(start, start + len).toString();
+                text.setData(data);
                 text.setOwnerDocument(targetDoc);
                 last.appendChildInternal(prevNode, text);
                 setPrevious(text);
@@ -203,19 +213,25 @@ public class DOMIndexer {
                 break;
             }
 
-            case Node.CDATA_SECTION_NODE: {
-                final ElementImpl last = stack.peek();
-                final org.exist.dom.persistent.CDATASectionImpl cdata = (org.exist.dom.persistent.CDATASectionImpl) NodePool.getInstance().borrowNode(Node.CDATA_SECTION_NODE);
-                cdata.setData(doc.characters, doc.alpha[nodeNr], doc.alphaLen[nodeNr]);
-                cdata.setOwnerDocument(targetDoc);
-                last.appendChildInternal(prevNode, cdata);
-                setPrevious(cdata);
-                broker.storeNode(transaction, cdata, null, indexSpec);
-                break;
-            }
+//            case Node.CDATA_SECTION_NODE: {
+//                final ElementImpl last = stack.peek();
+//                final org.exist.dom.persistent.CDATASectionImpl cdata = (org.exist.dom.persistent.CDATASectionImpl) NodePool.getInstance().borrowNode(Node.CDATA_SECTION_NODE);
+//                final int start = doc.getTree().tinyTree.getAlphaArray()[nodeNr];
+//                final int len = doc.getTree().tinyTree.getBetaArray()[nodeNr];
+//                final String data = doc.getTree().tinyTree.getCharacterBuffer().subSequence(start, start + len).toString();
+//                cdata.setData(data);
+//                cdata.setOwnerDocument(targetDoc);
+//                last.appendChildInternal(prevNode, cdata);
+//                setPrevious(cdata);
+//                broker.storeNode(transaction, cdata, null, indexSpec);
+//                break;
+//            }
 
-            case Node.COMMENT_NODE: {
-                comment.setData(doc.characters, doc.alpha[nodeNr], doc.alphaLen[nodeNr]);
+            case Type.COMMENT: {
+                final int start = doc.getTree().tinyTree.getAlphaArray()[nodeNr];
+                final int len = doc.getTree().tinyTree.getBetaArray()[nodeNr];
+                final String data = doc.getTree().tinyTree.getCharacterBuffer().subSequence(start, start + len).toString();
+                comment.setData(data);
                 comment.setOwnerDocument(targetDoc);
                 if(stack.isEmpty()) {
                     comment.setNodeId(NodeId.DOCUMENT_NODE);
@@ -230,10 +246,14 @@ public class DOMIndexer {
                 break;
             }
 
-            case Node.PROCESSING_INSTRUCTION_NODE: {
-                final QName qn = doc.nodeName[nodeNr];
-                pi.setTarget(qn.getLocalPart());
-                pi.setData(new String(doc.characters, doc.alpha[nodeNr], doc.alphaLen[nodeNr]));
+            case Type.PROCESSING_INSTRUCTION: {
+                final int nameCode = doc.getTree().tinyTree.getNameCode(nodeNr);
+                final String target = doc.getTree().tinyTree.getNamePool().getLocalName(nameCode);
+                pi.setTarget(target);
+                final int start = doc.getTree().tinyTree.getAlphaArray()[nodeNr];
+                final int len = doc.getTree().tinyTree.getBetaArray()[nodeNr];
+                final String data = doc.getTree().tinyTree.getCharacterBuffer().subSequence(start, start + len).toString();
+                pi.setData(data);
                 pi.setOwnerDocument(targetDoc);
                 if(stack.isEmpty()) {
                     pi.setNodeId(NodeId.DOCUMENT_NODE);
@@ -248,7 +268,7 @@ public class DOMIndexer {
             }
 
             default: {
-                LOG.debug("Skipped indexing of in-memory node of type " + doc.nodeKind[nodeNr]);
+                LOG.debug("Skipped indexing of in-memory node of type " + nodeKind);
             }
         }
     }
@@ -260,11 +280,14 @@ public class DOMIndexer {
      * @param elem
      */
     private void initElement(final int nodeNr, final ElementImpl elem) {
-        final short attribs = (short) doc.getAttributesCountFor(nodeNr);
+        final short attribs = (short) doc.getTree().getAttributesCountFor(nodeNr);
         elem.setOwnerDocument(targetDoc);
         elem.setAttributes(attribs);
-        elem.setChildCount(doc.getChildCountFor(nodeNr) + attribs);
-        elem.setNodeName(doc.nodeName[nodeNr], broker.getBrokerPool().getSymbols());
+        elem.setChildCount(doc.getTree().getChildCountFor(nodeNr) + attribs);
+        final int nameCode = doc.getTree().tinyTree.getNameCode(nodeNr);
+        final QName qname = QName.fromJavaQName(doc.getTree().tinyTree.getNamePool().getUnprefixedQName(nameCode).toJaxpQName());
+        elem.setNodeName(qname, broker.getBrokerPool().getSymbols());
+
         final Map<String, String> ns = getNamespaces(nodeNr);
         if(ns != null) {
             elem.setNamespaceMappings(ns);
@@ -272,7 +295,7 @@ public class DOMIndexer {
     }
 
     private Map<String, String> getNamespaces(final int nodeNr) {
-        int ns = doc.alphaLen[nodeNr];
+        int ns = doc.getTree().tinyTree.getBetaArray()[nodeNr];
 
         if(ns < 0) {
             return null;
@@ -280,13 +303,13 @@ public class DOMIndexer {
 
         final Map<String, String> map = new HashMap<>();
 
-        while((ns < doc.nextNamespace) && (doc.namespaceParent[ns] == nodeNr)) {
-            final QName qn = doc.namespaceCode[ns];
+        while((ns < doc.getTree().tinyTree.getNumberOfNamespaces()) && (doc.getTree().tinyTree.getNamespaceParentArray()[ns] == nodeNr)) {
+            final NamespaceBinding namespaceBinding = doc.getTree().tinyTree.getNamespaceBindings()[ns];
 
-            if(XMLConstants.XMLNS_ATTRIBUTE.equals(qn.getLocalPart())) {
-                map.put(XMLConstants.DEFAULT_NS_PREFIX, qn.getNamespaceURI());
+            if(XMLConstants.XMLNS_ATTRIBUTE.equals(namespaceBinding.getPrefix())) {
+                map.put(XMLConstants.DEFAULT_NS_PREFIX, namespaceBinding.getURI());
             } else {
-                map.put(qn.getLocalPart(), qn.getNamespaceURI());
+                map.put(namespaceBinding.getPrefix(), namespaceBinding.getURI());
             }
             ++ns;
         }
@@ -303,13 +326,14 @@ public class DOMIndexer {
      * @throws DOMException
      */
     private void storeAttributes(final int nodeNr, final ElementImpl elem, final NodePath path) throws DOMException {
-        int attr = doc.alpha[nodeNr];
+        int attr = doc.getTree().tinyTree.getAlphaArray()[nodeNr];
         if(attr > -1) {
-            while((attr < doc.nextAttr) && (doc.attrParent[attr] == nodeNr)) {
-                final QName qn = doc.attrName[attr];
+            while((attr < doc.getTree().tinyTree.getNumberOfAttributes()) && (doc.getTree().tinyTree.getAttributeParentArray()[attr] == nodeNr)) {
+                final int attrNameCode = doc.getTree().tinyTree.getAttributeNameCodeArray()[attr];
+                final StructuredQName unprefixedQName = doc.getTree().tinyTree.getNamePool().getUnprefixedQName(attrNameCode);
                 final AttrImpl attrib = (AttrImpl) NodePool.getInstance().borrowNode(Node.ATTRIBUTE_NODE);
-                attrib.setNodeName(qn, broker.getBrokerPool().getSymbols());
-                attrib.setValue(doc.attrValue[attr]);
+                attrib.setNodeName(QName.fromJavaQName(unprefixedQName.toJaxpQName()), broker.getBrokerPool().getSymbols());
+                attrib.setValue(doc.getTree().tinyTree.getAttributeValueArray()[attr].toString());
                 attrib.setOwnerDocument(targetDoc);
                 elem.appendChildInternal(prevNode, attrib);
                 setPrevious(attrib);
@@ -326,7 +350,7 @@ public class DOMIndexer {
      * @param currentPath DOCUMENT ME!
      */
     private void endNode(final int nodeNr, final NodePath currentPath) {
-        if(doc.nodeKind[nodeNr] == Node.ELEMENT_NODE) {
+        if(doc.getTree().tinyTree.getNodeKind(nodeNr) == Type.ELEMENT) {
             final ElementImpl last = stack.pop();
             broker.endElement(last, currentPath, null);
             currentPath.removeLastComponent();

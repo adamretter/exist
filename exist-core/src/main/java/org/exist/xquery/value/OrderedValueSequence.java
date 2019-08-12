@@ -21,8 +21,8 @@
  */
 package org.exist.xquery.value;
 
-import org.exist.dom.memtree.DocumentImpl;
-import org.exist.dom.memtree.NodeImpl;
+import org.exist.dom.memory.DocumentImpl;
+import org.exist.dom.memory.NodeImpl;
 import org.exist.dom.persistent.AVLTreeNodeSet;
 import org.exist.dom.persistent.NodeProxy;
 import org.exist.dom.persistent.NodeSet;
@@ -172,7 +172,7 @@ public class OrderedValueSequence extends AbstractSequence {
                 if (v.getImplementationType() != NodeValue.PERSISTENT_NODE) {
 
                     // found an in-memory document
-                    final org.exist.dom.memtree.DocumentImpl doc = v.getType() == Type.DOCUMENT ? (org.exist.dom.memtree.DocumentImpl)v : ((NodeImpl) v).getOwnerDocument();
+                    final org.exist.dom.memory.DocumentImpl doc = v.getType() == Type.DOCUMENT ? (org.exist.dom.memory.DocumentImpl)v : ((NodeImpl) v).getOwnerDocument();
                     if (doc == null) {
                         continue;
                     }
@@ -188,7 +188,7 @@ public class OrderedValueSequence extends AbstractSequence {
                             v = (NodeValue) items[j].item;
                             if (v.getImplementationType() != NodeValue.PERSISTENT_NODE) {
                                 NodeImpl node = (NodeImpl) v;
-                                final Document nodeOwnerDoc = node.getNodeType() == Node.DOCUMENT_NODE ? (org.exist.dom.memtree.DocumentImpl)v : ((NodeImpl) v).getOwnerDocument();
+                                final Document nodeOwnerDoc = node.getNodeType() == Node.DOCUMENT_NODE ? (org.exist.dom.memory.DocumentImpl)v : ((NodeImpl) v).getOwnerDocument();
 
                                 if (nodeOwnerDoc == doc) {
                                     node = expandedDoc.getNode(node.getNodeNumber());

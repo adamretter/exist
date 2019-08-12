@@ -87,8 +87,8 @@ public class FnHasChildren extends Function {
         final Node w3cNode;
         if(node instanceof NodeProxy) {
             w3cNode = node.getNode();
-        } else if(node instanceof org.exist.dom.memtree.NodeImpl) {
-            w3cNode = ((org.exist.dom.memtree.NodeImpl)node);
+        } else if(node instanceof org.exist.dom.memory.NodeImpl) {
+            w3cNode = ((org.exist.dom.memory.NodeImpl)node);
         } else {
             throw new XPathException(this, ErrorCodes.XPTY0004, "Context item is not a node()");
         }
