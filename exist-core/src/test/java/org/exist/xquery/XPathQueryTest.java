@@ -1,5 +1,13 @@
 package org.exist.xquery;
 
+import net.sf.saxon.Configuration;
+import net.sf.saxon.event.PipelineConfiguration;
+import net.sf.saxon.om.FingerprintedQName;
+import net.sf.saxon.om.StructuredQName;
+import net.sf.saxon.tree.tiny.TinyBuilder;
+import net.sf.saxon.tree.tiny.TinyTree;
+import net.sf.saxon.type.AnySimpleType;
+import net.sf.saxon.type.Untyped;
 import org.exist.test.ExistWebServer;
 import org.exist.xmldb.EXistXPathQueryService;
 import org.exist.xmldb.EXistXQueryService;
@@ -1428,6 +1436,25 @@ public class XPathQueryTest {
             rs.getResource(0).getContent().toString());
     }
 
+    public static void main(final String args[]) throws net.sf.saxon.trans.XPathException {
+        TinyBuilder builder = new TinyBuilder(new PipelineConfiguration(Configuration.newConfiguration()));
+        builder.setBaseURI("http://memtree");
+        builder.setUseEventLocation(false);
+        builder.open();
+
+        builder.startDocument(0);
+        //builder.startElement(new FingerprintedQName("", "", "elem1"), Untyped.INSTANCE, null, 0);
+        builder.attribute(new FingerprintedQName("", "", "a1"), AnySimpleType.INSTANCE, "111", null, 0);
+        builder.attribute(new FingerprintedQName("", "", "a2"), AnySimpleType.INSTANCE, "222", null, 0);
+        //builder.endElement();
+        builder.endDocument();
+
+        //builder.close();
+        TinyTree tree = builder.getTree();
+
+        System.out.println(tree);
+    }
+
     @Test
     public void strings() throws XMLDBException {
         final XQueryService service =
@@ -2323,9 +2350,5 @@ public class XPathQueryTest {
                 "XPathQueryService",
                 "1.0");
         return service;
-    }
-
-    public static void main(final String[] args) {
-        JUnitCore.runClasses(XPathQueryTest.class);
     }
 }

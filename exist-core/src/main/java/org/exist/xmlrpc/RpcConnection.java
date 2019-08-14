@@ -34,7 +34,7 @@ import org.exist.collections.Collection;
 import org.exist.collections.CollectionConfigurationException;
 import org.exist.collections.CollectionConfigurationManager;
 import org.exist.collections.IndexInfo;
-import org.exist.dom.memtree.NodeImpl;
+import org.exist.dom.memory.NodeImpl;
 import org.exist.numbering.NodeId;
 import org.exist.protocolhandler.embedded.EmbeddedInputStream;
 import org.exist.protocolhandler.xmldb.XmldbURL;
@@ -2004,7 +2004,7 @@ public class RpcConnection implements RpcAPI {
             result.put("docUri", p.getOwnerDocument().getURI().toString());
             result.put("nodeId", p.getNodeId().toString());
 
-        } else if(item instanceof org.exist.dom.memtree.NodeImpl) {
+        } else if(item instanceof org.exist.dom.memory.NodeImpl) {
             final NodeImpl ni = (NodeImpl)item;
 
             result = new HashMap<>();

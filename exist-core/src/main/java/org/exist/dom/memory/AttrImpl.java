@@ -1,6 +1,7 @@
 package org.exist.dom.memory;
 
 import net.sf.saxon.dom.NodeOverNodeInfo;
+import net.sf.saxon.tree.tiny.TinyAttributeImpl;
 import net.sf.saxon.tree.tiny.TinyNodeImpl;
 import org.exist.dom.QName;
 import org.exist.storage.ElementValue;
@@ -20,7 +21,7 @@ public class AttrImpl extends NodeImpl<AttrImpl, Attr> implements Attr {
     @Nullable private final ElementImpl ownerElement;
 
     AttrImpl(final TinyTreeWithId tinyTreeWithId, final int nodeNr, @Nullable final ElementImpl ownerElement) {
-        super(tinyTreeWithId, nodeNr);
+        super(tinyTreeWithId, new TinyAttributeImpl(tinyTreeWithId.tinyTree, nodeNr));
         if (node.getNodeType() != NodeImpl.ATTRIBUTE_NODE) {
             throw new IllegalArgumentException("attribute argument must be of Attribute type");
         }
