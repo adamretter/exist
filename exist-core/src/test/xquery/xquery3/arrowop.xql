@@ -91,7 +91,7 @@ function ao:var-partial() {
 };
 
 declare 
-    %test:assertEquals("a=1", "b=2", "c=3")
+    %test:assertEqualsPermutation("a=1", "b=2", "c=3")
 function ao:func-as-input1() {
     function($k, $v) {
         $k || "=" || $v
@@ -109,7 +109,7 @@ function ao:func-as-input1() {
 };
 
 declare 
-    %test:assertEquals("a=1", "b=2", "c=3")
+    %test:assertEqualsPermutation("a=1", "b=2", "c=3")
 function ao:func-as-input2() {
     let $me := map:for-each(
         map {
