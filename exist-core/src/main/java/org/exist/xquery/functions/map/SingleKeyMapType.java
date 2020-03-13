@@ -36,6 +36,12 @@ import java.util.Iterator;
 
 import static org.exist.xquery.functions.map.MapType.newLinearMap;
 
+/**
+ * Implementation of the XDM map() type for a map that only
+ * contains a single key and value.
+ *
+ * @author <a href="mailto:adam@evolvedbinary.com">Adam Retter</a>
+ */
 public class SingleKeyMapType extends AbstractMapType {
 
     private AtomicValue key;
@@ -85,7 +91,7 @@ public class SingleKeyMapType extends AbstractMapType {
     }
 
     @Override
-    public boolean contains(AtomicValue key) {
+    public boolean contains(final AtomicValue key) {
         return keysEqual(collator, this.key, key);
     }
 
