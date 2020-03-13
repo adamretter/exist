@@ -32,7 +32,6 @@ import org.exist.xquery.value.*;
 
 import javax.annotation.Nullable;
 import java.util.Iterator;
-import java.util.function.BiPredicate;
 import java.util.function.ToIntFunction;
 
 /**
@@ -51,18 +50,7 @@ public class MapType extends AbstractMapType {
     private int type = Type.ANY_TYPE;
 
     private static IMap<AtomicValue, Sequence> newMap(@Nullable final Collator collator) {
-        final BiPredicate<AtomicValue, AtomicValue> keyEqualsFn = (k1, k2) -> {
-            if (collator != null) {
-                try {
-                    return ValueComparison.compareAtomic(collator, k1, k2, Constants.StringTruncationOperator.NONE, Constants.Comparison.EQ);
-                } catch (final XPathException e) {
-                    LOG.warn("Unable to compare with collation '" + collator + "', will fallback to non-collation comparision. Error: " + e.getMessage(), e);
-                }
-            }
-            return k1.equals(k2);
-        };
-
-        return new Map(KEY_HASH_FN, keyEqualsFn);
+        return new Map<>(KEY_HASH_FN, (k1, k2) -> keysEqual(collator, k1, k2));
     }
 
     public MapType(final XQueryContext context) {
