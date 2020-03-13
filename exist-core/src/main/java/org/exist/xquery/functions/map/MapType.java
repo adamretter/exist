@@ -26,8 +26,6 @@ import com.ibm.icu.text.Collator;
 import io.lacuna.bifurcan.IEntry;
 import io.lacuna.bifurcan.IMap;
 import io.lacuna.bifurcan.Map;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.exist.xquery.*;
 import org.exist.xquery.value.*;
 
@@ -45,8 +43,7 @@ public class MapType extends AbstractMapType {
 
     private static final ToIntFunction<AtomicValue> KEY_HASH_FN = AtomicValue::hashCode;
 
-    protected final static Logger LOG = LogManager.getLogger(MapType.class);
-
+    // TODO(AR) future potential optimisation... could the class member `map` remain `linear` ?
     private IMap<AtomicValue, Sequence> map;
     private int type = Type.ANY_TYPE;
 
@@ -113,11 +110,8 @@ public class MapType extends AbstractMapType {
         setKeyType(other.key() != null ? other.key().getType() : Type.ANY_TYPE);
 
         if(other instanceof MapType) {
-            //TODO(AR) is the union in the correct direction i.e. keys from `other` overwrite `this`
             map = map.union(((MapType)other).map);
         } else {
-
-            // TODO(AR) could the class member `map` remain `linear` ?
 
             // create a transient map
             final IMap<AtomicValue, Sequence> newMap = map.linear();
@@ -257,13 +251,6 @@ public class MapType extends AbstractMapType {
         }
         else if (type != newType) {
             type = Type.ITEM;
-//            try {
-//                final Map.Transient<AtomicValue, Sequence> newTransientMap = PersistentTrieMap.<AtomicValue, Sequence>of().asTransient();
-//                newTransientMap.__putAllEquivalent(map, EqualityComparator.fromComparator((Comparator)getComparator(null)));   //NOTE: getComparator(null) returns a default distinct values comparator
-//                map = newTransientMap.freeze();
-//            } catch (final XPathException e) {
-//                LOG.error(e);
-//            }
         }
     }
 
@@ -286,8 +273,6 @@ public class MapType extends AbstractMapType {
     public static <K, V> IMap<K, V> newLinearMap() {
         // TODO(AR) see bug in bifurcan - https://github.com/lacuna/bifurcan/issues/23
         //return new LinearMap<K, V>();
-
-        // TODO(AR) workaround for the above bug
         return new Map<K, V>().linear();
     }
 
