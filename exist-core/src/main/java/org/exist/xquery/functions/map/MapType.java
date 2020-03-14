@@ -191,13 +191,20 @@ public class MapType extends AbstractMapType {
 
     @Override
     public Sequence get(AtomicValue key) {
-        key = convert(key);
+        key = convertQuiet(key);
         if (key == null) {
             return Sequence.EMPTY_SEQUENCE;
         }
 
         final Sequence result = map.get(key, null);
         return result == null ? Sequence.EMPTY_SEQUENCE : result;
+    }
+
+    @Override
+    public @Nullable Sequence getOrNull(AtomicValue key) throws XPathException {
+        key = convert(key);
+
+        return map.get(key, null);
     }
 
     @Override
@@ -208,7 +215,7 @@ public class MapType extends AbstractMapType {
 
     @Override
     public boolean contains(AtomicValue key) {
-        key = convert(key);
+        key = convertQuiet(key);
         if (key == null) {
             return false;
         }
@@ -295,13 +302,17 @@ public class MapType extends AbstractMapType {
         }
     }
 
-    private AtomicValue convert(final AtomicValue key) {
+    private AtomicValue convertQuiet(final AtomicValue key) {
+        try {
+            return convert(key);
+        } catch (final XPathException e) {
+            return null;
+        }
+    }
+
+    private AtomicValue convert(final AtomicValue key) throws XPathException {
         if (keyType != UNKNOWN_KEY_TYPE && keyType != MIXED_KEY_TYPES) {
-            try {
-                return key.convertTo(keyType);
-            } catch (final XPathException e) {
-                return null;
-            }
+            return key.convertTo(keyType);
         }
         return key;
     }

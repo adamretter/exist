@@ -28,7 +28,10 @@ import org.exist.xquery.*;
 import org.exist.xquery.value.*;
 
 import javax.annotation.Nullable;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.NoSuchElementException;
 
 /**
  * Implements the array type (XQuery 3.1). An array is also a function. This class thus extends
@@ -40,7 +43,7 @@ import java.util.*;
  *
  * @author Wolf
  */
-public class ArrayType extends FunctionReference implements Lookup.LookupSupport {
+public class ArrayType extends FunctionReference implements Lookup.LookupSupport, Iterable<Sequence> {
 
     // the signature of the function which is evaluated if the map is called as a function item
     private static final FunctionSignature ACCESSOR =
@@ -107,6 +110,34 @@ public class ArrayType extends FunctionReference implements Lookup.LookupSupport
     @Override
     public Sequence keys() throws XPathException {
         return asSequence();
+    }
+
+    public Iterator<Sequence> iterator() {
+        return new ArrayTypeIterator(vector);
+    }
+
+    private static class ArrayTypeIterator implements Iterator<Sequence> {
+        private IPersistentVector<Sequence> vector;
+        private final int count;
+        private int position = 0;
+
+        public ArrayTypeIterator(final IPersistentVector<Sequence> vector) {
+            this.vector = vector;
+            this.count = vector.count();
+        }
+
+        @Override
+        public boolean hasNext() {
+            return position < count;
+        }
+
+        @Override
+        public Sequence next() {
+            if (hasNext()) {
+                return vector.nth(position++);
+            }
+            throw new NoSuchElementException("position=" + position + ", count=" + count);
+        }
     }
 
     public Sequence tail() throws XPathException {

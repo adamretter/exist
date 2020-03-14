@@ -75,7 +75,23 @@ public abstract class AbstractMapType extends FunctionReference
         this.context = context;
     }
 
+    /**
+     * Get the value from the map.
+     *
+     * @param key the map key
+     *
+     * @return the value, or the empty sequence.
+     */
     public abstract Sequence get(AtomicValue key);
+
+    /**
+     * Get the value from the map.
+     *
+     * @param key the map key
+     *
+     * @return the value, or null.
+     */
+    abstract @Nullable Sequence getOrNull(AtomicValue key) throws XPathException;
 
     public abstract AbstractMapType put(AtomicValue key, Sequence value) throws XPathException;
 

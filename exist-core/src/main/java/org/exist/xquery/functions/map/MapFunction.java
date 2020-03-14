@@ -24,6 +24,7 @@ package org.exist.xquery.functions.map;
 import io.lacuna.bifurcan.IEntry;
 import org.exist.dom.QName;
 import org.exist.xquery.*;
+import org.exist.xquery.functions.array.ArrayType;
 import org.exist.xquery.value.*;
 
 import java.util.ArrayList;
@@ -36,11 +37,12 @@ public class MapFunction extends BasicFunction {
 
     private static final QName QN_MERGE = new QName("merge", MapModule.NAMESPACE_URI, MapModule.PREFIX);
     private static final QName QN_SIZE = new QName("size", MapModule.NAMESPACE_URI, MapModule.PREFIX);
-    private static final QName QN_ENTRY = new QName("entry", MapModule.NAMESPACE_URI, MapModule.PREFIX);
+    private static final QName QN_KEYS = new QName("keys", MapModule.NAMESPACE_URI, MapModule.PREFIX);
+    private static final QName QN_CONTAINS = new QName("contains", MapModule.NAMESPACE_URI, MapModule.PREFIX);
+    private static final QName QN_FIND = new QName("find", MapModule.NAMESPACE_URI, MapModule.PREFIX);
     private static final QName QN_GET = new QName("get", MapModule.NAMESPACE_URI, MapModule.PREFIX);
     private static final QName QN_PUT = new QName("put", MapModule.NAMESPACE_URI, MapModule.PREFIX);
-    private static final QName QN_CONTAINS = new QName("contains", MapModule.NAMESPACE_URI, MapModule.PREFIX);
-    private static final QName QN_KEYS = new QName("keys", MapModule.NAMESPACE_URI, MapModule.PREFIX);
+    private static final QName QN_ENTRY = new QName("entry", MapModule.NAMESPACE_URI, MapModule.PREFIX);
     private static final QName QN_REMOVE = new QName("remove", MapModule.NAMESPACE_URI, MapModule.PREFIX);
     private static final QName QN_FOR_EACH = new QName("for-each", MapModule.NAMESPACE_URI, MapModule.PREFIX);
 
@@ -79,6 +81,16 @@ public class MapFunction extends BasicFunction {
             new FunctionParameterSequenceType("key", Type.ATOMIC, Cardinality.EXACTLY_ONE, "The key to look up")
         },
         new SequenceType(Type.BOOLEAN, Cardinality.EXACTLY_ONE)
+    );
+
+    public final static FunctionSignature FNS_FIND = new FunctionSignature(
+        QN_FIND,
+        "Searches the supplied input sequence and any contained maps and arrays for a map entry with the supplied key, and returns the corresponding values.",
+        new SequenceType[] {
+                new FunctionParameterSequenceType(MapModule.PREFIX, Type.ITEM, Cardinality.ZERO_OR_MORE, "The input sequence to search"),
+                new FunctionParameterSequenceType("key", Type.ATOMIC, Cardinality.EXACTLY_ONE, "The key to look up")
+        },
+        new SequenceType(Type.ARRAY, Cardinality.EXACTLY_ONE)
     );
 
     public final static FunctionSignature FNS_GET = new FunctionSignature(
@@ -154,6 +166,8 @@ public class MapFunction extends BasicFunction {
             return keys(args);
         } else if (isCalledAs(QN_CONTAINS.getLocalPart())) {
             return contains(args);
+        } else if (isCalledAs(QN_FIND.getLocalPart())) {
+            return find(args);
         } else if (isCalledAs(QN_GET.getLocalPart())) {
             return get(args);
         } else if (isCalledAs(QN_PUT.getLocalPart())) {
@@ -188,6 +202,50 @@ public class MapFunction extends BasicFunction {
     private Sequence contains(final Sequence[] args) {
         final AbstractMapType map = (AbstractMapType) args[0].itemAt(0);
         return BooleanValue.valueOf(map.contains((AtomicValue) args[1].itemAt(0)));
+    }
+
+    /*
+     * Copyright (c) 2020 Evolved Binary
+     *
+     * Use of this software is governed by the Business Source License, Version 1.1,
+     * included in the LICENSE file.
+     *
+     * As of the Change Date specified in that file,
+     * in accordance with the Business Source License, use
+     * of this software will be governed by Apache License, Version 2.0,
+     * included in the file licenses/Apache2.txt.
+     */
+    private Sequence find(final Sequence[] args) throws XPathException {
+        final Sequence input = args[0];
+        if (input.isEmpty()) {
+            return new ArrayType(context, Sequence.EMPTY_SEQUENCE);
+        }
+
+        final AtomicValue key = args[1].itemAt(0).atomize();
+
+        final List<Sequence> found = new ArrayList<>();
+        findRecursive(input.iterate(), key, found);
+
+        return new ArrayType(context, found);
+    }
+
+    private void findRecursive(final SequenceIterator iterator, final AtomicValue key, final List<Sequence> found) throws XPathException {
+        while (iterator.hasNext()) {
+            final Item item = iterator.nextItem();
+            if (Type.ARRAY == item.getType()) {
+                final ArrayType array = (ArrayType) item;
+                for (final Sequence member : array) {
+                    findRecursive(member.iterate(), key, found);
+                }
+            } else if (Type.MAP == item.getType()) {
+                final AbstractMapType map = (AbstractMapType) item;
+                final Sequence value = map.getOrNull(key);
+                if (value != null) {
+                    found.add(value);
+                    findRecursive(value.iterate(), key, found);
+                }
+            }
+        }
     }
 
     private Sequence get(final Sequence[] args) {

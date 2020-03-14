@@ -68,6 +68,11 @@ public class SingleKeyMapType extends AbstractMapType {
     }
 
     @Override
+    @Nullable Sequence getOrNull(final AtomicValue key) throws XPathException {
+        return get(key);
+    }
+
+    @Override
     public AbstractMapType merge(final Iterable<AbstractMapType> others) {
         final MapType map = new MapType(context, collator, key, value);
         return map.merge(others);

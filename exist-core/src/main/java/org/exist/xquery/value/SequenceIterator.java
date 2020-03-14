@@ -22,7 +22,7 @@
 
 package org.exist.xquery.value;
 
-//TODO replace with extends Iterator<Item>
+//TODO(AR) replace with extends Iterator<Item>
 public interface SequenceIterator {
 
     SequenceIterator EMPTY_ITERATOR = new EmptySequenceIterator();

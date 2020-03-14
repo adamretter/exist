@@ -42,6 +42,7 @@ public class MapModule extends AbstractInternalModule {
             new FunctionDef(MapFunction.FNS_SIZE, MapFunction.class),
             new FunctionDef(MapFunction.FNS_KEYS, MapFunction.class),
             new FunctionDef(MapFunction.FNS_CONTAINS, MapFunction.class),
+            new FunctionDef(MapFunction.FNS_FIND, MapFunction.class),
             new FunctionDef(MapFunction.FNS_GET, MapFunction.class),
             new FunctionDef(MapFunction.FNS_PUT, MapFunction.class),
             new FunctionDef(MapFunction.FNS_ENTRY, MapFunction.class),
