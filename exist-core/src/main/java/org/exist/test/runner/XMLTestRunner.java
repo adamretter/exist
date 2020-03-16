@@ -31,6 +31,7 @@ import org.exist.source.ClassLoaderSource;
 import org.exist.source.Source;
 import org.exist.util.DatabaseConfigurationException;
 import org.exist.util.ExistSAXParserFactory;
+import org.exist.util.FileUtils;
 import org.exist.xquery.*;
 import org.exist.xquery.value.*;
 import org.junit.runner.Description;
@@ -80,17 +81,17 @@ public class XMLTestRunner extends AbstractTestRunner {
         } catch (final ParserConfigurationException | IOException | SAXException e) {
             throw new InitializationError(e);
         }
-        this.info = extractTestInfo(doc);
+        this.info = extractTestInfo(path, doc);
     }
 
-    private static XMLTestInfo extractTestInfo(final Document doc) throws InitializationError {
+    private static XMLTestInfo extractTestInfo(final Path path, final Document doc) throws InitializationError {
         String testName = null;
         String description = null;
         final List<String> childNames = new ArrayList<>();
 
-        final Node docElement = doc.getFirstChild();
+        final Node docElement = doc.getDocumentElement();
         if(docElement == null) {
-            throw new InitializationError("Invalid XML test document");
+            throw new InitializationError("Invalid XML test document: " + path.toAbsolutePath());
         }
 
         final NodeList children = docElement.getChildNodes();
@@ -123,7 +124,7 @@ public class XMLTestRunner extends AbstractTestRunner {
         }
 
         if(testName == null) {
-            throw new InitializationError("Could not find <testName> in XML test document");
+            throw new InitializationError("Could not find <testName> in XML test document: " + path.toAbsolutePath());
         }
 
         return new XMLTestInfo(testName, description, childNames);
