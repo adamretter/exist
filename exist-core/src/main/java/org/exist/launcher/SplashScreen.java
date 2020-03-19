@@ -50,7 +50,7 @@ public class SplashScreen extends JFrame implements Observer, Comparable {
         this.launcher = launcher;
         setUndecorated(true);
         setBackground(new Color(255, 255, 255, 255));
-        setAlwaysOnTop(true);
+
         setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
 
         getContentPane().setBackground(new Color(255, 255, 255, 255));
@@ -98,6 +98,12 @@ public class SplashScreen extends JFrame implements Observer, Comparable {
         pack();
         this.setLocationRelativeTo(null);
         setVisible(true);
+
+        // bring to front
+        SwingUtilities.invokeLater(() -> {
+            toFront();
+            repaint();
+        });
     }
 
     public void setStatus(final String status) {
