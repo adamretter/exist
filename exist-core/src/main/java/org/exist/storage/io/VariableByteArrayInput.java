@@ -78,7 +78,7 @@ public class VariableByteArrayInput extends AbstractVariableByteInput {
     }
 
     @Override
-    public int available() throws IOException {
+    public int available() {
         return end - position;
     }
 
@@ -117,7 +117,7 @@ public class VariableByteArrayInput extends AbstractVariableByteInput {
     }
 
     @Override
-    public int readFixedInt() throws IOException {
+    public int readFixedInt() {
         return ( data[position++] & 0xff ) |
             ( ( data[position++] & 0xff ) << 8 ) |
             ( ( data[position++] & 0xff ) << 16 ) |
@@ -167,7 +167,7 @@ public class VariableByteArrayInput extends AbstractVariableByteInput {
     }
 
     @Override
-    public void skip(final int count) throws IOException {
+    public void skip(final int count) {
         for (int i = 0; i < count; i++) {
             while (position < end && (data[position++] & 0200) > 0) {
                 //Nothing to do
@@ -176,7 +176,7 @@ public class VariableByteArrayInput extends AbstractVariableByteInput {
     }
 
     @Override
-    public void skipBytes(final long count) throws IOException {
+    public void skipBytes(final long count) {
         for(long i = 0; i < count && position < end; i++) {
             position++;
         }
