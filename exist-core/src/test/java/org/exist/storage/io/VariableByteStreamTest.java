@@ -21,7 +21,6 @@
  */
 package org.exist.storage.io;
 
-import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -31,87 +30,92 @@ import static org.junit.Assert.assertEquals;
 
 public class VariableByteStreamTest {
 
-    private final static int SIZE = 1000;
-    
-	private long[] values = new long[1000 * 3];
+	@Test
+	public void inOutLong() throws IOException {
+		final int size = 3000;
 
-	@Before
-	public void setUp() {
-		Random rand = new Random(System.currentTimeMillis()); 
-		for(int i = 0; i < SIZE * 3; i++) {
+		// create test data
+		final long[] values = new long[size];
+		final Random rand = new Random(System.currentTimeMillis());
+		for (int i = 0; i < size; i++) {
 			values[i++] = rand.nextInt();
 			values[i++] = rand.nextInt() & 0xffffff;
 			values[i] = rand.nextInt() & 0xff;
 		}
-	}
 
-	@Test
-	public void inOutLong() throws IOException {
-		VariableByteOutputStream os = new VariableByteOutputStream();
-		for(int i = 0; i < SIZE * 3; i++) {
+		// Write variable byte encoded `values` to `vbeValues`
+		final VariableByteOutputStream os = new VariableByteOutputStream();
+		for (int i = 0; i < size; i++) {
 			os.writeLong(values[i++]);
 			os.writeInt((int)values[i++]);
 			os.writeShort((short)values[i]);
 		}
-		byte[] data = os.toByteArray();
-		
-		VariableByteArrayInput is = new VariableByteArrayInput(data);
-		long l;
-		short s;
-		int i;
-		for(int j = 0; j < SIZE * 3; j++) {
-			l = is.readLong();
-			assertEquals(l, values[j++]);
-			i = is.readInt();
-			assertEquals(i, values[j++]);
-			s = is.readShort();
-			assertEquals(s, values[j]);
+		final byte[] vbeValues = os.toByteArray();
+
+		// Read variable byte encoded `values` from `vbeValues`
+		final VariableByteArrayInput is = new VariableByteArrayInput(vbeValues);
+		for (int j = 0; j < size; j++) {
+			final long l = is.readLong();
+			assertEquals(values[j++], l);
+			final int i = is.readInt();
+			assertEquals(values[j++], i);
+			final long s = is.readShort();
+			assertEquals(values[j], s);
 		}
 	}
 
 	@Test
 	public void copyTo() throws IOException {
-		Random rand = new Random(System.currentTimeMillis());
-		int valuesWritten = 0;
-		int dataLen = 0;
-		VariableByteOutputStream os = new VariableByteOutputStream();
-		for(int i = 0; i < 1000; i++) {
-			int count = rand.nextInt(0xfff);
-			os.writeShort((short)count);
-			dataLen += 2;
-			for(int j = 0; j < count; j++) {
-				int next = rand.nextInt(0xff);
-				os.writeShort((short) next);
-				valuesWritten++;
-				dataLen += 2;
+
+		// create test data - 1000 random length arrays of short values
+		final short[][] values = new short[1000][];
+		final Random rand = new Random(System.currentTimeMillis());
+		for (int i = 0; i < 1000; i++) {
+			final short arrayLen = (short) rand.nextInt(Short.MAX_VALUE);
+			values[i] = new short[arrayLen];
+			for (int j = 0; j < arrayLen; j++) {
+				final short arrayValue = (short) rand.nextInt(Short.MAX_VALUE);
+				values[i][j] = arrayValue;
 			}
 		}
 
-		byte[] data = os.toByteArray();
+		// Write short `values` as variable byte encoded data to `vbeValues`. Format is: [arrayLen, arrayValue1..arrayValueN]+
+		final VariableByteOutputStream os = new VariableByteOutputStream();
+		for (int i = 0; i < values.length; i++) {
+			final short arrayLen = (short) values[i].length;
+			os.writeShort(arrayLen);
+			for (int j = 0; j < arrayLen; j++) {
+				final short arrayValue = values[i][j];
+				os.writeShort(arrayValue);
+			}
+		}
+		final byte[] vbeValues = os.toByteArray();
 
+		// Copy shorts in `vbeValues` via `src` to `dest` into `copiedVbeValues`
+		final VariableByteArrayInput src = new VariableByteArrayInput(vbeValues);
+		final VariableByteOutputStream dest = new VariableByteOutputStream();
 		int valuesCopied = 0;
-		dataLen = 0;
-		VariableByteArrayInput is = new VariableByteArrayInput(data);
-		os = new VariableByteOutputStream();
-		while(is.available() > 0) {
-			int count = is.readShort();
-			boolean skip = rand.nextBoolean();
-			if(skip)
-				is.skip(count);
-			else {
-				os.writeShort(count);
-				is.copyTo(os, count);
-				valuesCopied += count;
-				dataLen += 2 * count + 2;
+		while (src.available() > 0) {
+			final short arrayLen = src.readShort();  // read arrayLen from src
+			final boolean skip = rand.nextBoolean();
+			if (skip) {
+				// don't copy array to dest
+				src.skip(arrayLen);	 // skip over arrayValue(s) in src
+			} else {
+				// copy to array to dest
+				dest.writeShort(arrayLen);	 // write arrayLen to dest
+				src.copyTo(dest, arrayLen);  // copy arrayValue(s) to dest
+				valuesCopied += arrayLen;
 			}
 		}
-		data = os.toByteArray();
+		final byte[] copiedVbeValues = dest.toByteArray();
 
+		// compare number of copied values against values read
 		int valuesRead = 0;
-		is = new VariableByteArrayInput(data);
-		while(is.available() > 0) {
+		final VariableByteArrayInput is = new VariableByteArrayInput(copiedVbeValues);
+		while (is.available() > 0) {
 			int count = is.readShort();
-			for(int i = 0; i < count; i++) {
+			for (int i = 0; i < count; i++) {
 				is.readShort();
 				valuesRead++;
 			}
