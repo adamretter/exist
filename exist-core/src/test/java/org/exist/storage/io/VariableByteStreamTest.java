@@ -23,7 +23,11 @@ package org.exist.storage.io;
 
 import org.junit.Test;
 
-import java.io.IOException;
+import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Random;
 
 import static org.junit.Assert.assertEquals;
@@ -67,17 +71,20 @@ public class VariableByteStreamTest {
 	@Test
 	public void copyTo() throws IOException {
 
-		// create test data - 1000 random length arrays of short values
-		final short[][] values = new short[1000][];
-		final Random rand = new Random(System.currentTimeMillis());
-		for (int i = 0; i < 1000; i++) {
-			final short arrayLen = (short) rand.nextInt(Short.MAX_VALUE);
-			values[i] = new short[arrayLen];
-			for (int j = 0; j < arrayLen; j++) {
-				final short arrayValue = (short) rand.nextInt(Short.MAX_VALUE);
-				values[i][j] = arrayValue;
-			}
-		}
+//		// create test data - 1000 random length arrays of short values
+//		final short[][] values = new short[1000][];
+//		//		final Random rand = new Random(System.currentTimeMillis());
+//		final Random rand = new FnRandomNumberGenerator.XORShiftRandom(69);  //TODO(AR) use non-deterministic above
+//		for (int i = 0; i < 1000; i++) {
+//			final short arrayLen = (short) rand.nextInt(Short.MAX_VALUE);
+//			values[i] = new short[arrayLen];
+//			for (int j = 0; j < arrayLen; j++) {
+//				final short arrayValue = (short) rand.nextInt(Short.MAX_VALUE);
+//				values[i][j] = arrayValue;
+//			}
+//		}
+
+		final short[][] values = loadValues();
 
 		// Write short `values` as variable byte encoded data to `vbeValues`. Format is: [arrayLen, arrayValue1..arrayValueN]+
 		final VariableByteOutputStream os = new VariableByteOutputStream();
@@ -95,18 +102,27 @@ public class VariableByteStreamTest {
 		final VariableByteArrayInput src = new VariableByteArrayInput(vbeValues);
 		final VariableByteOutputStream dest = new VariableByteOutputStream();
 		int valuesCopied = 0;
+		int tmp = 0;
 		while (src.available() > 0) {
 			final short arrayLen = src.readShort();  // read arrayLen from src
-			final boolean skip = rand.nextBoolean();
+			//final boolean skip = rand.nextBoolean();
+			final boolean skip = tmp % 7 == 0;
 			if (skip) {
 				// don't copy array to dest
 				src.skip(arrayLen);	 // skip over arrayValue(s) in src
 			} else {
 				// copy to array to dest
 				dest.writeShort(arrayLen);	 // write arrayLen to dest
-				src.copyTo(dest, arrayLen);  // copy arrayValue(s) to dest
+				try {
+					src.copyTo(dest, arrayLen);  // copy arrayValue(s) to dest
+				} catch (final ArrayIndexOutOfBoundsException e) {
+//					dumpValues(values);
+					System.out.println("tmp=" + tmp);
+					throw e;
+				}
 				valuesCopied += arrayLen;
 			}
+			tmp++;
 		}
 		final byte[] copiedVbeValues = dest.toByteArray();
 
@@ -121,5 +137,30 @@ public class VariableByteStreamTest {
 			}
 		}
 		assertEquals(valuesRead, valuesCopied);
+	}
+
+	private static void dumpValues(final short[][] values) throws IOException {
+		final StringBuilder builder = new StringBuilder();
+		for (int i = 0; i < values.length; i++) {
+			builder.append(Arrays.toString(values[i])).append("\n");
+		}
+		Files.write(Paths.get("/tmp/values.java.txt"), builder.toString().getBytes("UTF-8"));
+	}
+
+	private static short[][] loadValues() throws IOException {
+		final List<String> lines = Files.readAllLines(Paths.get("/tmp/values.java.txt"));
+
+		final short[][] values = new short[lines.size()][];
+
+		for (int i = 0; i < lines.size(); i++) {
+			final String line = lines.get(i).replace("[", "").replace("]", "");
+			final String[] strShorts = line.split(",\\s");
+			values[i] = new short[strShorts.length];
+			for (int j = 0; j < strShorts.length; j++) {
+				values[i][j] = Short.valueOf(strShorts[j]);
+			}
+		}
+
+		return values;
 	}
 }
