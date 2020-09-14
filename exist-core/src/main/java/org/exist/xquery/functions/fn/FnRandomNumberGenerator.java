@@ -192,7 +192,7 @@ public class FnRandomNumberGenerator extends BasicFunction {
     }
 
     @NotThreadSafe
-    private static class XORShiftRandom extends Random implements Cloneable {
+    public static class XORShiftRandom extends Random implements Cloneable {
         private long seed;
 
         public XORShiftRandom() {

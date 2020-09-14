@@ -79,6 +79,7 @@ public class VariableByteArrayInput extends AbstractVariableByteInput {
 
     @Override
     public int available() {
+        System.out.println("end=" + end + ", position=" + position);
         return end - position;
     }
 
