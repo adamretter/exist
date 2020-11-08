@@ -1,0 +1,4 @@
+application/dita+xml                        dita
+application/x.exist-collection-config+xml   xconf
+application/xml                             xadam xml
+application/x.xsl+xml                       xsl

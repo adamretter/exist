@@ -139,6 +139,12 @@
         </dependency>
 
         <dependency>
+            <groupId>org.exist-db</groupId>
+            <artifactId>exist-media-type-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
             <groupId>org.exquery</groupId>
             <artifactId>exquery-common</artifactId>
         </dependency>
@@ -215,6 +221,11 @@
         <dependency>
             <groupId>commons-codec</groupId>
             <artifactId>commons-codec</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-collections4</artifactId>
         </dependency>
 
         <dependency>

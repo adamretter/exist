@@ -45,10 +45,6 @@
       <tag>HEAD</tag>
   </scm>
 
-    <properties>
-        <jakarta.activation.version>1.2.2</jakarta.activation.version>
-    </properties>
-
     <dependencies>
         <dependency>
             <groupId>org.exist-db</groupId>
@@ -78,9 +74,14 @@
         </dependency>
 
         <dependency>
+            <groupId>jakarta.activation</groupId>
+            <artifactId>jakarta.activation-api</artifactId>
+        </dependency>
+
+        <dependency>
             <groupId>com.sun.activation</groupId>
             <artifactId>jakarta.activation</artifactId>
-            <version>${jakarta.activation.version}</version>
+            <scope>runtime</scope>
         </dependency>
 
         <dependency>
