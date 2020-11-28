@@ -25,12 +25,12 @@ import java.io.IOException;
 import org.apache.xmlrpc.XmlRpcException;
 import org.apache.xmlrpc.client.XmlRpcClient;
 import org.apache.xmlrpc.client.XmlRpcClientConfigImpl;
+import org.exist.mediatype.MediaType;
 import org.exist.security.MessageDigester;
 import org.exist.storage.serializers.EXistOutputKeys;
 import org.exist.test.ExistWebServer;
 import org.exist.test.TestConstants;
 import org.exist.util.Compressor;
-import org.exist.util.MimeType;
 import org.apache.commons.io.input.UnsynchronizedByteArrayInputStream;
 import org.apache.commons.io.output.UnsynchronizedByteArrayOutputStream;
 import org.exist.xmldb.XmldbURI;
@@ -210,7 +210,7 @@ public class XmlRpcTest {
 
         params.set(0, MODULE_DATA.getBytes(UTF_8));
         params.set(1, MODULE_RESOURCE.toString());
-        params.set(2, MimeType.XQUERY_TYPE.getName());
+        params.set(2, MediaType.APPLICATION_XQUERY);
         params.add(Boolean.TRUE);
         result = (Boolean) xmlrpc.execute("storeBinary", params);
         assertTrue(result);
@@ -329,7 +329,7 @@ public class XmlRpcTest {
         paramsEx.add(uploadedFileName);
         paramsEx.add(resURI);
         paramsEx.add(Boolean.TRUE);
-        paramsEx.add("application/octet-stream");
+        paramsEx.add(MediaType.APPLICATION_OCTET_STREAM);
         paramsEx.add(Boolean.FALSE);
         paramsEx.add(now);
         paramsEx.add(now);

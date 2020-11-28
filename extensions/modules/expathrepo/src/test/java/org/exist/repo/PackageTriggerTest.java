@@ -25,6 +25,7 @@ import org.apache.commons.io.IOUtils;
 import org.exist.EXistException;
 import org.exist.collections.Collection;
 import org.exist.collections.triggers.TriggerException;
+import org.exist.mediatype.MediaType;
 import org.exist.security.PermissionDeniedException;
 import org.exist.storage.BrokerPool;
 import org.exist.storage.DBBroker;
@@ -50,7 +51,7 @@ import static org.exist.collections.CollectionConfiguration.DEFAULT_COLLECTION_C
 
 public class PackageTriggerTest {
 
-    static final String xarFile = "triggertest-1.1.0.xar";
+    static final String xarFile = "triggertest-1.1.1.xar";
     static final XmldbURI triggerTestCollection = XmldbURI.create("/db");
     static final XmldbURI xarUri = triggerTestCollection.append(xarFile);
 
@@ -86,7 +87,7 @@ public class PackageTriggerTest {
                 final Collection collection = broker.getOrCreateCollection(transaction, xarUri.removeLastSegment());
                 try (final InputStream is = new UnsynchronizedByteArrayInputStream(content)) {
 
-                    collection.addBinaryResource(transaction, broker, xarUri.lastSegment(), is, "application/expath+xar", content.length);
+                    collection.addBinaryResource(transaction, broker, xarUri.lastSegment(), is, MediaType.APPLICATION_X_EXPATH_XAR_ZIP, content.length);
                     broker.saveCollection(transaction, collection);
                 }
             }

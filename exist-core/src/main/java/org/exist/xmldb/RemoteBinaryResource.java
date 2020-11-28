@@ -30,10 +30,10 @@ import java.util.Properties;
 
 import org.apache.xmlrpc.XmlRpcException;
 import org.apache.xmlrpc.client.XmlRpcClient;
+import org.exist.mediatype.MediaType;
 import org.exist.storage.blob.BlobId;
 import org.exist.util.EXistInputSource;
 import org.exist.util.Leasable;
-import org.exist.util.MimeType;
 import org.exist.util.crypto.digest.DigestType;
 import org.exist.util.crypto.digest.MessageDigest;
 import org.w3c.dom.DocumentType;
@@ -57,11 +57,11 @@ public class RemoteBinaryResource
     private MessageDigest contentDigest = null;
 
     public RemoteBinaryResource(final RemoteCollection parent, final XmldbURI documentName) throws XMLDBException {
-        super(parent, documentName, MimeType.BINARY_TYPE.getName());
+        super(parent, documentName, MediaType.APPLICATION_OCTET_STREAM);
     }
 
     public RemoteBinaryResource(final RemoteCollection parent, final XmldbURI documentName, final String type, final byte[] content) throws XMLDBException {
-        super(parent, documentName, MimeType.BINARY_TYPE.getName());
+        super(parent, documentName, MediaType.APPLICATION_OCTET_STREAM);
         this.type = type;
         this.content = content;
     }

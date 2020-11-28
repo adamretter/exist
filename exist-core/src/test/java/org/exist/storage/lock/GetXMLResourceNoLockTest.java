@@ -27,6 +27,7 @@ import java.util.Optional;
 
 import org.exist.collections.triggers.TriggerException;
 import org.exist.dom.persistent.LockedDocument;
+import org.exist.mediatype.MediaType;
 import org.exist.security.PermissionDeniedException;
 import org.exist.test.ExistWebServer;
 import org.exist.util.LockException;
@@ -98,7 +99,7 @@ public class GetXMLResourceNoLockTest {
             @SuppressWarnings("unused")
 			final BinaryDocument doc =
                     collection.addBinaryResource(transaction, broker,
-                    DOCUMENT_NAME_URI , EMPTY_BINARY_FILE.getBytes(), "text/text");
+                    DOCUMENT_NAME_URI , EMPTY_BINARY_FILE.getBytes(), MediaType.TEXT_PLAIN);
             
             transact.commit(transaction);
         }

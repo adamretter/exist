@@ -35,6 +35,7 @@ import org.exist.collections.Collection;
 import org.exist.collections.triggers.TriggerException;
 import org.exist.dom.persistent.BinaryDocument;
 import org.exist.dom.persistent.DocumentImpl;
+import org.exist.mediatype.MediaType;
 import org.exist.security.PermissionDeniedException;
 import org.exist.storage.txn.TransactionManager;
 import org.exist.storage.txn.Txn;
@@ -143,7 +144,7 @@ public class RecoverBinaryTest2 {
                     final XmldbURI uri = test2.getURI().append(j + "_" + FileUtils.fileName(f));
                     try(final InputStream is = Files.newInputStream(f)) {
                         final BinaryDocument doc =
-                            test2.addBinaryResource(transaction, broker, uri, is, MimeType.BINARY_TYPE.getName(),
+                            test2.addBinaryResource(transaction, broker, uri, is, MediaType.APPLICATION_OCTET_STREAM,
                                 FileUtils.sizeQuietly(f), new Date(), new Date());
                         assertNotNull(doc);
                     }

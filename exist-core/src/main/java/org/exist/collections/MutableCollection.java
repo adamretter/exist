@@ -39,6 +39,7 @@ import org.exist.Indexer;
 import org.exist.collections.triggers.*;
 import org.exist.indexing.IndexController;
 import org.exist.indexing.StreamListener;
+import org.exist.mediatype.MediaType;
 import org.exist.security.Account;
 import org.exist.security.Permission;
 import org.exist.security.PermissionDeniedException;
@@ -54,7 +55,6 @@ import org.exist.storage.sync.Sync;
 import org.exist.storage.txn.Txn;
 import org.exist.util.Configuration;
 import org.exist.util.LockException;
-import org.exist.util.MimeType;
 import org.exist.util.XMLReaderObjectFactory;
 import org.exist.util.XMLReaderObjectFactory.VALIDATION_SETTING;
 import org.apache.commons.io.input.UnsynchronizedByteArrayInputStream;
@@ -1694,7 +1694,7 @@ public class MutableCollection implements Collection {
             if (!broker.preserveOnCopy(preserve)) {
                 blob.copyOf(broker, blob, oldDoc);
             }
-            blob.setMimeType(mimeType == null ? MimeType.BINARY_TYPE.getName() : mimeType);
+            blob.setMimeType(mimeType != null ? mimeType : MediaType.APPLICATION_OCTET_STREAM);
             if (created != null) {
                 blob.setCreated(created.getTime());
             }

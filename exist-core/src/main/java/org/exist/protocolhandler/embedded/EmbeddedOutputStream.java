@@ -26,6 +26,7 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.Optional;
 
 import com.evolvedbinary.j8fu.Either;
 import com.evolvedbinary.j8fu.function.RunnableE;
@@ -36,6 +37,9 @@ import org.exist.EXistException;
 import org.exist.collections.Collection;
 import org.exist.collections.IndexInfo;
 import org.exist.dom.persistent.DocumentImpl;
+import org.exist.mediatype.MediaType;
+import org.exist.mediatype.MediaTypeResolver;
+import org.exist.mediatype.StorageType;
 import org.exist.protocolhandler.xmldb.XmldbURL;
 import org.exist.security.PermissionDeniedException;
 import org.exist.storage.BrokerPool;
@@ -132,18 +136,19 @@ public class EmbeddedOutputStream extends OutputStream {
                     throw new IOException("Resource " + documentUri.toString() + " is a collection.");
                 }
 
-                MimeType mime = MimeTable.getInstance().getContentTypeFor(documentUri);
-                String contentType = null;
-                if (mime != null) {
-                    contentType = mime.getName();
+                final MediaTypeResolver mediaTypeResolver = pool.getMediaTypeService().getMediaTypeResolver();
+                final Optional<MediaType> maybeMediaType = mediaTypeResolver.fromFileName(documentUri.lastSegmentString());
+                final String contentType;
+                if (maybeMediaType.isPresent()) {
+                    contentType = maybeMediaType.get().getIdentifier();
                 } else {
-                    mime = MimeType.BINARY_TYPE;
+                    contentType = null;
                 }
 
                 final TransactionManager transact = pool.getTransactionManager();
                 try (final Txn txn = transact.beginTransaction()) {
 
-                    if (mime.isXMLType()) {
+                    if (maybeMediaType.orElseGet(mediaTypeResolver::forUnknown).getStorageType() == StorageType.XML) {
                         if (LOG.isDebugEnabled()) {
                             LOG.debug("Storing XML resource");
                         }

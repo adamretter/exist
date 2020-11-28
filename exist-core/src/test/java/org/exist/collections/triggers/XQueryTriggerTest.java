@@ -30,6 +30,7 @@ import javax.xml.transform.OutputKeys;
 
 import org.apache.commons.codec.binary.Base64;
 import org.exist.TestUtils;
+import org.exist.mediatype.MediaType;
 import org.exist.test.ExistXmldbEmbeddedServer;
 import org.exist.xmldb.EXistCollectionManagementService;
 import org.exist.xmldb.EXistResource;
@@ -261,7 +262,7 @@ public class XQueryTriggerTest {
         testCollection.storeResource(doc);
 
         final BinaryResource module = (BinaryResource) testCollection.createResource(MODULE_NAME, "BinaryResource" );
-        ((EXistResource)module).setMimeType("application/xquery");
+        ((EXistResource)module).setMimeType(MediaType.APPLICATION_XQUERY);
         module.setContent(MODULE.getBytes());
         testCollection.storeResource(module);
     }
@@ -618,7 +619,7 @@ public class XQueryTriggerTest {
     @Test
     public void storeDocument_invalidTriggerForPrepare() throws XMLDBException {
         final BinaryResource invalidModule = (BinaryResource) testCollection.createResource(MODULE_NAME, "BinaryResource" );
-        ((EXistResource)invalidModule).setMimeType("application/xquery");
+        ((EXistResource)invalidModule).setMimeType(MediaType.APPLICATION_XQUERY);
         invalidModule.setContent(INVALID_MODULE.getBytes());
         testCollection.storeResource(invalidModule);
 

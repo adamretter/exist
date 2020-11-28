@@ -36,6 +36,7 @@ import org.apache.commons.io.FilenameUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.exist.SystemProperties;
+import org.exist.mediatype.MediaType;
 import org.exist.util.FileUtils;
 import org.apache.commons.io.output.UnsynchronizedByteArrayOutputStream;
 
@@ -46,7 +47,6 @@ import org.apache.commons.io.output.UnsynchronizedByteArrayOutputStream;
  */
 public class JnlpWriter {
 
-    public static final String JAR_MIME_TYPE = "application/x-java-archive";
     public static final String PACK_MIME_TYPE = "application/x-java-pack200";
     public static final String ACCEPT_ENCODING = "accept-encoding";
     public static final String CONTENT_TYPE = "content-type";
@@ -250,7 +250,7 @@ public class JnlpWriter {
 
         if (FileUtils.fileName(localFile).endsWith(".jar")) {
             //response.setHeader(CONTENT_ENCODING, JAR_MIME_TYPE);
-            response.setContentType(JAR_MIME_TYPE);
+            response.setContentType(MediaType.APPLICATION_JAVA_ARCHIVE);
 
         } else if (FileUtils.fileName(localFile).endsWith(".jar.pack.gz")) {
             response.setHeader(CONTENT_ENCODING, PACK200_GZIP_ENCODING);

@@ -27,6 +27,7 @@ import org.exist.collections.IndexInfo;
 import org.exist.collections.triggers.TriggerException;
 import org.exist.dom.persistent.BinaryDocument;
 import org.exist.dom.persistent.LockedDocument;
+import org.exist.mediatype.MediaType;
 import org.exist.security.PermissionDeniedException;
 import org.exist.storage.lock.Lock;
 import org.exist.storage.txn.Txn;
@@ -62,7 +63,7 @@ public class ModificationTimeTest {
     @Test
     public void check_if_modification_time_is_updated_binary() throws EXistException, InterruptedException, PermissionDeniedException, LockException, IOException, TriggerException {
 
-        final String mimeType = "application/octet-stream";
+        final String mimeType = MediaType.APPLICATION_OCTET_STREAM;
         final String filename = "data.dat";
         final String data = "some data";
 

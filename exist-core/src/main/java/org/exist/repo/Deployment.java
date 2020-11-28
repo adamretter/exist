@@ -32,6 +32,9 @@ import org.exist.collections.triggers.TriggerException;
 import org.exist.dom.QName;
 import org.exist.dom.memtree.*;
 import org.exist.dom.persistent.BinaryDocument;
+import org.exist.mediatype.MediaType;
+import org.exist.mediatype.MediaTypeResolver;
+import org.exist.mediatype.StorageType;
 import org.exist.security.Permission;
 import org.exist.security.PermissionDeniedException;
 import org.exist.security.PermissionFactory;
@@ -622,7 +625,9 @@ public class Deployment {
             final XmldbURI name = XmldbURI.createInternal("repo.xml");
             final IndexInfo info = collection.validateXMLResource(transaction, broker, name, updatedXML);
             final Permission permission = info.getDocument().getPermissions();
-            setPermissions(broker, requestedPerms, false, MimeType.XML_TYPE, permission);
+            final MediaTypeResolver mediaTypeResolver = broker.getBrokerPool().getMediaTypeService().getMediaTypeResolver();
+            final MediaType mediaType = mediaTypeResolver.fromString(MediaType.APPLICATION_XML).orElse(null);
+            setPermissions(broker, requestedPerms, false, mediaType, permission);
 
             collection.store(transaction, broker, info, updatedXML);
         } catch (final PermissionDeniedException | IOException | SAXException | LockException | EXistException e) {
@@ -782,39 +787,35 @@ public class Deployment {
             files = Collections.EMPTY_LIST;
         }
 
-        final MimeTable mimeTab = MimeTable.getInstance();
-
         for (final Path file : files) {
             if (inRootDir && FileUtils.fileName(file).equals("repo.xml")) {
                 continue;
             }
             if (!Files.isDirectory(file)) {
-                MimeType mime = mimeTab.getContentTypeFor(FileUtils.fileName(file));
-                if (mime == null) {
-                    mime = MimeType.BINARY_TYPE;
-                }
+                final MediaTypeResolver mediaTypeResolver = broker.getBrokerPool().getMediaTypeService().getMediaTypeResolver();
+                final MediaType mediaType = mediaTypeResolver.fromFileName(file).orElseGet(mediaTypeResolver::forUnknown);
                 final XmldbURI name = XmldbURI.create(FileUtils.fileName(file));
 
                 try {
-                    if (mime.isXMLType()) {
+                    if (mediaType.getStorageType() == StorageType.XML) {
                         final InputSource is = new FileInputSource(file);
                         IndexInfo info = null;
                         try {
                             info = targetCollection.validateXMLResource(transaction, broker, name, is);
                         } catch (EXistException | PermissionDeniedException | LockException | SAXException | IOException e) {
                             //check for .html ending
-                            if(mime.getName().equals(MimeType.HTML_TYPE.getName())){
+                            if (mediaType.getIdentifier().equals(MediaType.TEXT_HTML)) {
                                 //store it as binary resource
-                                storeBinary(broker, transaction, targetCollection, file, mime, name, requestedPerms);
+                                storeBinary(broker, transaction, targetCollection, file, mediaType, name, requestedPerms);
                             } else {
                                 // could neither store as xml nor binary: give up and report failure in outer catch
                                 throw new EXistException(FileUtils.fileName(file) + " cannot be stored");
                             }
                         }
                         if (info != null) {
-                            info.getDocument().setMimeType(mime.getName());
+                            info.getDocument().setMimeType(mediaType.getIdentifier());
                             final Permission permission = info.getDocument().getPermissions();
-                            setPermissions(broker, requestedPerms, false, mime, permission);
+                            setPermissions(broker, requestedPerms, false, mediaType, permission);
 
                             targetCollection.store(transaction, broker, info, is);
                         }
@@ -822,11 +823,11 @@ public class Deployment {
                         final long size = Files.size(file);
                         try(final InputStream is = new BufferedInputStream(Files.newInputStream(file))) {
                             final BinaryDocument doc =
-                                    targetCollection.addBinaryResource(transaction, broker, name, is, mime.getName(), size);
+                                    targetCollection.addBinaryResource(transaction, broker, name, is, mediaType.getIdentifier(), size);
 
                             final Permission permission = doc.getPermissions();
-                            setPermissions(broker, requestedPerms, false, mime, permission);
-                            doc.setMimeType(mime.getName());
+                            setPermissions(broker, requestedPerms, false, mediaType, permission);
+                            doc.setMimeType(mediaType.getIdentifier());
                             broker.storeXMLResource(transaction, doc);
                         }
                     }
@@ -838,29 +839,30 @@ public class Deployment {
         }
     }
 
-    private void storeBinary(final DBBroker broker, final Txn transaction, final Collection targetCollection, final Path file, final MimeType mime, final XmldbURI name, final Optional<RequestedPerms> requestedPerms) throws
+    private void storeBinary(final DBBroker broker, final Txn transaction, final Collection targetCollection, final Path file, final MediaType mediaType, final XmldbURI name, final Optional<RequestedPerms> requestedPerms) throws
             IOException, EXistException, PermissionDeniedException, LockException, TriggerException {
         final long size = Files.size(file);
         try (final InputStream is = new BufferedInputStream(Files.newInputStream(file))) {
             final BinaryDocument doc =
-                    targetCollection.addBinaryResource(transaction, broker, name, is, mime.getName(), size);
+                    targetCollection.addBinaryResource(transaction, broker, name, is, mediaType.getIdentifier(), size);
 
             final Permission permission = doc.getPermissions();
-            setPermissions(broker, requestedPerms, false, mime, permission);
-            doc.setMimeType(mime.getName());
+            setPermissions(broker, requestedPerms, false, mediaType, permission);
+            doc.setMimeType(mediaType.getIdentifier());
             broker.storeXMLResource(transaction, doc);
         }
     }
 
-    private void storeBinaryResources(final DBBroker broker, final Txn transaction, final Path directory, final Collection targetCollection,
-            final Optional<RequestedPerms> requestedPerms, final List<String> errors) throws IOException, EXistException,
-            PermissionDeniedException, LockException, TriggerException {
-        try(DirectoryStream<Path> stream = Files.newDirectoryStream(directory)) {
+    private void storeBinaryResources(final DBBroker broker, final Txn transaction,
+            final Path directory, final Collection targetCollection,
+            final Optional<RequestedPerms> requestedPerms, final List<String> errors) throws IOException {
+        try (final DirectoryStream<Path> stream = Files.newDirectoryStream(directory)) {
             for (final Path entry: stream) {
                 if (!Files.isDirectory(entry)) {
                     final XmldbURI name = XmldbURI.create(FileUtils.fileName(entry));
                     try {
-                        storeBinary(broker, transaction, targetCollection, entry, MimeType.BINARY_TYPE, name, requestedPerms);
+                        final MediaTypeResolver mediaTypeResolver = broker.getBrokerPool().getMediaTypeService().getMediaTypeResolver();
+                        storeBinary(broker, transaction, targetCollection, entry, mediaTypeResolver.forUnknown(), name, requestedPerms);
                     } catch (final Exception e) {
                         LOG.error(e.getMessage(), e);
                         errors.add(e.getMessage());
@@ -872,10 +874,10 @@ public class Deployment {
 
     /**
      * Set owner, group and permissions. For XQuery resources, always set the executable flag.
-     * @param mime
+     * @param mediaType
      * @param permission
      */
-    private void setPermissions(final DBBroker broker, final Optional<RequestedPerms> requestedPerms, final boolean isCollection, final MimeType mime, final Permission permission) throws PermissionDeniedException {
+    private void setPermissions(final DBBroker broker, final Optional<RequestedPerms> requestedPerms, final boolean isCollection, final MediaType mediaType, final Permission permission) throws PermissionDeniedException {
         int mode = permission.getMode();
         if (requestedPerms.isPresent()) {
             final RequestedPerms perms = requestedPerms.get();
@@ -894,7 +896,7 @@ public class Deployment {
             }).fold(l -> l, r -> r);
         }
 
-        if (isCollection || (mime != null && mime.getName().equals(MimeType.XQUERY_TYPE.getName()))) {
+        if (isCollection || (mediaType != null && mediaType.getIdentifier().equals(MediaType.APPLICATION_XQUERY))) {
             mode = mode | 0111;     //TODO(AR) Whoever did this - this is a really bad idea. You are circumventing the security of the system
         }
 

@@ -23,6 +23,7 @@ package org.exist.http.servlets;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.exist.mediatype.MediaType;
 import org.exist.util.IterableEnumeration;
 import org.exist.util.io.CachingFilterInputStream;
 import org.exist.util.io.FilterInputStreamCache;
@@ -110,7 +111,7 @@ public class HttpServletRequestWrapper implements HttpServletRequest, Closeable 
                 if (semicolon > 0) {
                     contentType = contentType.substring(0, semicolon).trim();
                 }
-                if ("application/x-www-form-urlencoded".equals(contentType)
+                if (MediaType.APPLICATION_X_WWW_FORM_URLENCODED.equals(contentType)
                         && request.getHeader("ContentType") == null) {
                     //Parse out parameters from the Content Body
                     parseContentBodyParameters();

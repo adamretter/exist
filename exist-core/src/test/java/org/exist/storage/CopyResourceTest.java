@@ -27,6 +27,7 @@ import org.exist.collections.IndexInfo;
 import org.exist.collections.triggers.TriggerException;
 import org.exist.dom.persistent.DocumentImpl;
 import org.exist.dom.persistent.LockedDocument;
+import org.exist.mediatype.MediaType;
 import org.exist.security.*;
 import org.exist.security.SecurityManager;
 import org.exist.security.internal.aider.GroupAider;
@@ -520,15 +521,15 @@ public class CopyResourceTest {
             chgrp(broker, transaction, TEST_COLLECTION_URI.append(USER1_DOC3), GROUP1_NAME);
 
             final String u1d1bin = "bin1";
-            collection.addBinaryResource(transaction, broker, USER1_BIN_DOC1, u1d1bin.getBytes(UTF_8), "text/plain");
+            collection.addBinaryResource(transaction, broker, USER1_BIN_DOC1, u1d1bin.getBytes(UTF_8), MediaType.TEXT_PLAIN);
             chmod(broker, transaction, TEST_COLLECTION_URI.append(USER1_BIN_DOC1), USER1_BIN_DOC1_MODE);
 
             final String u1d2bin = "bin2";
-            collection.addBinaryResource(transaction, broker, USER1_BIN_DOC2, u1d2bin.getBytes(UTF_8), "text/plain");
+            collection.addBinaryResource(transaction, broker, USER1_BIN_DOC2, u1d2bin.getBytes(UTF_8), MediaType.TEXT_PLAIN);
             chmod(broker, transaction, TEST_COLLECTION_URI.append(USER1_BIN_DOC2), USER1_BIN_DOC2_MODE);
 
             final String u1d3bin = "bin3";
-            collection.addBinaryResource(transaction, broker, USER1_BIN_DOC3, u1d3bin.getBytes(UTF_8), "text/plain");
+            collection.addBinaryResource(transaction, broker, USER1_BIN_DOC3, u1d3bin.getBytes(UTF_8), MediaType.TEXT_PLAIN);
             chmod(broker, transaction, TEST_COLLECTION_URI.append(USER1_BIN_DOC3), USER1_BIN_DOC3_MODE);
             chgrp(broker, transaction, TEST_COLLECTION_URI.append(USER1_BIN_DOC3), GROUP1_NAME);
 
@@ -553,11 +554,11 @@ public class CopyResourceTest {
             chgrp(broker, transaction, TEST_COLLECTION_URI.append(USER2_DOC3), GROUP1_NAME);
 
             final String u2d2bin = "bin2";
-            collection.addBinaryResource(transaction, broker, USER2_BIN_DOC2, u2d2bin.getBytes(UTF_8), "text/plain");
+            collection.addBinaryResource(transaction, broker, USER2_BIN_DOC2, u2d2bin.getBytes(UTF_8), MediaType.TEXT_PLAIN);
             chmod(broker, transaction, TEST_COLLECTION_URI.append(USER2_BIN_DOC2), USER2_BIN_DOC2_MODE);
 
             final String u2d3bin = "bin3";
-            collection.addBinaryResource(transaction, broker, USER2_BIN_DOC3, u2d3bin.getBytes(UTF_8), "text/plain");
+            collection.addBinaryResource(transaction, broker, USER2_BIN_DOC3, u2d3bin.getBytes(UTF_8), MediaType.TEXT_PLAIN);
             chmod(broker, transaction, TEST_COLLECTION_URI.append(USER2_BIN_DOC3), USER2_BIN_DOC3_MODE);
             chgrp(broker, transaction, TEST_COLLECTION_URI.append(USER2_BIN_DOC3), GROUP1_NAME);
 

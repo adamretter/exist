@@ -23,6 +23,7 @@ package org.exist.protocolhandler;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.exist.mediatype.MediaTypeResolver;
 import org.exist.storage.DBBroker;
 import org.exist.storage.StartupTrigger;
 import org.exist.storage.txn.Txn;
@@ -62,13 +63,14 @@ public class URLStreamHandlerStartupTrigger implements StartupTrigger {
             }
         }
 
-        registerStreamHandlerFactory(mode == null ? Mode.DISK : Mode.valueOf(mode.toUpperCase()));
+        final MediaTypeResolver mediaTypeResolver = sysBroker.getBrokerPool().getMediaTypeService().getMediaTypeResolver();
+        registerStreamHandlerFactory(mode == null ? Mode.DISK : Mode.valueOf(mode.toUpperCase()), mediaTypeResolver);
     }
 
-    private void registerStreamHandlerFactory(Mode mode) {
+    private void registerStreamHandlerFactory(final Mode mode, final MediaTypeResolver mediaTypeResolver) {
         if(registered.compareAndSet(false, true)) {
             try {
-                URL.setURLStreamHandlerFactory(new eXistURLStreamHandlerFactory(mode));
+                URL.setURLStreamHandlerFactory(new eXistURLStreamHandlerFactory(mode, mediaTypeResolver));
                 LOG.info("Successfully registered eXistURLStreamHandlerFactory.");
             } catch (final Error ex) {
                 LOG.warn("The JVM already has a URLStreamHandlerFactory registered, skipping...");

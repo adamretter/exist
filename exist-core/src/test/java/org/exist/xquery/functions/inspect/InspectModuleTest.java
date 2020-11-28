@@ -26,6 +26,7 @@ import org.exist.EXistException;
 import org.exist.collections.Collection;
 import org.exist.collections.triggers.TriggerException;
 import org.exist.dom.memtree.ElementImpl;
+import org.exist.mediatype.MediaType;
 import org.exist.security.PermissionDeniedException;
 import org.exist.storage.BrokerPool;
 import org.exist.storage.DBBroker;
@@ -265,7 +266,7 @@ public class InspectModuleTest {
             final Collection testCollection = broker.getOrCreateCollection(transaction, TEST_COLLECTION);
 
             try (final InputStream is = new UnsynchronizedByteArrayInputStream(MODULE.getBytes(UTF_8))) {
-                testCollection.addBinaryResource(transaction, broker, TEST_MODULE, is, "application/xquery", MODULE.getBytes(UTF_8).length);
+                testCollection.addBinaryResource(transaction, broker, TEST_MODULE, is, MediaType.APPLICATION_XQUERY, MODULE.getBytes(UTF_8).length);
             }
 
             broker.saveCollection(transaction, testCollection);

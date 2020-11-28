@@ -46,7 +46,7 @@ public class DtdEntityTest {
         Collection col = null;
         try {
             col = existEmbeddedServer.createCollection(existEmbeddedServer.getRoot(), "entity");
-            ExistXmldbEmbeddedServer.storeResource(col, "docname.xml", input.getBytes());
+            existEmbeddedServer.storeResource(col, "docname.xml", input.getBytes());
 
             // should throw XMLDBException
             ExistXmldbEmbeddedServer.getXMLResource(col, "docname.xml");
@@ -72,7 +72,7 @@ public class DtdEntityTest {
         Collection col = null;
         try {
             col = existEmbeddedServer.createCollection(existEmbeddedServer.getRoot(), "entity");
-            ExistXmldbEmbeddedServer.storeResource(col, "docname.xml", input.getBytes(UTF_8));
+            existEmbeddedServer.storeResource(col, "docname.xml", input.getBytes(UTF_8));
 
             // should throw XMLDBException
             ExistXmldbEmbeddedServer.getXMLResource(col, "docname.xml");

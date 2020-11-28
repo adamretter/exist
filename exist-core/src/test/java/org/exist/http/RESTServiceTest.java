@@ -38,6 +38,7 @@ import org.apache.commons.codec.binary.Base64;
 import org.eclipse.jetty.http.HttpStatus;
 import org.exist.Namespaces;
 import org.exist.dom.memtree.SAXAdapter;
+import org.exist.mediatype.MediaType;
 import org.exist.test.ExistWebServer;
 import org.exist.util.ExistSAXParserFactory;
 import org.exist.xmldb.XmldbURI;
@@ -112,7 +113,7 @@ public class RESTServiceTest {
 
     private static final String TEST_XQUERY =
             "xquery version \"1.0\";\n" +
-                    "declare option exist:serialize \"method=text media-type=text/text\";\n" +
+                    "declare option exist:serialize \"method=text media-type=" + MediaType.TEXT_PLAIN + "\";\n" +
                     "import module namespace request=\"http://exist-db.org/xquery/request\";\n" +
                     "import module namespace t=\"http://test.foo\" at \"module.xq\";\n" +
                     "let $param := request:get-parameter('p', ())\n" +
@@ -134,14 +135,14 @@ public class RESTServiceTest {
     private static final String TEST_XQUERY_WITH_PATH_PARAMETER =
             "xquery version \"1.0\";\n" +
                     "declare namespace request=\"http://exist-db.org/xquery/request\";\n" +
-                    "declare option exist:serialize \"method=text media-type=text/text\";\n" +
+                    "declare option exist:serialize \"method=text media-type=" + MediaType.TEXT_PLAIN + "\";\n" +
                     "(\"pathInfo=\", request:get-path-info(), \"\n\"," +
                     "\"servletPath=\", request:get-servlet-path(), \"\n\")";
 
     private static final String TEST_XQUERY_WITH_PATH_AND_CONTENT =
             "xquery version \"3.0\";\n" +
                     "declare namespace request=\"http://exist-db.org/xquery/request\";\n" +
-                    "declare option exist:serialize \"method=text media-type=text/text\";\n" +
+                    "declare option exist:serialize \"method=text media-type=" + MediaType.TEXT_PLAIN + "\";\n" +
                     "request:get-data()//data/text() || ' ' || request:get-path-info()";
 
     private static String credentials;
@@ -351,7 +352,7 @@ try {
             sconnect.setRequestProperty("Authorization", "Basic " + credentials);
             sconnect.setRequestMethod("PUT");
             sconnect.setDoOutput(true);
-            sconnect.setRequestProperty("ContentType", "application/xml");
+            sconnect.setRequestProperty("ContentType", MediaType.APPLICATION_XML);
             try (final Writer writer = new OutputStreamWriter(sconnect.getOutputStream(), UTF_8)) {
                 writer.write(XML_DATA);
             }
@@ -396,7 +397,7 @@ try {
             connect.setRequestProperty("Authorization", "Basic " + credentials);
             connect.setRequestMethod("PUT");
             connect.setDoOutput(true);
-            connect.setRequestProperty("ContentType", "application/xml");
+            connect.setRequestProperty("ContentType", MediaType.APPLICATION_XML);
             try (final Writer writer = new OutputStreamWriter(connect.getOutputStream(), UTF_8)) {
                 writer.write(XML_DATA);
             }
@@ -416,7 +417,7 @@ try {
             connect.setRequestProperty("Authorization", "Basic " + credentials);
             connect.setRequestMethod("PUT");
             connect.setDoOutput(true);
-            connect.setRequestProperty("ContentType", "application/xml; charset=UTF-8");
+            connect.setRequestProperty("ContentType", MediaType.APPLICATION_XML + "; charset=UTF-8");
 
             try (final Writer writer = new OutputStreamWriter(connect.getOutputStream(), UTF_8)) {
                 writer.write(XML_DATA);
@@ -460,7 +461,7 @@ try {
             connect.setRequestProperty("Authorization", "Basic " + credentials);
             connect.setRequestMethod("PUT");
             connect.setDoOutput(true);
-            connect.setRequestProperty("ContentType", "application/xml");
+            connect.setRequestProperty("ContentType", MediaType.APPLICATION_XML);
             try (final Writer writer = new OutputStreamWriter(connect.getOutputStream(), UTF_8)) {
                 writer.write("<data>test data</data>");
             }
@@ -661,7 +662,7 @@ try {
                 if (semicolon > 0) {
                     contentType = contentType.substring(0, semicolon).trim();
                 }
-                assertEquals("Server returned content type " + contentType, "application/xml", contentType);
+                assertEquals("Server returned content type " + contentType, MediaType.APPLICATION_XML, contentType);
 
                 //get the response of the query
                 final String response = readResponse(connect.getInputStream());
@@ -698,7 +699,7 @@ try {
             connect.setRequestProperty("Authorization", "Basic " + credentials);
             connect.setRequestMethod("PUT");
             connect.setDoOutput(true);
-            connect.setRequestProperty("ContentType", "application/xquery");
+            connect.setRequestProperty("ContentType", MediaType.APPLICATION_XML);
             try (final Writer writer = new OutputStreamWriter(connect.getOutputStream(), UTF_8)) {
                 writer.write(data);
             }
@@ -737,9 +738,9 @@ try {
                 contentType = contentType.substring(0, semicolon).trim();
             }
             if (wrap) {
-                assertEquals("Server returned content type " + contentType, "application/xml", contentType);
+                assertEquals("Server returned content type " + contentType, MediaType.APPLICATION_XML, contentType);
             } else {
-                assertEquals("Server returned content type " + contentType, "text/text", contentType);
+                assertEquals("Server returned content type " + contentType, MediaType.TEXT_PLAIN, contentType);
             }
 
             final String response = readResponse(connect.getInputStream());
@@ -761,7 +762,7 @@ try {
             connect.setRequestProperty("Authorization", "Basic " + credentials);
             connect.setRequestMethod("PUT");
             connect.setDoOutput(true);
-            connect.setRequestProperty("ContentType", "application/xml");
+            connect.setRequestProperty("ContentType", MediaType.APPLICATION_XML);
             try (final Writer writer = new OutputStreamWriter(connect.getOutputStream(), UTF_8)) {
                 writer.write(XML_DATA);
             }
@@ -786,7 +787,7 @@ try {
             if (semicolon > 0) {
                 contentType = contentType.substring(0, semicolon).trim();
             }
-            assertEquals("Server returned content type " + contentType, "application/xml", contentType);
+            assertEquals("Server returned content type " + contentType, MediaType.APPLICATION_XML, contentType);
 
             readResponse(connect.getInputStream());
         } finally {
@@ -800,7 +801,7 @@ try {
             connect.setRequestProperty("Authorization", "Basic " + credentials);
             connect.setRequestMethod("PUT");
             connect.setDoOutput(true);
-            connect.setRequestProperty("ContentType", "application/xml");
+            connect.setRequestProperty("ContentType", MediaType.APPLICATION_XML);
             try (final Writer writer = new OutputStreamWriter(connect.getOutputStream(), UTF_8)) {
                 writer.write(XML_DATA);
             }
@@ -825,7 +826,7 @@ try {
             if (semicolon > 0) {
                 contentType = contentType.substring(0, semicolon).trim();
             }
-            assertEquals("Server returned content type " + contentType, "application/xml", contentType);
+            assertEquals("Server returned content type " + contentType, MediaType.APPLICATION_XML, contentType);
 
             readResponse(connect.getInputStream());
         } finally {
@@ -839,7 +840,7 @@ try {
             connect.setRequestProperty("Authorization", "Basic " + credentials);
             connect.setRequestMethod("POST");
             connect.setDoOutput(true);
-            connect.setRequestProperty("Content-Type", "application/xml");
+            connect.setRequestProperty("Content-Type", MediaType.APPLICATION_XML);
 
             try (final Writer writer = new OutputStreamWriter(connect.getOutputStream(), UTF_8)) {
                 writer.write(content);

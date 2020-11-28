@@ -39,6 +39,9 @@ import org.exist.http.servlets.HttpRequestWrapper;
 import org.exist.http.servlets.HttpResponseWrapper;
 import org.exist.http.servlets.ResponseWrapper;
 import org.exist.http.urlrewrite.XQueryURLRewrite;
+import org.exist.mediatype.MediaType;
+import org.exist.mediatype.MediaTypeResolver;
+import org.exist.mediatype.StorageType;
 import org.exist.security.Permission;
 import org.exist.security.PermissionDeniedException;
 import org.exist.security.Subject;
@@ -121,7 +124,7 @@ public class RESTServer {
     static {
         defaultProperties.setProperty(OutputKeys.INDENT, "yes");
         defaultProperties.setProperty(OutputKeys.ENCODING, "UTF-8");
-        defaultProperties.setProperty(OutputKeys.MEDIA_TYPE, MimeType.XML_TYPE.getName());
+        defaultProperties.setProperty(OutputKeys.MEDIA_TYPE, MediaType.APPLICATION_XML);
         defaultProperties.setProperty(EXistOutputKeys.EXPAND_XINCLUDES, "yes");
         defaultProperties.setProperty(EXistOutputKeys.HIGHLIGHT_MATCHES, "elements");
         defaultProperties.setProperty(EXistOutputKeys.PROCESS_XSL_PI, "yes");
@@ -132,7 +135,7 @@ public class RESTServer {
         defaultOutputKeysProperties.setProperty(OutputKeys.INDENT, "yes");
         defaultOutputKeysProperties.setProperty(OutputKeys.ENCODING, "UTF-8");
         defaultOutputKeysProperties.setProperty(OutputKeys.MEDIA_TYPE,
-                MimeType.XML_TYPE.getName());
+                MediaType.APPLICATION_XML);
     }
     private final static String QUERY_ERROR_HEAD = "<html>" + "<head>"
             + "<title>Query Error</title>" + "<style type=\"text/css\">"
@@ -382,7 +385,7 @@ public class RESTServer {
                         wrap, cache, request, response);
 
             } catch (final XPathException e) {
-                if (MimeType.XML_TYPE.getName().equals(mimeType)) {
+                if (MediaType.APPLICATION_XML.equals(mimeType)) {
                     writeXPathException(response, HttpServletResponse.SC_BAD_REQUEST, encoding, query, path, e);
                 } else {
                     writeXPathExceptionHtml(response, HttpServletResponse.SC_BAD_REQUEST, encoding, query, path, e);
@@ -396,8 +399,6 @@ public class RESTServer {
         final XmldbURI pathUri = XmldbURI.createInternal(path);
         try {
             // check if path leads to an XQuery resource
-            final String xquery_mime_type = MimeType.XQUERY_TYPE.getName();
-            final String xproc_mime_type = MimeType.XPROC_TYPE.getName();
             lockedDocument = broker.getXMLResource(pathUri, LockMode.READ_LOCK);
             resource = lockedDocument == null ? null : lockedDocument.getDocument();
 
@@ -420,7 +421,7 @@ public class RESTServer {
                             writeCollection(response, encoding, broker, collection);
                             return;
                         } catch (final LockException le) {
-                            if (MimeType.XML_TYPE.getName().equals(mimeType)) {
+                            if (MediaType.APPLICATION_XML.equals(mimeType)) {
                                 writeXPathException(response, HttpServletResponse.SC_BAD_REQUEST, encoding, query, path, new XPathException(le.getMessage(), le));
                             } else {
                                 writeXPathExceptionHtml(response, HttpServletResponse.SC_BAD_REQUEST, encoding, query, path, new XPathException(le.getMessage(), le));
@@ -486,15 +487,15 @@ public class RESTServer {
                     // method for specifying the serializer, or split
                     // the code into two methods. - deliriumsky
 
-                    if (xquery_mime_type.equals(resource.getMimeType())) {
+                    if (MediaType.APPLICATION_XQUERY.equals(resource.getMimeType())) {
                         // Show the source of the XQuery
                         writeResourceAs(resource, broker, transaction, stylesheet, encoding,
-                                MimeType.TEXT_TYPE.getName(), outputProperties,
+                                MediaType.TEXT_PLAIN, outputProperties,
                                 request, response);
-                    } else if (xproc_mime_type.equals(resource.getMimeType())) {
+                    } else if (MediaType.APPLICATION_XPROC_XML.equals(resource.getMimeType())) {
                         // Show the source of the XProc
                         writeResourceAs(resource, broker, transaction, stylesheet, encoding,
-                                MimeType.XML_TYPE.getName(), outputProperties,
+                                MediaType.APPLICATION_XML, outputProperties,
                                 request, response);
                     }
                 } else {
@@ -512,11 +513,11 @@ public class RESTServer {
                 }
             } else {
                 try {
-                    if (xquery_mime_type.equals(resource.getMimeType())) {
+                    if (MediaType.APPLICATION_XQUERY.equals(resource.getMimeType())) {
                         // Execute the XQuery
                         executeXQuery(broker, transaction, resource, request, response,
                                 outputProperties, servletPath.toString(), pathInfo);
-                    } else if (xproc_mime_type.equals(resource.getMimeType())) {
+                    } else if (MediaType.APPLICATION_XPROC_XML.equals(resource.getMimeType())) {
                         // Execute the XProc
                         executeXProc(broker, transaction, resource, request, response,
                                 outputProperties, servletPath.toString(), pathInfo);
@@ -525,7 +526,7 @@ public class RESTServer {
                     if (LOG.isDebugEnabled()) {
                         LOG.debug(e.getMessage(), e);
                     }
-                    if (MimeType.XML_TYPE.getName().equals(mimeType)) {
+                    if (MediaType.APPLICATION_XML.equals(mimeType)) {
                         writeXPathException(response, HttpServletResponse.SC_BAD_REQUEST, encoding, query, path, e);
                     } else {
                         writeXPathExceptionHtml(response, HttpServletResponse.SC_BAD_REQUEST, encoding, query,
@@ -588,7 +589,7 @@ public class RESTServer {
                         throw new PermissionDeniedException(
                                 "Permission to read resource " + path + " denied");
                     }
-                    response.setContentType(MimeType.XML_TYPE.getName() + "; charset=" + encoding);
+                    response.setContentType(MediaType.APPLICATION_XML + "; charset=" + encoding);
                     setCreatedAndLastModifiedHeaders(response, col.getCreated(), col.getCreated());
                 }
             }
@@ -632,8 +633,6 @@ public class RESTServer {
         try {
             // check if path leads to an XQuery resource.
             // if yes, the resource is loaded and the XQuery executed.
-            final String xquery_mime_type = MimeType.XQUERY_TYPE.getName();
-            final String xproc_mime_type = MimeType.XPROC_TYPE.getName();
             lockedDocument = broker.getXMLResource(pathUri, LockMode.READ_LOCK);
             resource = lockedDocument == null ? null : lockedDocument.getDocument();
 
@@ -652,9 +651,9 @@ public class RESTServer {
                 resource = lockedDocument == null ? null : lockedDocument.getDocument();
                 if (null != resource
                         && (resource.getResourceType() == DocumentImpl.BINARY_FILE
-                        && xquery_mime_type.equals(resource.getMimeType())
+                        && MediaType.APPLICATION_XQUERY.equals(resource.getMimeType())
                         || resource.getResourceType() == DocumentImpl.XML_FILE
-                        && xproc_mime_type.equals(resource.getMimeType()))) {
+                        && MediaType.APPLICATION_XPROC_XML.equals(resource.getMimeType()))) {
                     break; // found a binary file with mime-type xquery or XML file with mime-type xproc
 
                 } else if (null != resource) {
@@ -672,14 +671,14 @@ public class RESTServer {
             // either xquery binary file or xproc xml file
             if (resource != null) {
                 if (resource.getResourceType() == DocumentImpl.BINARY_FILE
-                        && xquery_mime_type.equals(resource.getMimeType())
+                        && MediaType.APPLICATION_XQUERY.equals(resource.getMimeType())
                         || resource.getResourceType() == DocumentImpl.XML_FILE
-                        && xproc_mime_type.equals(resource.getMimeType())) {
+                        && MediaType.APPLICATION_XPROC_XML.equals(resource.getMimeType())) {
 
                     // found an XQuery resource, fixup request values
                     final String pathInfo = pathUri.trimFromBeginning(servletPath).toString();
                     try {
-                        if (xquery_mime_type.equals(resource.getMimeType())) {
+                        if (MediaType.APPLICATION_XQUERY.equals(resource.getMimeType())) {
                             // Execute the XQuery
                             executeXQuery(broker, transaction, resource, request, response,
                                     outputProperties, servletPath.toString(), pathInfo);
@@ -690,7 +689,7 @@ public class RESTServer {
                         }
 
                     } catch (final XPathException e) {
-                        if (MimeType.XML_TYPE.getName().equals(mimeType)) {
+                        if (MediaType.APPLICATION_XML.equals(mimeType)) {
                             writeXPathException(response, HttpServletResponse.SC_BAD_REQUEST, encoding, null, path, e);
 
                         } else {
@@ -717,7 +716,7 @@ public class RESTServer {
         }
 
         // content type != application/x-www-form-urlencoded
-        if (requestType == null || !requestType.equals(MimeType.URL_ENCODED_TYPE.getName())) {
+        if (requestType == null || !requestType.equals(MediaType.APPLICATION_X_WWW_FORM_URLENCODED)) {
             // third, normal POST: read the request content and check if
             // it is an XUpdate or a query request.
             int howmany = 10;
@@ -850,7 +849,7 @@ public class RESTServer {
                                     howmany, start, typed, outputProperties,
                                     enclose, cache, request, response);
                         } catch (final XPathException e) {
-                            if (MimeType.XML_TYPE.getName().equals(mimeType)) {
+                            if (MediaType.APPLICATION_XML.equals(mimeType)) {
                                 writeXPathException(response, HttpServletResponse.SC_BAD_REQUEST,
                                         encoding, null, path, e);
                             } else {
@@ -1048,7 +1047,8 @@ public class RESTServer {
         try(final ManagedCollectionLock managedCollectionLock = broker.getBrokerPool().getLockManager().acquireCollectionWriteLock(collUri)) {
             final Collection collection = broker.getOrCreateCollection(transaction, collUri);
 
-            MimeType mime;
+            final MediaTypeResolver mediaTypeResolver = broker.getBrokerPool().getMediaTypeService().getMediaTypeResolver();
+            final MediaType mediaType;
             String contentType = request.getContentType();
             String charset = null;
             if (contentType != null) {
@@ -1064,22 +1064,16 @@ public class RESTServer {
                         }
                     }
                 }
-                mime = MimeTable.getInstance().getContentType(contentType);
+                mediaType = mediaTypeResolver.fromString(contentType).orElseGet(mediaTypeResolver::forUnknown);
             } else {
-                mime = MimeTable.getInstance().getContentTypeFor(docUri);
-                if (mime != null) {
-                    contentType = mime.getName();
-                }
+                mediaType = mediaTypeResolver.fromFileName(docUri.lastSegmentString()).orElseGet(mediaTypeResolver::forUnknown);
             }
-            if (mime == null) {
-                mime = MimeType.BINARY_TYPE;
-                contentType = mime.getName();
-            }
+            contentType = mediaType.getIdentifier();
 
             try(final FilterInputStreamCache cache = FilterInputStreamCacheFactory.getCacheInstance(() -> (String) broker.getConfiguration().getProperty(Configuration.BINARY_CACHE_CLASS_PROPERTY), request.getInputStream());
                 final InputStream cfis = new CachingFilterInputStream(cache)) {
 
-                if (mime.isXMLType()) {
+                if (mediaType.getStorageType() == StorageType.XML) {
                     cfis.mark(Integer.MAX_VALUE);
                     final IndexInfo info = collection.validateXMLResource(transaction, broker, docUri, new InputSource(cfis));
                     info.getDocument().setMimeType(contentType);
@@ -1196,8 +1190,6 @@ public class RESTServer {
         if (request.getAttribute(XQueryURLRewrite.RQ_ATTR) == null) {
             return false;
         }
-        final String xqueryType = MimeType.XQUERY_TYPE.getName();
-
         final Collection collection = broker.getCollection(path);
         // a collection is not executable
         if (collection != null) {
@@ -1215,7 +1207,7 @@ public class RESTServer {
             resource = lockedDocument == null ? null : lockedDocument.getDocument();
             if (resource != null
                     && (resource.getResourceType() == DocumentImpl.BINARY_FILE
-                    && xqueryType.equals(resource.getMimeType()))) {
+                    && MediaType.APPLICATION_XQUERY.equals(resource.getMimeType()))) {
                 break; // found a binary file with mime-type xquery or XML file with mime-type xproc
             } else if (resource != null) {
                 // not an xquery or xproc resource. This means we have a path
@@ -1785,7 +1777,7 @@ public class RESTServer {
 
                         asMimeType = serializer.getStylesheetProperty(OutputKeys.MEDIA_TYPE);
                         if (!useDynamicContentType || asMimeType == null) {
-                            asMimeType = MimeType.HTML_TYPE.getName();
+                            asMimeType = MediaType.TEXT_HTML;
                         }
 
                         if (LOG.isDebugEnabled()) {
@@ -1798,9 +1790,9 @@ public class RESTServer {
                         response.setContentType(asMimeType + "; charset=" + encoding);
                     }
                 }
-                if (asMimeType.equals(MimeType.HTML_TYPE.getName())) {
+                if (asMimeType.equals(MediaType.TEXT_HTML)) {
                     outputProperties.setProperty("method", "xhtml");
-                    outputProperties.setProperty("media-type", "text/html; charset=" + encoding);
+                    outputProperties.setProperty("media-type", MediaType.TEXT_HTML + "; charset=" + encoding);
                     outputProperties.setProperty("indent", "yes");
                     outputProperties.setProperty("omit-xml-declaration", "no");
                 }
@@ -1845,7 +1837,7 @@ public class RESTServer {
 
         response.setStatus(httpStatusCode);
 
-        response.setContentType(MimeType.HTML_TYPE.getName() + "; charset=" + encoding);
+        response.setContentType(MediaType.TEXT_HTML + "; charset=" + encoding);
 
         final OutputStreamWriter writer = new OutputStreamWriter(response.getOutputStream(), encoding);
         writer.write(QUERY_ERROR_HEAD);
@@ -1888,7 +1880,7 @@ public class RESTServer {
 
         response.setStatus(httpStatusCode);
 
-        response.setContentType(MimeType.XML_TYPE.getName() + "; charset=" + encoding);
+        response.setContentType(MediaType.APPLICATION_XML + "; charset=" + encoding);
 
         try(final OutputStreamWriter writer =
                 new OutputStreamWriter(response.getOutputStream(), encoding)) {
@@ -1922,7 +1914,7 @@ public class RESTServer {
     private void writeXUpdateResult(final HttpServletResponse response,
         final String encoding, final long updateCount) throws IOException {
 
-        response.setContentType(MimeType.XML_TYPE.getName() + "; charset=" + encoding);
+        response.setContentType(MediaType.APPLICATION_XML + "; charset=" + encoding);
 
         final OutputStreamWriter writer =
                 new OutputStreamWriter(response.getOutputStream(), encoding);
@@ -1953,7 +1945,7 @@ public class RESTServer {
         final String encoding, final DBBroker broker, final Collection collection)
             throws IOException, PermissionDeniedException, LockException {
 
-        response.setContentType(MimeType.XML_TYPE.getName() + "; charset=" + encoding);
+        response.setContentType(MediaType.APPLICATION_XML + "; charset=" + encoding);
 
         setCreatedAndLastModifiedHeaders(response, collection.getCreated(), collection.getCreated());
 
@@ -2135,7 +2127,7 @@ public class RESTServer {
                         mimeType = mimeType.substring(0, semicolon);
                     }
                     if (wrap) {
-                        mimeType = "application/xml";
+                        mimeType = MediaType.APPLICATION_XML;
                     }
                     response.setContentType(mimeType + "; charset=" + encoding);
                 }
@@ -2233,12 +2225,9 @@ public class RESTServer {
     }
 
     private boolean isExecutableType(final DocumentImpl resource) {
-        return (
-            resource != null
-            && (
-                    MimeType.XQUERY_TYPE.getName().equals(resource.getMimeType()) // xquery
-                    || MimeType.XPROC_TYPE.getName().equals(resource.getMimeType()) // xproc
-            )
+        return (resource != null
+                && (MediaType.APPLICATION_XQUERY.equals(resource.getMimeType()) // a xquery
+                || MediaType.APPLICATION_XPROC_XML.equals(resource.getMimeType())) //a xproc
         );
     }
 }

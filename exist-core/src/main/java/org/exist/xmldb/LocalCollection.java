@@ -34,6 +34,7 @@ import org.exist.collections.IndexInfo;
 import org.exist.dom.persistent.DocumentImpl;
 import org.exist.dom.persistent.LockToken;
 import org.exist.dom.persistent.LockedDocument;
+import org.exist.mediatype.MediaType;
 import org.exist.security.Account;
 import org.exist.security.Permission;
 import org.exist.security.Subject;
@@ -713,7 +714,7 @@ public class LocalCollection extends AbstractLocal implements EXistCollection {
     private boolean useHtmlReader(final DBBroker broker, final Txn transaction, final LocalXMLResource res) throws XMLDBException {
         final String normalize = properties.getProperty(NORMALIZE_HTML, "no");
         return ((normalize.equalsIgnoreCase("yes") || normalize.equalsIgnoreCase("true")) &&
-                ("text/html".equals(res.getMimeType(broker, transaction)) || res.getId().endsWith(".htm") ||
+                (MediaType.TEXT_HTML.equals(res.getMimeType(broker, transaction)) || res.getId().endsWith(".htm") ||
                         res.getId().endsWith(".html")));
     }
 

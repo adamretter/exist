@@ -25,6 +25,7 @@ package org.exist.storage;
 import org.exist.EXistException;
 import org.exist.collections.Collection;
 import org.exist.collections.triggers.TriggerException;
+import org.exist.mediatype.MediaType;
 import org.exist.security.PermissionDeniedException;
 import org.exist.storage.txn.Txn;
 import org.exist.test.ExistEmbeddedServer;
@@ -64,7 +65,7 @@ public class BinaryDocumentTest {
             // add a binary document to the collection
             final byte[] binaryData1 = "binary-file1".getBytes(UTF_8);
             try (final InputStream is = new UnsynchronizedByteArrayInputStream(binaryData1)) {
-                thingCollection.addBinaryResource(transaction, broker, XmldbURI.create("file1.bin"), is, "application/octet-stream", binaryData1.length);
+                thingCollection.addBinaryResource(transaction, broker, XmldbURI.create("file1.bin"), is, MediaType.APPLICATION_OCTET_STREAM, binaryData1.length);
             }
 
             // remove the collection
@@ -74,7 +75,7 @@ public class BinaryDocumentTest {
             final Collection testCollection = broker.getCollection(testCollectionUri);
             final byte[] binaryData2 = "binary-file2".getBytes(UTF_8);
             try (final InputStream is = new UnsynchronizedByteArrayInputStream(binaryData2)) {
-                testCollection.addBinaryResource(transaction, broker, XmldbURI.create("thing"), is, "application/octet-stream", binaryData2.length);
+                testCollection.addBinaryResource(transaction, broker, XmldbURI.create("thing"), is, MediaType.APPLICATION_OCTET_STREAM, binaryData2.length);
             }
         }
     }
@@ -99,7 +100,7 @@ public class BinaryDocumentTest {
             try (final InputStream is = new UnsynchronizedByteArrayInputStream(binaryData)) {
 
                 try {
-                    testCollection.addBinaryResource(transaction, broker, thingUri.lastSegment(), is, "application/octet-stream", binaryData.length);
+                    testCollection.addBinaryResource(transaction, broker, thingUri.lastSegment(), is, MediaType.APPLICATION_OCTET_STREAM, binaryData.length);
                     fail("Should not have been able to overwrite Collection with Binary Document");
 
                 } catch (final EXistException e) {

@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.util.Optional;
 
 import org.exist.collections.triggers.TriggerException;
+import org.exist.mediatype.MediaType;
 import org.exist.security.PermissionDeniedException;
 import org.exist.test.ExistEmbeddedServer;
 import org.exist.util.*;
@@ -48,7 +49,7 @@ public class StoreBinaryTest {
     @Test
     public void check_MimeType_is_preserved() throws EXistException, PermissionDeniedException, LockException, IOException, TriggerException, DatabaseConfigurationException {
 
-        final String xqueryMimeType = "application/xquery";
+        final String xqueryMimeType = MediaType.APPLICATION_XQUERY;
         final String xqueryFilename = "script.xql";
         final String xquery = "current-dateTime()";
 

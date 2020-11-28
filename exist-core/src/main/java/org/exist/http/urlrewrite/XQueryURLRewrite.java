@@ -36,6 +36,7 @@ import org.exist.http.servlets.Authenticator;
 import org.exist.http.servlets.BasicAuthenticator;
 import org.exist.http.servlets.HttpRequestWrapper;
 import org.exist.http.servlets.HttpResponseWrapper;
+import org.exist.mediatype.MediaType;
 import org.exist.security.AuthenticationException;
 import org.exist.security.Permission;
 import org.exist.security.PermissionDeniedException;
@@ -51,7 +52,6 @@ import org.exist.storage.XQueryPool;
 import org.exist.storage.lock.Lock.LockMode;
 import org.exist.storage.serializers.Serializer;
 import org.exist.util.LockException;
-import org.exist.util.MimeType;
 import org.exist.util.serializer.XQuerySerializer;
 import org.exist.xmldb.XmldbURI;
 import org.exist.xquery.*;
@@ -232,7 +232,7 @@ public class XQueryURLRewrite extends HttpServlet {
 
                         outputProperties.setProperty(OutputKeys.INDENT, "yes");
                         outputProperties.setProperty(OutputKeys.ENCODING, "UTF-8");
-                        outputProperties.setProperty(OutputKeys.MEDIA_TYPE, MimeType.XML_TYPE.getName());
+                        outputProperties.setProperty(OutputKeys.MEDIA_TYPE, MediaType.APPLICATION_XML);
 
                         final Sequence result = runQuery(broker, modifiedRequest, response, modelView, staticRewrite, outputProperties);
 
@@ -744,7 +744,7 @@ public class XQueryURLRewrite extends HttpServlet {
             }
 
             if (controllerDoc.getResourceType() != DocumentImpl.BINARY_FILE ||
-                    !"application/xquery".equals(controllerDoc.getMimeType())) {
+                    !MediaType.APPLICATION_XQUERY.equals(controllerDoc.getMimeType())) {
                 LOG.warn("XQuery resource: " + query + " is not an XQuery or declares a wrong mime-type");
                 return null;
             }
@@ -876,7 +876,7 @@ public class XQueryURLRewrite extends HttpServlet {
 
                     final DocumentImpl sourceDoc = lockedSourceDoc.getDocument();
                     if (sourceDoc.getResourceType() != DocumentImpl.BINARY_FILE ||
-                            !"application/xquery".equals(sourceDoc.getMimeType())) {
+                            !MediaType.APPLICATION_XQUERY.equals(sourceDoc.getMimeType())) {
                         throw new ServletException("XQuery resource: " + query + " is not an XQuery or " +
                                 "declares a wrong mime-type");
                     }

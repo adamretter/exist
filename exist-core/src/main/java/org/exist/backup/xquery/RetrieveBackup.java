@@ -24,6 +24,7 @@ package org.exist.backup.xquery;
 import org.exist.backup.ZipArchiveBackupDescriptor;
 import org.exist.dom.QName;
 import org.exist.http.servlets.ResponseWrapper;
+import org.exist.mediatype.MediaType;
 import org.exist.storage.BrokerPool;
 import org.exist.util.FileUtils;
 import org.exist.xquery.*;
@@ -101,7 +102,7 @@ public class RetrieveBackup extends BasicFunction
             throw new XPathException(this, signature.toString() + " can only be used within the EXistServlet or XQueryServlet");
         }
 
-        response.setContentType("application/zip");
+        response.setContentType(MediaType.APPLICATION_ZIP);
         response.setHeader("Content-Length", String.valueOf(FileUtils.sizeQuietly(backupFile)));
         try {
             try(final OutputStream os  = response.getOutputStream()) {

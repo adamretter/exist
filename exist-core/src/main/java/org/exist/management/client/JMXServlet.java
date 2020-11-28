@@ -48,6 +48,7 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.exist.mediatype.MediaType;
 import org.exist.storage.BrokerPool;
 import org.exist.util.UUIDGenerator;
 import org.exist.util.serializer.DOMSerializer;
@@ -165,7 +166,7 @@ public class JMXServlet extends HttpServlet {
             root = client.generateXMLReport(null, categories);
         }
 
-        response.setContentType("application/xml");
+        response.setContentType(MediaType.APPLICATION_XML);
 
         final Object useAttribute = request.getAttribute("jmx.attribute");
         if (useAttribute != null) {

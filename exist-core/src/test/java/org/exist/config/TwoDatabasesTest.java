@@ -32,6 +32,7 @@ import org.exist.EXistException;
 import org.exist.collections.Collection;
 import org.exist.collections.triggers.TriggerException;
 import org.exist.dom.persistent.BinaryDocument;
+import org.exist.mediatype.MediaType;
 import org.exist.security.PermissionDeniedException;
 import org.exist.storage.BrokerPool;
 import org.exist.storage.DBBroker;
@@ -139,7 +140,7 @@ public class TwoDatabasesTest {
     private Collection storeBin(final DBBroker broker, final Txn txn, String suffix) throws PermissionDeniedException, LockException, TriggerException, EXistException, IOException {
         String data = bin + suffix;
         Collection top = broker.openCollection(XmldbURI.create("xmldb:exist:///db"), LockMode.WRITE_LOCK);
-        top.addBinaryResource(txn, broker, XmldbURI.create("bin"), data.getBytes(), "text/plain");
+        top.addBinaryResource(txn, broker, XmldbURI.create("bin"), data.getBytes(), MediaType.TEXT_PLAIN);
         return top;
     }
 

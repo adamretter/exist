@@ -29,6 +29,7 @@ import java.net.URLConnection;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.exist.mediatype.MediaTypeResolver;
 import org.exist.protocolhandler.embedded.EmbeddedInputStream;
 import org.exist.protocolhandler.embedded.EmbeddedOutputStream;
 import org.exist.protocolhandler.xmldb.XmldbURL;
@@ -49,6 +50,7 @@ import org.exist.protocolhandler.xmlrpc.XmlrpcOutputStream;
 public class EmbeddedURLConnection extends URLConnection {
     private static final Logger LOG = LogManager.getLogger(EmbeddedURLConnection.class);
     private final ThreadGroup threadGroup;
+    private final MediaTypeResolver mediaTypeResolver;
 
     /**
      * Constructs a URL connection to the specified URL.
@@ -56,12 +58,13 @@ public class EmbeddedURLConnection extends URLConnection {
      * @param threadGroup Thread group
      * @param url URL
       */
-    protected EmbeddedURLConnection(final ThreadGroup threadGroup, final URL url) {
+    protected EmbeddedURLConnection(final ThreadGroup threadGroup, final URL url, final MediaTypeResolver mediaTypeResolver) {
         super(url);
         if (LOG.isDebugEnabled()) {
             LOG.debug(url);
         }
         this.threadGroup = threadGroup;
+        this.mediaTypeResolver = mediaTypeResolver;
         setDoInput(true);
         setDoOutput(true);
     }
@@ -101,9 +104,9 @@ public class EmbeddedURLConnection extends URLConnection {
 
         final OutputStream outputstream;
         if(xmldbURL.isEmbedded()){
-            outputstream = new EmbeddedOutputStream( xmldbURL );
+            outputstream = new EmbeddedOutputStream(xmldbURL);
         } else {
-            outputstream = new XmlrpcOutputStream(threadGroup, xmldbURL);
+            outputstream = new XmlrpcOutputStream(threadGroup, xmldbURL, mediaTypeResolver);
         }
         
         return outputstream;

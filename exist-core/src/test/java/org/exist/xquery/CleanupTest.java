@@ -25,6 +25,7 @@ package org.exist.xquery;
 import org.exist.EXistException;
 import org.exist.dom.QName;
 import org.exist.dom.persistent.DocumentSet;
+import org.exist.mediatype.MediaType;
 import org.exist.security.PermissionDeniedException;
 import org.exist.storage.BrokerPool;
 import org.exist.storage.DBBroker;
@@ -90,7 +91,7 @@ public class CleanupTest {
         collection = service.createCollection("test");
         final Resource doc = collection.createResource("test-module.xql", "BinaryResource");
         doc.setContent(TEST_MODULE);
-        ((EXistResource) doc).setMimeType("application/xquery");
+        ((EXistResource) doc).setMimeType(MediaType.APPLICATION_XQUERY);
         collection.storeResource(doc);
     }
 

@@ -28,6 +28,7 @@ import com.googlecode.junittoolbox.ParallelRunner;
 import org.easymock.EasyMock;
 import javax.servlet.http.HttpServletRequest;
 import org.exist.http.urlrewrite.XQueryURLRewrite.RequestWrapper;
+import org.exist.mediatype.MediaType;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -93,7 +94,7 @@ public class XQueryURLRewriteTest
         HttpServletRequest mockHttpServletRequest = EasyMock.createMock(HttpServletRequest.class);
 
         //standard request wrapper stuff
-        expect(mockHttpServletRequest.getContentType()).andReturn("text/xml");
+        expect(mockHttpServletRequest.getContentType()).andReturn(MediaType.APPLICATION_XML);
         //end standard request wrapper stuff
 
         expect(mockHttpServletRequest.getParameterMap()).andReturn(testParameterMap);
@@ -123,7 +124,7 @@ public class XQueryURLRewriteTest
         HttpServletRequest mockHttpServletRequest = EasyMock.createMock(HttpServletRequest.class);
 
         //standard request wrapper stuff
-        expect(mockHttpServletRequest.getContentType()).andReturn("text/xml");
+        expect(mockHttpServletRequest.getContentType()).andReturn(MediaType.APPLICATION_XML);
         //end standard request wrapper stuff
 
         expect(mockHttpServletRequest.getParameterMap()).andReturn(testParameterMap);

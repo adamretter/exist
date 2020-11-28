@@ -23,6 +23,7 @@
 package org.exist.xquery;
 
 import org.exist.collections.Collection;
+import org.exist.mediatype.MediaType;
 import org.exist.source.Source;
 import org.exist.source.StringSource;
 import org.exist.storage.BrokerPool;
@@ -60,7 +61,7 @@ public class EmbeddedBinariesTest extends AbstractBinariesTest<Sequence, Item, I
                 final Collection collection = broker.getOrCreateCollection(transaction, filePath.removeLastSegment());
                 try(final InputStream is = new UnsynchronizedByteArrayInputStream(content)) {
 
-                    collection.addBinaryResource(transaction, broker, filePath.lastSegment(), is, "application/octet-stream", content.length);
+                    collection.addBinaryResource(transaction, broker, filePath.lastSegment(), is, MediaType.APPLICATION_OCTET_STREAM, content.length);
 
                     broker.saveCollection(transaction, collection);
 

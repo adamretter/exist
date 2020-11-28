@@ -30,6 +30,7 @@ import org.exist.collections.LockedCollection;
 import org.exist.dom.QName;
 import org.exist.dom.QName.IllegalQNameException;
 import org.exist.dom.memtree.DocumentFragmentImpl;
+import org.exist.mediatype.MediaType;
 import org.exist.numbering.NodeId;
 import org.exist.security.SecurityManager;
 import org.exist.security.*;
@@ -39,7 +40,6 @@ import org.exist.storage.io.VariableByteOutputStream;
 import org.exist.storage.lock.EnsureContainerLocked;
 import org.exist.storage.lock.EnsureLocked;
 import org.exist.storage.txn.Txn;
-import org.exist.util.MimeType;
 import org.exist.util.XMLString;
 import org.exist.xmldb.XmldbURI;
 import org.exist.xquery.Constants;
@@ -118,7 +118,7 @@ public class DocumentImpl extends NodeImpl<DocumentImpl> implements Resource, Do
     /**
      * The mimeType of the document
      */
-    protected String mimeType = MimeType.XML_TYPE.getName();
+    protected String mimeType = MediaType.APPLICATION_XML;
 
     /**
      * The creation time of this document
@@ -223,7 +223,7 @@ public class DocumentImpl extends NodeImpl<DocumentImpl> implements Resource, Do
         this.childAddress = childAddress;
         this.created = created;
         this.lastModified = lastModified == null ? created : lastModified;
-        this.mimeType = mimeType == null ?  MimeType.XML_TYPE.getName() : mimeType;
+        this.mimeType = mimeType != null ?  mimeType : MediaType.APPLICATION_XML;
         this.docType = docType;
 
         //inherit the group to the resource if current collection is setGid

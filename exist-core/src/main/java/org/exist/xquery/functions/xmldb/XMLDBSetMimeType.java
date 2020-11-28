@@ -22,18 +22,20 @@
 package org.exist.xquery.functions.xmldb;
 
 import java.net.URISyntaxException;
+import java.util.Optional;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.exist.dom.persistent.DocumentImpl;
 import org.exist.dom.QName;
 import org.exist.dom.persistent.LockedDocument;
+import org.exist.mediatype.MediaType;
+import org.exist.mediatype.MediaTypeResolver;
 import org.exist.security.PermissionDeniedException;
 import org.exist.storage.BrokerPool;
 import org.exist.storage.DBBroker;
 import org.exist.storage.lock.Lock.LockMode;
 import org.exist.storage.txn.Txn;
-import org.exist.util.MimeTable;
-import org.exist.util.MimeType;
 import org.exist.xmldb.XmldbURI;
 import org.exist.xquery.BasicFunction;
 import org.exist.xquery.Cardinality;
@@ -68,10 +70,10 @@ public class XMLDBSetMimeType extends BasicFunction {
     }
 
     @Override
-    public Sequence eval(Sequence[] args, Sequence contextSequence) throws XPathException {
+    public Sequence eval(final Sequence[] args, final Sequence contextSequence) throws XPathException {
 
         // Get handle to Mime-type info
-        final MimeTable mimeTable = MimeTable.getInstance();
+        final MediaTypeResolver mediaTypeResolver = context.getBroker().getBrokerPool().getMediaTypeService().getMediaTypeResolver();
 
         // Get first parameter
         final String pathParameter = new AnyURIValue(args[0].itemAt(0).getStringValue()).toString();
@@ -80,7 +82,7 @@ public class XMLDBSetMimeType extends BasicFunction {
             throw new XPathException("Can not set mime-type for resources outside the database.");
         }
 
-        XmldbURI pathUri = null;
+        XmldbURI pathUri;
         try {
             pathUri = XmldbURI.xmldbUriFor(pathParameter);
         } catch (final URISyntaxException ex) {
@@ -89,42 +91,37 @@ public class XMLDBSetMimeType extends BasicFunction {
         }
 
         // Verify mime-type input
-        MimeType newMimeType = null;
+        final MediaType newMediaType;
         if (args[1].isEmpty()) {
             // No input, use default mimetype
-            newMimeType = mimeTable.getContentTypeFor(pathParameter);
-
-            if (newMimeType == null) {
-                throw new XPathException("Unable to determine mimetype for '" + pathParameter + "'");
-            }
+            newMediaType = mediaTypeResolver
+                    .fromFileName(pathParameter)
+                    .orElseThrow(() -> new XPathException("Unable to determine mimetype for '" + pathParameter + "'"));
 
         } else {
             // Mimetype is provided, check if valid
-            newMimeType = mimeTable.getContentType(args[1].getStringValue());
-
-            if (newMimeType == null) {
-                throw new XPathException("mime-type '" + args[1].getStringValue() + "' is not supported.");
-            }
+            final String mimeType = args[1].getStringValue();
+            newMediaType = mediaTypeResolver
+                    .fromString(mimeType)
+                    .orElseThrow(() -> new XPathException("mime-type '" + mimeType + "' is not supported."));
         }
 
         // Get mime-type of resource
-        MimeType currentMimeType = getMimeTypeStoredResource(pathUri);
-        if (currentMimeType == null) {
+        MediaType currentMediaType = getMimeTypeStoredResource(mediaTypeResolver, pathUri)
+                .orElse(null);
+        if (currentMediaType == null) {
             // stored resource has no mime-type (unexpected situation)
             // fall back to document name
             logger.debug("Resource '" + pathUri + "' has no mime-type, retrieve from document name.");
-            currentMimeType = mimeTable.getContentTypeFor(pathUri);
-            
-            // if extension based lookup still fails
-            if (currentMimeType == null) {
-                throw new XPathException("Unable to determine mime-type from path '" + pathUri + "'.");
-            }            
+            final XmldbURI p = pathUri;
+            currentMediaType = mediaTypeResolver.fromFileName(p.lastSegmentString())
+                    .orElseThrow(() -> new XPathException("Unable to determine mime-type from path '" + p + "'."));  // if extension based lookup still fails
         } 
 
         // Check if mimeType are equivalent
         // in some cases value null is set, then allow to set to new value (repair action)
-        if (newMimeType.isXMLType() != currentMimeType.isXMLType() ) {
-            throw new XPathException("New mime-type must be a " + currentMimeType.getXMLDBType() + " mime-type");
+        if (newMediaType.getStorageType() != currentMediaType.getStorageType()) {
+            throw new XPathException("New mime-type must be a " + currentMediaType.getStorageType() + " mime-type");
         }
 
         // At this moment it is possible to update the mimetype
@@ -145,7 +142,7 @@ public class XMLDBSetMimeType extends BasicFunction {
 
             } else {
                 // set new mime-type
-                doc.setMimeType(newMimeType.getName());
+                doc.setMimeType(newMediaType.getIdentifier());
                 
                 // store meta data into database
                 broker.storeMetadata(txn, doc);
@@ -166,18 +163,17 @@ public class XMLDBSetMimeType extends BasicFunction {
      * Determine mimetype of currently stored resource. Copied from
      * get-mime-type.
      */
-    private MimeType getMimeTypeStoredResource(XmldbURI pathUri) throws XPathException {
-        MimeType returnValue = null;
+    private Optional<MediaType> getMimeTypeStoredResource(final MediaTypeResolver mediaTypeResolver, XmldbURI pathUri) throws XPathException {
         try {
             // relative collection Path: add the current base URI
             pathUri = context.getBaseURI().toXmldbURI().resolveCollectionPath(pathUri);
             
         } catch (final XPathException ex) {
             logger.debug("Unable to convert path " + pathUri);
-            return returnValue;
+            return Optional.empty();
         }
 
-        try(final LockedDocument lockedDocument = context.getBroker().getXMLResource(pathUri, LockMode.READ_LOCK)) {
+        try (final LockedDocument lockedDocument = context.getBroker().getXMLResource(pathUri, LockMode.READ_LOCK)) {
             // try to open the document and acquire a lock
 
             final DocumentImpl doc = lockedDocument == null ? null : lockedDocument.getDocument();
@@ -185,14 +181,13 @@ public class XMLDBSetMimeType extends BasicFunction {
                 throw new XPathException("Resource '" + pathUri + "' does not exist.");
             } else {
                 final String mimetype = doc.getMimeType();
-                returnValue = MimeTable.getInstance().getContentType(mimetype);
+                return mediaTypeResolver.fromString(mimetype);
             }
 
         } catch (final PermissionDeniedException ex) {
             logger.debug(ex.getMessage());
-
         }
 
-        return returnValue;
+        return Optional.empty();
     }
 }

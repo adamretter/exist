@@ -26,6 +26,7 @@ import java.net.URLStreamHandlerFactory;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.exist.mediatype.MediaTypeResolver;
 import org.exist.protocolhandler.protocols.xmldb.Handler;
 
 /**
@@ -42,8 +43,8 @@ public class eXistURLStreamHandlerFactory implements URLStreamHandlerFactory {
 
     private final URLStreamHandler handler;
 
-    eXistURLStreamHandlerFactory(final Mode mode) {
-        handler = new Handler(mode);
+    eXistURLStreamHandlerFactory(final Mode mode, final MediaTypeResolver mediaTypeResolver) {
+        this.handler = new Handler(mode, mediaTypeResolver);
     }
 
     /**

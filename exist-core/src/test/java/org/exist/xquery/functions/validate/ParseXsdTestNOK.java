@@ -61,7 +61,7 @@ public class ParseXsdTestNOK {
         Collection conf = null;
         try {
             conf = existEmbeddedServer.createCollection(existEmbeddedServer.getRoot(), "system/config/db/addressbook");
-            ExistXmldbEmbeddedServer.storeResource(conf, DEFAULT_COLLECTION_CONFIG_FILE, noValidation.getBytes());
+            existEmbeddedServer.storeResource(conf, DEFAULT_COLLECTION_CONFIG_FILE, noValidation.getBytes());
         } finally {
             if(conf != null) {
                 conf.close();
@@ -77,7 +77,7 @@ public class ParseXsdTestNOK {
 
             for (final String xsdTestFile : xsdTestFiles) {
                 try (final InputStream is = SAMPLES.getSample("validation/addressbook/" + xsdTestFile)) {
-                    ExistXmldbEmbeddedServer.storeResource(collection, xsdTestFile, InputStreamUtil.readAll(is));
+                    existEmbeddedServer.storeResource(collection, xsdTestFile, InputStreamUtil.readAll(is));
                 }
             }
         } finally {

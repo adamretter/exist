@@ -39,6 +39,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.exist.dom.persistent.BinaryDocument;
 import org.exist.dom.persistent.DocumentImpl;
+import org.exist.mediatype.MediaType;
 import org.exist.security.Permission;
 import org.exist.security.PermissionDeniedException;
 import org.exist.storage.DBBroker;
@@ -122,7 +123,7 @@ public class ExistXqueryRegistry {
     }
 
     public boolean isXquery(final DocumentImpl document) {
-         return document instanceof BinaryDocument && document.getMimeType().equals(XQueryCompiler.XQUERY_MIME_TYPE);
+         return document instanceof BinaryDocument && document.getMimeType().equals(MediaType.APPLICATION_XQUERY);
     }
     
     public void registerServices(final DBBroker broker, final List<RestXqService> services) {

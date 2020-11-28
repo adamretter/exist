@@ -27,6 +27,9 @@ import org.exist.EXistException;
 import org.exist.debuggee.DebuggeeFactory;
 import org.exist.dom.persistent.XMLUtil;
 import org.exist.http.Descriptor;
+import org.exist.mediatype.MediaType;
+import org.exist.mediatype.MediaTypeResolver;
+import org.exist.mediatype.StorageType;
 import org.exist.security.AuthenticationException;
 import org.exist.security.Permission;
 import org.exist.security.PermissionDeniedException;
@@ -111,7 +114,7 @@ public class XQueryServlet extends AbstractExistHttpServlet {
     public static final String ATTR_MODULE_LOAD_PATH = "xquery.module-load-path";
 
     public final static XmldbURI DEFAULT_URI = XmldbURI.EMBEDDED_SERVER_URI.append(XmldbURI.ROOT_COLLECTION_URI);
-    public final static String DEFAULT_CONTENT_TYPE = "text/html";
+    public final static String DEFAULT_CONTENT_TYPE = MediaType.TEXT_HTML;
     
     public final static String DRIVER = "org.exist.xmldb.DatabaseImpl";
     
@@ -404,7 +407,7 @@ public class XQueryServlet extends AbstractExistHttpServlet {
                     
 					//Show the source of the XQuery
                     //writeResourceAs(resource, broker, stylesheet, encoding, "text/plain", outputProperties, response);
-                    response.setContentType("text/plain; charset=" + getFormEncoding());
+                    response.setContentType(MediaType.TEXT_PLAIN + "; charset=" + getFormEncoding());
                     output.write(source.getContent());
                     output.flush();
                     return;
@@ -492,13 +495,15 @@ public class XQueryServlet extends AbstractExistHttpServlet {
 
             final String mediaType = outputProperties.getProperty(OutputKeys.MEDIA_TYPE);
             if (mediaType != null) {
-                if (!response.isCommitted())
-                	{if (MimeTable.getInstance().isTextContent(mediaType)) {
-                		response.setContentType(mediaType + "; charset=" + getFormEncoding());
+                if (!response.isCommitted()) {
+                    if (mediaType.startsWith("text/") || mediaType.endsWith("xquery") ||
+                                isXMLType(mediaType)) {
+                        response.setContentType(mediaType + "; charset=" + getFormEncoding());
                         response.setCharacterEncoding(getFormEncoding());
-                    } else
-                		response.setContentType(mediaType);}
-                
+                    } else {
+                        response.setContentType(mediaType);
+                    }
+                }
             } else {
 	            String contentType = this.contentType;
 	            try {
@@ -510,9 +515,11 @@ public class XQueryServlet extends AbstractExistHttpServlet {
 	                contentType = this.contentType;
                     
 	            } finally {
-	                if (MimeTable.getInstance().isTextContent(contentType))
-	                    {contentType += "; charset=" + getFormEncoding();}
-	                response.setContentType(contentType );
+                    if (contentType.startsWith("text/") || contentType.endsWith("xquery") ||
+                            isXMLType(contentType)) {
+                        contentType += "; charset=" + getFormEncoding();
+                    }
+	                response.setContentType(contentType);
 	            }
             }
             
@@ -559,6 +566,11 @@ public class XQueryServlet extends AbstractExistHttpServlet {
 
         output.flush();
         output.close();
+    }
+
+    private boolean isXMLType(final String mediaType) {
+        final MediaTypeResolver mediaTypeResolver = getPool().getMediaTypeService().getMediaTypeResolver();
+        return mediaTypeResolver.fromString(mediaType).map(mt -> mt.getStorageType() == StorageType.XML).orElse(false);
     }
 
     private String getSessionAttribute(HttpSession session, String attribute) {

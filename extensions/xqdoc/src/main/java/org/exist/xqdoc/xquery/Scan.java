@@ -31,6 +31,7 @@ import org.exist.dom.persistent.BinaryDocument;
 import org.exist.dom.persistent.DocumentImpl;
 import org.exist.dom.QName;
 import org.exist.dom.persistent.LockedDocument;
+import org.exist.mediatype.MediaType;
 import org.exist.security.PermissionDeniedException;
 import org.exist.source.*;
 import org.exist.storage.lock.Lock.LockMode;
@@ -130,7 +131,7 @@ public class Scan extends BasicFunction {
                                 return Sequence.EMPTY_SEQUENCE;
                             }
                             if (doc.getResourceType() != DocumentImpl.BINARY_FILE ||
-                                    !doc.getMimeType().equals("application/xquery")) {
+                                    !doc.getMimeType().equals(MediaType.APPLICATION_XQUERY)) {
                                 throw new XPathException(this, "XQuery resource: " + uri + " is not an XQuery or " +
                                         "declares a wrong mime-type");
                             }

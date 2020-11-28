@@ -21,40 +21,33 @@
  */
 package org.exist.util;
 
-import org.exist.mediatype.MediaType;
 import org.exist.mediatype.MediaTypeResolver;
 import org.exist.mediatype.StorageType;
 
+import javax.swing.filechooser.FileFilter;
 import java.io.File;
-import java.io.FilenameFilter;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Optional;
-import java.util.function.Predicate;
 
-public class XMLFilenameFilter implements FilenameFilter {
+public class XMLFileFilter extends FileFilter {
 
     private final MediaTypeResolver mediaTypeResolver;
+    private final String description;
 
-    public XMLFilenameFilter(final MediaTypeResolver mediaTypeResolver) {
+    public XMLFileFilter(final MediaTypeResolver mediaTypeResolver, final String description) {
         this.mediaTypeResolver = mediaTypeResolver;
+        this.description = description;
     }
 
     @Override
-    public boolean accept(final File dir, final String name) {
-        final Optional<MediaType> maybeMediaType = mediaTypeResolver.fromFileName(name);
-        return maybeMediaType.map(mt -> mt.getStorageType() == StorageType.XML)
-                .orElse(false);
+    public String getDescription() {
+        return description;
     }
 
-    public static Predicate<Path> asPredicate(final MediaTypeResolver mediaTypeResolver) {
-        return path -> {
-            if (!Files.isDirectory(path)) {
-                final Optional<MediaType> maybeMediaType = mediaTypeResolver.fromFileName(path);
-                return maybeMediaType.map(mt -> mt.getStorageType() == StorageType.XML)
-                        .orElse(false);
-            }
-            return false;
-        };
+    @Override
+    public boolean accept(final File f) {
+        if (f.isDirectory()) {
+            return true;
+        }
+        return mediaTypeResolver.fromFileName(f.toPath()).map(mt -> mt.getStorageType() == StorageType.XML)
+                .orElse(false);
     }
 }

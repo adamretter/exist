@@ -30,13 +30,13 @@ import org.exist.dom.persistent.StoredNode;
 import org.exist.dom.persistent.XMLUtil;
 import org.exist.dom.memtree.AttrImpl;
 import org.exist.dom.memtree.NodeImpl;
+import org.exist.mediatype.MediaType;
 import org.exist.numbering.NodeId;
 import org.exist.security.Subject;
 import org.exist.storage.BrokerPool;
 import org.exist.storage.DBBroker;
 import org.exist.storage.serializers.Serializer;
 import org.exist.storage.txn.Txn;
-import org.exist.util.MimeType;
 import com.evolvedbinary.j8fu.Either;
 import org.exist.util.serializer.DOMSerializer;
 import org.exist.util.serializer.DOMStreamer;
@@ -88,7 +88,7 @@ public class LocalXMLResource extends AbstractEXistResource implements XMLResour
     protected AtomicValue value = null;
 
     public LocalXMLResource(final Subject user, final BrokerPool brokerPool, final LocalCollection parent, final XmldbURI did) throws XMLDBException {
-        super(user, brokerPool, parent, did, MimeType.XML_TYPE.getName());
+        super(user, brokerPool, parent, did, MediaType.APPLICATION_XML);
         this.outputProperties = parent != null ? parent.getProperties() : null;
     }
 

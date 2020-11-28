@@ -26,6 +26,7 @@ import org.exist.EXistException;
 import org.exist.TestUtils;
 import org.exist.collections.Collection;
 import org.exist.collections.IndexInfo;
+import org.exist.mediatype.MediaType;
 import org.exist.security.PermissionDeniedException;
 import org.exist.storage.BrokerPool;
 import org.exist.storage.DBBroker;
@@ -88,7 +89,7 @@ public class TestTools {
     public static void storeTextDocument(final DBBroker broker, final Txn txn, final Collection collection, final String name, final Path data) throws EXistException, PermissionDeniedException, SAXException, LockException, IOException {
         final XmldbURI docUri  = XmldbURI.create(name);
         try(final InputStream is = Files.newInputStream(data)) {
-            collection.addBinaryResource(txn, broker, docUri, is, "text/plain", Files.size(data));
+            collection.addBinaryResource(txn, broker, docUri, is, MediaType.TEXT_PLAIN, Files.size(data));
         }
     }
 

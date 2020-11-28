@@ -21,9 +21,12 @@
  */
 package org.exist.test.runner;
 
+import com.evolvedbinary.j8fu.lazy.LazyVal;
 import org.exist.EXistException;
+import org.exist.mediatype.MediaTypeResolver;
 import org.exist.test.ExistEmbeddedServer;
 import org.exist.util.DatabaseConfigurationException;
+import org.exist.util.MimeTable;
 import org.exist.util.XMLFilenameFilter;
 import org.exist.util.XQueryFilenameFilter;
 import org.junit.runner.Description;
@@ -113,6 +116,7 @@ public class XSuite extends ParentRunner<Runner> {
         return annotation != null;
     }
 
+    private static final LazyVal<MediaTypeResolver> mediaTypeResolver = new LazyVal<>(MimeTable::getInstance);
     private final List<Runner> runners;
 
     /**
@@ -227,9 +231,9 @@ public class XSuite extends ParentRunner<Runner> {
     }
 
     private static @Nullable Runner getRunner(final Path path, final boolean parallel) throws InitializationError {
-        if(XMLFilenameFilter.asPredicate().test(path)) {
+        if (XMLFilenameFilter.asPredicate(mediaTypeResolver.get()).test(path)) {
             return new XMLTestRunner(path, parallel);
-        } else if(XQueryFilenameFilter.asPredicate().test(path) && !path.getFileName().toString().equals("runTests.xql")) {
+        } else if (XQueryFilenameFilter.asPredicate(mediaTypeResolver.get()).test(path) && !path.getFileName().toString().equals("runTests.xql")) {
             return new XQueryTestRunner(path, parallel);
         } else {
             return null;

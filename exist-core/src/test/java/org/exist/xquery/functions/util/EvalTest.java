@@ -22,6 +22,7 @@
 package org.exist.xquery.functions.util;
 
 import com.googlecode.junittoolbox.ParallelRunner;
+import org.exist.mediatype.MediaType;
 import org.exist.test.ExistXmldbEmbeddedServer;
 import org.exist.xmldb.*;
 import org.exist.xquery.ErrorCodes;
@@ -62,7 +63,7 @@ public class EvalTest {
         invokableQuery.setContent(
             "declare variable $" + INVOKABLE_QUERY_EXTERNAL_VAR_NAME + " external;\n" + "<hello>{$" + INVOKABLE_QUERY_EXTERNAL_VAR_NAME + "}</hello>"
         );
-        ((EXistResource) invokableQuery).setMimeType("application/xquery");
+        ((EXistResource) invokableQuery).setMimeType(MediaType.APPLICATION_XQUERY);
         existEmbeddedServer.getRoot().storeResource(invokableQuery);
     }
 
@@ -383,7 +384,7 @@ public class EvalTest {
     
     private void writeModule(Collection collection, String modulename, String module) throws XMLDBException {
         BinaryResource res = (BinaryResource) collection.createResource(modulename, "BinaryResource");
-        ((EXistResource) res).setMimeType("application/xquery");
+        ((EXistResource) res).setMimeType(MediaType.APPLICATION_XQUERY);
         res.setContent(module.getBytes());
         collection.storeResource(res);
         collection.close();

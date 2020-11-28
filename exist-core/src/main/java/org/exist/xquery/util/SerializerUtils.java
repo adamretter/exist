@@ -22,6 +22,7 @@
 package org.exist.xquery.util;
 
 import org.exist.Namespaces;
+import org.exist.mediatype.MediaType;
 import org.exist.numbering.NodeId;
 import org.exist.stax.ExtendedXMLStreamReader;
 import org.exist.storage.serializers.EXistOutputKeys;
@@ -230,28 +231,28 @@ public class SerializerUtils {
         switch(method) {
             case "xml":
             case "microxml":
-                return new StringValue("application/xml");
+                return new StringValue(MediaType.APPLICATION_XML);
 
             case "xhtml":
-                return new StringValue("application/xhtml+xml");
+                return new StringValue(MediaType.APPLICATION_XHTML_XML);
 
             case "adaptive":
-                return new StringValue("text/plain");
+                return new StringValue(MediaType.TEXT_PLAIN);
 
             case "json":
-                return new StringValue("application/json");
+                return new StringValue(MediaType.APPLICATION_JSON);
 
             case "jsonp":
-                return new StringValue("application/javascript");
+                return new StringValue(MediaType.APPLICATION_JAVASCRIPT);
 
             case "html":
-                return new StringValue("text/html");
+                return new StringValue(MediaType.TEXT_HTML);
 
             case "text":
-                return new StringValue("text/plain");
+                return new StringValue(MediaType.TEXT_PLAIN);
 
             case "binary":
-                return new StringValue("application/octet-stream");
+                return new StringValue(MediaType.APPLICATION_OCTET_STREAM);
 
             default:
                 throw new UnsupportedOperationException("Unrecognised serialization method: " + method);

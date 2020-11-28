@@ -29,6 +29,7 @@ import org.apache.http.impl.client.BasicCookieStore;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.util.EntityUtils;
 import org.exist.TestUtils;
+import org.exist.mediatype.MediaType;
 import org.exist.test.ExistWebServer;
 import org.exist.test.TestConstants;
 import org.exist.xmldb.EXistResource;
@@ -68,7 +69,7 @@ public class LoginModuleTest {
     public static void beforeClass() throws XMLDBException {
         root = DatabaseManager.getCollection("xmldb:exist://localhost:" + existWebServer.getPort() + "/xmlrpc" + XmldbURI.ROOT_COLLECTION, TestUtils.ADMIN_DB_USER, TestUtils.ADMIN_DB_PWD);
         final BinaryResource res = (BinaryResource)root.createResource(XQUERY_FILENAME, "BinaryResource");
-        ((EXistResource) res).setMimeType("application/xquery");
+        ((EXistResource) res).setMimeType(MediaType.APPLICATION_XQUERY);
         res.setContent(XQUERY);
         root.storeResource(res);
         final UserManagementService ums = (UserManagementService)root.getService("UserManagementService", "1.0");

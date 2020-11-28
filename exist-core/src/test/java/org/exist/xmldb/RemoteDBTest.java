@@ -70,16 +70,12 @@ public abstract class RemoteDBTest {
         assertNotNull(childCollection);
     }
 
-    protected void removeCollection() {
-    	try {
-	        Collection rootCollection = DatabaseManager.getCollection(getUri() + XmldbURI.ROOT_COLLECTION, "admin", "");
-	        assertNotNull(rootCollection);
-	        CollectionManagementService cms = (CollectionManagementService) rootCollection.getService(
-	                "CollectionManagementService", "1.0");
-	        cms.removeCollection(CHILD_COLLECTION);
-        } catch (Exception e) {            
-            fail(e.getMessage()); 
-        }
+    protected void removeCollection() throws XMLDBException {
+        Collection rootCollection = DatabaseManager.getCollection(getUri() + XmldbURI.ROOT_COLLECTION, "admin", "");
+        assertNotNull(rootCollection);
+        CollectionManagementService cms = (CollectionManagementService) rootCollection.getService(
+                "CollectionManagementService", "1.0");
+        cms.removeCollection(CHILD_COLLECTION);
     }
 
     public RemoteCollection getCollection() {

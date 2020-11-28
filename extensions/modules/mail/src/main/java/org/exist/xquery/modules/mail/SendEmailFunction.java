@@ -26,7 +26,9 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.exist.dom.QName;
-import org.exist.util.MimeTable;
+import org.exist.mediatype.MediaType;
+import org.exist.mediatype.MediaTypeResolver;
+import org.exist.mediatype.StorageType;
 import org.exist.xquery.*;
 import org.exist.xquery.functions.system.GetVersion;
 import org.exist.xquery.value.*;
@@ -569,7 +571,7 @@ public class SendEmailFunction extends BasicFunction
         //text email
         if(!aMail.getText().isEmpty())
         {
-            out.println("Content-Type: text/plain; charset=" + charset);
+            out.println("Content-Type: " + MediaType.TEXT_PLAIN + "; charset=" + charset);
             out.println("Content-Transfer-Encoding: 8bit");
 
             //now send the txt message
@@ -606,7 +608,7 @@ public class SendEmailFunction extends BasicFunction
         //HTML email
         if(!aMail.getXHTML().isEmpty())
         {
-                out.println("Content-Type: text/html; charset=" + charset);
+                out.println("Content-Type: " + MediaType.TEXT_PLAIN + "; charset=" + charset);
                 out.println("Content-Transfer-Encoding: 8bit");
 
                 //now send the html message
@@ -959,7 +961,7 @@ public class SendEmailFunction extends BasicFunction
                                 Element attachment = (Element) child;
                                 MimeBodyPart part;
                                 // if mimetype indicates a binary resource, assume the content is base64 encoded
-                                if (MimeTable.getInstance().isTextContent(attachment.getAttribute("mimetype"))) {
+                                if (isTextContent(attachment.getAttribute("mimetype"))) {
                                     part = new MimeBodyPart();
                                 } else {
                                     part = new PreencodedMimeBodyPart("base64");
@@ -1030,6 +1032,16 @@ public class SendEmailFunction extends BasicFunction
         }
 
         return mails;
+    }
+
+    private boolean isTextContent(final String mediaType) {
+        if (mediaType.startsWith("text/") || mediaType.endsWith("xquery")) {
+            return true;
+        }
+
+        final MediaTypeResolver mediaTypeResolver = context.getBroker().getBrokerPool().getMediaTypeService().getMediaTypeResolver();
+        return mediaTypeResolver.fromString(mediaType).map(mt -> mt.getStorageType() == StorageType.XML)
+                .orElse(false);
     }
 
     /**

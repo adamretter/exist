@@ -39,6 +39,8 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.border.EtchedBorder;
+
+import org.exist.mediatype.MediaType;
 import org.exist.xmldb.EXistResource;
 import org.exist.xquery.util.URIUtils;
 import org.xmldb.api.base.Collection;
@@ -67,9 +69,9 @@ public class NewResourceDialog extends JFrame {
     }
     
     private enum ResourceType {
-        XML_DOCUMENT("XML Document", "xml", "application/xml", "xml-resource.tmpl"),
-        XQUERY_MAIN("XQuery Main Module", "xqy", "application/xquery", "xquery-resource.tmpl"),
-        XQUERY_LIBRARY("XQuery Library Module", "xqm", "application/xquery", "xquery-lib-resource.tmpl");
+        XML_DOCUMENT("XML Document", "xml", MediaType.APPLICATION_XML, "xml-resource.tmpl"),
+        XQUERY_MAIN("XQuery Main Module", "xqy", MediaType.APPLICATION_XQUERY, "xquery-resource.tmpl"),
+        XQUERY_LIBRARY("XQuery Library Module", "xqm", MediaType.APPLICATION_XQUERY, "xquery-lib-resource.tmpl");
         
         private final String label;
         private final String fileExtension;

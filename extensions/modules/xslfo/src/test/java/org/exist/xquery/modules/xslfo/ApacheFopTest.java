@@ -22,6 +22,7 @@
 package org.exist.xquery.modules.xslfo;
 
 import org.exist.EXistException;
+import org.exist.mediatype.MediaType;
 import org.exist.security.PermissionDeniedException;
 import org.exist.storage.BrokerPool;
 import org.exist.storage.DBBroker;
@@ -50,7 +51,7 @@ public class ApacheFopTest {
                 "    <strict-validation>false</strict-validation>\n" +
                 "    <base>./</base>\n" +
                 "    <renderers>\n" +
-                "        <renderer mime=\"application/pdf\"></renderer>\n" +
+                "        <renderer mime=\"" + MediaType.APPLICATION_PDF + "\"></renderer>\n" +
                 "    </renderers>\n" +
                 "</fop>";
 
@@ -93,7 +94,7 @@ public class ApacheFopTest {
                 "let $config := " + fopConfig + "\n" +
                 "let $fo := " + fo + "\n" +
                 "\n" +
-                "let $pdf := xslfo:render($fo, \"application/pdf\", (), $config)\n" +
+                "let $pdf := xslfo:render($fo, \"" + MediaType.APPLICATION_PDF + "\", (), $config)\n" +
                 "return $pdf";
 
         final BrokerPool pool = server.getBrokerPool();

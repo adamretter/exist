@@ -35,6 +35,7 @@ import org.exist.debuggee.CommandContinuation;
 import org.exist.debugger.model.Breakpoint;
 import org.exist.debugger.model.Location;
 import org.exist.debugger.model.Variable;
+import org.exist.mediatype.MediaType;
 import org.exist.security.PermissionDeniedException;
 import org.exist.storage.BrokerPool;
 import org.exist.storage.DBBroker;
@@ -470,7 +471,7 @@ public class DebuggerTest implements ResponseListener {
 			broker.saveCollection(transaction, root);
 			assertNotNull(root);
 
-			root.addBinaryResource(transaction, broker, XmldbURI.create(name), data.getBytes(), "application/xquery");
+			root.addBinaryResource(transaction, broker, XmldbURI.create(name), data.getBytes(), MediaType.APPLICATION_XML);
 
 			transact.commit(transaction);
 		}

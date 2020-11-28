@@ -21,6 +21,7 @@
  */
 package org.exist.xquery;
 
+import org.exist.mediatype.MediaType;
 import org.exist.test.ExistXmldbEmbeddedServer;
 import org.exist.xmldb.EXistResource;
 import org.exist.xmldb.XmldbURI;
@@ -83,7 +84,7 @@ public class TransformTest {
     private void addXMLDocument(Collection c, String doc, String id) throws XMLDBException {
     	Resource r = c.createResource(id, XMLResource.RESOURCE_TYPE);
     	r.setContent(doc);
-    	((EXistResource) r).setMimeType("application/xml");
+    	((EXistResource) r).setMimeType(MediaType.APPLICATION_XML);
     	c.storeResource(r);
     }
 

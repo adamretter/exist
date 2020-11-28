@@ -29,9 +29,9 @@ import java.nio.charset.UnsupportedCharsetException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import org.exist.mediatype.MediaType;
+import org.exist.mediatype.MediaTypeResolver;
 import org.exist.util.FileUtils;
-import org.exist.util.MimeTable;
-import org.exist.util.MimeType;
 import org.apache.commons.io.input.UnsynchronizedByteArrayInputStream;
 import org.apache.commons.io.output.UnsynchronizedByteArrayOutputStream;
 import org.exist.xmldb.EXistResource;
@@ -186,7 +186,8 @@ public abstract class AbstractExtractFunction extends BasicFunction
 
                     Collection target = (path == null) ? root : XMLDBAbstractCollectionManipulator.createCollection(root, path);
 
-                    MimeType mime = MimeTable.getInstance().getContentTypeFor(name);
+                    final MediaTypeResolver mediaTypeResolver = context.getBroker().getBrokerPool().getMediaTypeService().getMediaTypeResolver();
+                    final MediaType mediaType = mediaTypeResolver.fromFileName(name).orElseGet(mediaTypeResolver::forUnknown);
 
                     //copy the input data
                     final byte[] entryData;
@@ -208,9 +209,7 @@ public abstract class AbstractExtractFunction extends BasicFunction
                     }
 
                     if (resource != null) {
-                        if (mime != null) {
-                            ((EXistResource) resource).setMimeType(mime.getName());
-                        }
+                        ((EXistResource) resource).setMimeType(mediaType.getIdentifier());
                         target.storeResource(resource);
                     }
 

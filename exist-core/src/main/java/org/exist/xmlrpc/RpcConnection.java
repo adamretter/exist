@@ -36,6 +36,9 @@ import org.exist.collections.CollectionConfigurationException;
 import org.exist.collections.CollectionConfigurationManager;
 import org.exist.collections.IndexInfo;
 import org.exist.dom.memtree.NodeImpl;
+import org.exist.mediatype.MediaType;
+import org.exist.mediatype.MediaTypeResolver;
+import org.exist.mediatype.StorageType;
 import org.exist.numbering.NodeId;
 import org.exist.protocolhandler.embedded.EmbeddedInputStream;
 import org.exist.protocolhandler.xmldb.XmldbURL;
@@ -1348,17 +1351,17 @@ public class RpcConnection implements RpcAPI {
                     }
                 }
 
-            try (final InputStream is = new UnsynchronizedByteArrayInputStream(xml)) {
+                try (final InputStream is = new UnsynchronizedByteArrayInputStream(xml)) {
 
                     final InputSource source = new InputSource(is);
 
                     final long startTime = System.currentTimeMillis();
 
                     final IndexInfo info = collection.validateXMLResource(transaction, broker, docUri.lastSegment(), source);
-                    final MimeType mime = MimeTable.getInstance().getContentTypeFor(docUri.lastSegment());
-                    if (mime != null && mime.isXMLType()) {
-                        info.getDocument().setMimeType(mime.getName());
-                    }
+                    final MediaTypeResolver mediaTypeResolver = broker.getBrokerPool().getMediaTypeService().getMediaTypeResolver();
+                    final MediaType mediaType = mediaTypeResolver.fromFileName(docUri.lastSegmentString()).orElseGet(mediaTypeResolver::forUnknown);
+                    info.getDocument().setMimeType(mediaType.getIdentifier());
+
                     if (created != null) {
                         info.getDocument().setCreated(created.getTime());
                     }
@@ -1491,9 +1494,10 @@ public class RpcConnection implements RpcAPI {
             }
 
             // parse the source
+            final MediaTypeResolver mediaTypeResolver = broker.getBrokerPool().getMediaTypeService().getMediaTypeResolver();
             try (final FileInputSource source = sourceSupplier.get()) {
-                final MimeType mime = Optional.ofNullable(MimeTable.getInstance().getContentType(mimeType)).orElse(MimeType.BINARY_TYPE);
-                final boolean treatAsXML = (isXML != null && isXML) || (isXML == null && mime.isXMLType());
+                final MediaType mediaType = mediaTypeResolver.fromString(mimeType).orElseGet(mediaTypeResolver::forUnknown);
+                final boolean treatAsXML = (isXML != null && isXML) || (isXML == null && mediaType.getStorageType() == StorageType.XML);
 
                     if (treatAsXML) {
                         final IndexInfo info = collection.validateXMLResource(transaction, broker, docUri.lastSegment(), source);
@@ -1510,7 +1514,7 @@ public class RpcConnection implements RpcAPI {
 
                     } else {
                         try (final InputStream is = source.getByteStream()) {
-                            final DocumentImpl doc = collection.addBinaryResource(transaction, broker, docUri.lastSegment(), is, mime.getName(), source.getByteStreamLength());
+                            final DocumentImpl doc = collection.addBinaryResource(transaction, broker, docUri.lastSegment(), is, mediaType.getIdentifier(), source.getByteStreamLength());
 
                             // NOTE: early release of Collection lock inline with Asymmetrical Locking scheme
                             collection.close();

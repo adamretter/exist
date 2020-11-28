@@ -31,6 +31,7 @@ import org.apache.http.client.fluent.Request;
 import org.apache.http.entity.ContentType;
 import org.exist.http.jaxb.Query;
 import org.exist.http.jaxb.Result;
+import org.exist.mediatype.MediaType;
 import org.exist.test.ExistWebServer;
 import org.apache.commons.io.output.UnsynchronizedByteArrayOutputStream;
 import org.exist.xmldb.XmldbURI;
@@ -83,7 +84,7 @@ public class RestBinariesTest extends AbstractBinariesTest<Result, Result.Value,
         final String query = "import module namespace file = \"http://exist-db.org/xquery/file\";\n" +
                 "import module namespace response = \"http://exist-db.org/xquery/response\";\n" +
                 "let $bin := file:read-binary('" +  tmpInFile.toAbsolutePath().toString() + "')\n" +
-                "return response:stream($bin, 'media-type=application/octet-stream')";
+                "return response:stream($bin, 'media-type=" + MediaType.APPLICATION_OCTET_STREAM + "')";
 
         final HttpResponse response = postXquery(query);
 
@@ -108,7 +109,7 @@ public class RestBinariesTest extends AbstractBinariesTest<Result, Result.Value,
         final String query = "import module namespace file = \"http://exist-db.org/xquery/file\";\n" +
                 "import module namespace response = \"http://exist-db.org/xquery/response\";\n" +
                 "let $bin := file:read-binary('" +  tmpInFile.toAbsolutePath().toString() + "')\n" +
-                "return response:stream-binary($bin, 'media-type=application/octet-stream', ())";
+                "return response:stream-binary($bin, 'media-type=" + MediaType.APPLICATION_OCTET_STREAM + "', ())";
 
         final HttpResponse response = postXquery(query);
 
@@ -124,7 +125,7 @@ public class RestBinariesTest extends AbstractBinariesTest<Result, Result.Value,
     @Override
     protected void storeBinaryFile(final XmldbURI filePath, final byte[] content) throws Exception {
         final HttpResponse response = executor.execute(Request.Put(getRestUrl() + filePath.toString())
-                .setHeader("Content-Type", "application/octet-stream")
+                .setHeader("Content-Type", MediaType.APPLICATION_OCTET_STREAM)
                 .bodyByteArray(content)
         ).returnResponse();
 

@@ -23,10 +23,11 @@ package org.exist.test;
 
 import org.exist.EXistException;
 import org.exist.TestUtils;
+import org.exist.mediatype.MediaType;
+import org.exist.mediatype.MediaTypeResolver;
+import org.exist.mediatype.StorageType;
 import org.exist.storage.serializers.EXistOutputKeys;
 import org.exist.util.DatabaseConfigurationException;
-import org.exist.util.MimeTable;
-import org.exist.util.MimeType;
 import org.exist.xmldb.EXistCollection;
 import org.exist.xmldb.EXistXQueryService;
 import org.exist.xmldb.XmldbURI;
@@ -57,6 +58,7 @@ public class ExistXmldbEmbeddedServer extends ExternalResource {
     private Database database = null;
     private Collection root = null;
     private EXistXQueryService xpathQueryService = null;
+    private MediaTypeResolver mediaTypeResolver = null;
 
     public ExistXmldbEmbeddedServer() {
         this(false, false);
@@ -107,6 +109,7 @@ public class ExistXmldbEmbeddedServer extends ExternalResource {
     private void startDb() throws ClassNotFoundException, IllegalAccessException, InstantiationException, XMLDBException {
         try {
             existEmbeddedServer.startDb();
+            this.mediaTypeResolver = existEmbeddedServer.getBrokerPool().getMediaTypeService().getMediaTypeResolver();
         } catch (final DatabaseConfigurationException | EXistException | IOException e) {
             throw new XMLDBException(ErrorCodes.INVALID_DATABASE, e);
         }
@@ -153,6 +156,7 @@ public class ExistXmldbEmbeddedServer extends ExternalResource {
             e.printStackTrace();
             fail(e.getMessage());
         }
+        this.mediaTypeResolver = null;
         existEmbeddedServer.stopDb(clearTemporaryStorage);
     }
 
@@ -211,10 +215,10 @@ public class ExistXmldbEmbeddedServer extends ExternalResource {
         return newCollection;
     }
 
-    public static void storeResource(final Collection collection, final String documentName, final byte[] content)
+    public void storeResource(final Collection collection, final String documentName, final byte[] content)
             throws XMLDBException {
-        final MimeType mime = MimeTable.getInstance().getContentTypeFor(documentName);
-        final String type = mime.isXMLType() ? XMLResource.RESOURCE_TYPE : BinaryResource.RESOURCE_TYPE;
+        final MediaType mediaType = mediaTypeResolver.fromFileName(documentName).orElseGet(mediaTypeResolver::forUnknown);
+        final String type = mediaType.getStorageType() == StorageType.XML ? XMLResource.RESOURCE_TYPE : BinaryResource.RESOURCE_TYPE;
         final Resource resource = collection.createResource(documentName, type);
         resource.setContent(content);
         collection.storeResource(resource);

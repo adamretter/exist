@@ -25,25 +25,26 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.StringTokenizer;
-import java.util.TreeMap;
+import java.util.*;
 
+import javax.annotation.Nullable;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
 
+import com.evolvedbinary.j8fu.OptionalUtil;
+import com.evolvedbinary.j8fu.lazy.LazyVal;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
-import org.exist.xmldb.XmldbURI;
+import org.exist.mediatype.MediaType;
+import org.exist.mediatype.StorageType;
 import org.xml.sax.Attributes;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 import org.xml.sax.XMLReader;
 import org.xml.sax.helpers.DefaultHandler;
+
+import org.exist.mediatype.MediaTypeResolver;
 
 import static javax.xml.XMLConstants.FEATURE_SECURE_PROCESSING;
 
@@ -60,8 +61,9 @@ import static javax.xml.XMLConstants.FEATURE_SECURE_PROCESSING;
  * class loader.
  * 
  * @author wolf
+ * @author <a href="mailto:adam@evolvedbinary.com">Adam Retter</a>
  */
-public class MimeTable {
+public class MimeTable implements MediaTypeResolver {
 
     private final static Logger LOG = LogManager.getLogger(MimeTable.class);
 
@@ -72,8 +74,6 @@ public class MimeTable {
     private static final String MIME_TYPES_XML_DEFAULT = "org/exist/util/" + MIME_TYPES_XML;    
     
     private static MimeTable instance = null;
-    /** From where the mime table is loaded for message purpose */
-    private String src;
     
     /**
      * Returns the singleton.
@@ -100,24 +100,9 @@ public class MimeTable {
         }
         return instance;
     }
-    
-    /**
-     * Returns the singleton, using a custom mime-types.xml stream,
-     * like for instance an internal database resource.
-     *
-     * @param stream the input stream
-     * @param src the name of the input
-     *
-     * @return the mimetable
-     */
-    public static MimeTable getInstance(final InputStream stream, final String src) {
-        if (instance == null) {
-            instance = new MimeTable(stream, src);
-        }
-        return instance;
-    }
 
     private MimeType defaultMime = null;
+    private Optional<MediaType> maybeDefaultMediaType = Optional.empty();
     private Map<String, MimeType> mimeTypes = new TreeMap<>();
     private Map<String, MimeType> extensions = new TreeMap<>();
     private Map<String, String> preferredExtension = new TreeMap<>();
@@ -133,106 +118,16 @@ public class MimeTable {
                 try(final InputStream is = Files.newInputStream(path)) {
                     loadMimeTypes(is);
                 }
-                this.src = path.toUri().toString();
             } catch (final ParserConfigurationException | SAXException | IOException e) {
                 LOG.error(FILE_LOAD_FAILED_ERR + path.toAbsolutePath().toString(), e);
             }
         }
     }
-    
+
     public MimeTable(final InputStream stream, final String src) {
         load(stream, src);
     }
-    
-    /**
-     * Inform from where a mime-table is loaded.
-     *
-     * @return the source.
-     */
-    public String getSrc() {
-        return this.src;
-    }
-    
-    //TODO: deprecate?
-    public MimeType getContentTypeFor(String fileName) {
-        final String ext = getExtension(fileName);
-        final MimeType mt = (ext == null) ? defaultMime : extensions.get(ext);
-        return (mt == null) ? defaultMime : mt;
-    }
-    
-    public MimeType getContentTypeFor(XmldbURI fileName) {
-    	return getContentTypeFor(fileName.toString());
-    }
-    
-    public MimeType getContentType(String mimeType) {
-        return mimeTypes.get(mimeType);
-    }
-    
-    public List<String> getAllExtensions(MimeType mimeType) {
-    	return getAllExtensions(mimeType.getName());
-    }
-    
-    public List<String> getAllExtensions(String mimeType) {
-    	final List<String> extns = new ArrayList<>();
-    	
-    	for(final Map.Entry<String, MimeType> extension : extensions.entrySet()) {
-            final MimeType mt = extension.getValue();
-            if(mt.getName().equals(mimeType)) {
-                extns.add(extension.getKey());
-            }
-    	}
-    	
-    	final String preferred = preferredExtension.get(mimeType);
-    	if(preferred != null && !extns.contains(preferred)) {
-            extns.add(0, preferred);
-    	}
-    	
-    	return extns;
-    }
-    
-    public String getPreferredExtension(MimeType mimeType) {
-        return getPreferredExtension(mimeType.getName());
-     }
-    
-    public String getPreferredExtension(String mimeType) {
-       return preferredExtension.get(mimeType);
-    }
-    
-    public boolean isXMLContent(String fileName) {
-        final String ext = getExtension(fileName);
-        if(ext == null) {
-            return false;
-        }
-        final MimeType type = extensions.get(ext);
-        if(type == null) {
-            return false;
-        }
-        return type.getType() == MimeType.XML;
-    }
-    
-    /**
-     * Determine if the passed mime type is text, i.e. may require a charset
-     * declaration.
-     * 
-     * @param mimeType the mimetype
-     * @return TRUE if mimetype is for text content else FALSE
-     */
-    public boolean isTextContent(String mimeType) {
-    	final MimeType mime = getContentType(mimeType);
-    	return mimeType.startsWith("text/") || mimeType.endsWith("xquery") ||
-    		mime.isXMLType();
-    }
-    
-    private String getExtension(String fileName) {
-        final Path path = Paths.get(fileName);
-        fileName = FileUtils.fileName(path);
-        final int p = fileName.lastIndexOf('.');
-        if(p < 0 || p + 1 == fileName.length()) {
-            return null;
-        }
-        return fileName.substring(p).toLowerCase();
-    }
-    
+
     private void load() {
         final ClassLoader cl = MimeTable.class.getClassLoader();
         final InputStream is = cl.getResourceAsStream(MIME_TYPES_XML_DEFAULT);
@@ -242,7 +137,6 @@ public class MimeTable {
 
         try {
             loadMimeTypes(is);
-            this.src = "resource://" + MIME_TYPES_XML_DEFAULT;
         } catch (final ParserConfigurationException | SAXException | IOException e) {
             LOG.error(LOAD_FAILED_ERR, e);
         }
@@ -253,7 +147,6 @@ public class MimeTable {
         LOG.info("Loading mime table from stream: " + src);
         try {
         	loadMimeTypes(stream);
-        	this.src=src;
         } catch (final ParserConfigurationException | SAXException | IOException e) {
             LOG.error(LOAD_FAILED_ERR, e);
         }
@@ -266,7 +159,6 @@ public class MimeTable {
             }
             try {
                 loadMimeTypes(is);
-                this.src="resource://"+MIME_TYPES_XML_DEFAULT;
             } catch (final ParserConfigurationException | SAXException | IOException e) {
                 LOG.error(LOAD_FAILED_ERR, e);
             }
@@ -345,6 +237,7 @@ public class MimeTable {
                 // Put the default mime into the mime map
                 if (defaultMime != null) {
                     mimeTypes.put(defaultMime.getName(), defaultMime);
+                    maybeDefaultMediaType = Optional.ofNullable(defaultMime).map(MimeTypeAdapter::new);
                 }
             }
 
@@ -405,15 +298,100 @@ public class MimeTable {
             charBuf.append(ch, start, length);
         }
     }
-    
-    public static void main(String[] args) {
-        final MimeTable table = MimeTable.getInstance();
-        final MimeType type = table.getContentTypeFor("samples/xquery/fibo.svg");
-        if (type == null) {
-            System.out.println("Not found!");
-        } else {
-            System.out.println(type.getName());
-            System.out.println(type.getDescription());
+
+    @Override
+    public Optional<MediaType> fromFileName(final Path path) {
+        if (path == null) {
+            return Optional.empty();
         }
+        return fromFileNameImpl(path.getFileName().toString());
+    }
+
+    @Override
+    public Optional<MediaType> fromFileName(String path) {
+        if (path == null) {
+            return Optional.empty();
+        }
+
+        // if this is a path, just take the last segment i.e. the filename
+        int pathSepIdx = -1;
+        if ((pathSepIdx = path.lastIndexOf('/')) > -1) {
+            path = path.substring(pathSepIdx + 1);
+        } else if ((pathSepIdx = path.lastIndexOf('\\')) > -1) {
+            path = path.substring(pathSepIdx + 1);
+        }
+
+        return fromFileNameImpl(path);
+    }
+
+    private Optional<MediaType> fromFileNameImpl(final String fileName) {
+        int idx = fileName.lastIndexOf("."); // period index
+
+        if (idx == -1) {
+            // TODO(AR) If no entry is found, then contentType == "application/octet-stream"... we should make that mediaType a constant... or we should have getContentType return null???
+            return maybeDefaultMediaType;
+        }
+
+        final String extension = fileName.substring(idx + 1);
+        if (extension.length() == 0) {
+            // TODO(AR) If no entry is found, then contentType == "application/octet-stream"... we should make that mediaType a constant... or we should have getContentType return null???
+            return maybeDefaultMediaType;
+        }
+
+        final Optional<MediaType> maybeMediaType = Optional.ofNullable(extensions.get('.' + extension))
+                .map(MimeTypeAdapter::new);
+        return OptionalUtil.or(
+                maybeMediaType,
+                maybeDefaultMediaType
+        );
+    }
+
+    public class MimeTypeAdapter implements MediaType {
+        private final MimeType mimeType;
+
+        private MimeTypeAdapter(final MimeType mimeType) {
+            this.mimeType = mimeType;
+        }
+
+        @Override
+        public String getIdentifier() {
+            return mimeType.getName();
+        }
+
+        @Override
+        public @Nullable String[] getKnownFileExtensions() {
+            final Set<String> exts = new HashSet<>();
+            for (final Map.Entry<String, MimeType> entry : extensions.entrySet()) {
+                if (entry.getValue().getName().equals(getIdentifier())) {
+                    exts.add(entry.getKey().substring(1));  // strip leading '.'
+                }
+            }
+            return exts.toArray(new String[exts.size()]);
+        }
+
+        @Override
+        public StorageType getStorageType() {
+            switch (mimeType.getType()) {
+                case MimeType.XML:
+                    return StorageType.XML;
+                case MimeType.BINARY:
+                    return StorageType.BINARY;
+                default:
+                    throw new IllegalStateException();
+            }
+        }
+    }
+
+    @Override
+    public Optional<MediaType> fromString(final String mediaType) {
+        final MimeType mt = mimeTypes.get(mediaType);
+        return Optional.ofNullable(mt)
+                .map(MimeTypeAdapter::new);
+    }
+
+    private final LazyVal<MediaType> unknownMediaType = new LazyVal<>(() ->  new MimeTypeAdapter(MimeType.BINARY_TYPE));
+    @Override
+    public MediaType forUnknown() {
+        return unknownMediaType.get();
     }
 }

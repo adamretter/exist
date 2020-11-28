@@ -34,6 +34,8 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import java.util.*;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
+
+import org.exist.mediatype.MediaType;
 import org.exist.util.io.CachingFilterInputStream;
 import org.exist.util.io.FilterInputStreamCache;
 import org.exist.util.io.FilterInputStreamCacheFactory;
@@ -175,7 +177,9 @@ public class HttpServletRequestAdapter implements HttpRequest {
             return getGetParameters(key);
         }
 
-        if (request.getMethod().equals("POST") && request.getContentType() != null && request.getContentType().equals("application/x-www-form-urlencoded")) {
+        if (request.getMethod().equals("POST")
+                && request.getContentType() != null
+                && request.getContentType().equals(MediaType.APPLICATION_X_WWW_FORM_URLENCODED)) {
             if (formFields == null) {
 
                 try {

@@ -26,6 +26,7 @@ import java.io.IOException;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.exist.mediatype.MediaTypeResolver;
 import org.exist.protocolhandler.xmldb.XmldbURL;
 import org.exist.storage.io.BlockingInputStream;
 
@@ -39,10 +40,12 @@ public class XmlrpcUploadRunnable implements Runnable {
     private final static Logger logger = LogManager.getLogger(XmlrpcUploadRunnable.class);
     private final XmldbURL url;
     private final BlockingInputStream bis;
+    private final MediaTypeResolver mediaTypeResolver;
 
-    public XmlrpcUploadRunnable(final XmldbURL url, final BlockingInputStream bis) {
+    public XmlrpcUploadRunnable(final XmldbURL url, final BlockingInputStream bis, final MediaTypeResolver mediaTypeResolver) {
         this.url = url;
         this.bis = bis;
+        this.mediaTypeResolver = mediaTypeResolver;
     }
 
     /**
@@ -53,7 +56,7 @@ public class XmlrpcUploadRunnable implements Runnable {
         Exception exception = null;
         try {
             final XmlrpcUpload uploader = new XmlrpcUpload();
-            uploader.stream(url, bis);
+            uploader.stream(url, bis, mediaTypeResolver);
 
         } catch (IOException ex) {
             logger.error(ex);

@@ -37,6 +37,7 @@ import com.evolvedbinary.j8fu.tuple.Tuple2;
 import org.exist.EXistException;
 import org.exist.collections.Collection;
 import org.exist.collections.triggers.TriggerException;
+import org.exist.mediatype.MediaType;
 import org.exist.security.PermissionDeniedException;
 import org.exist.source.Source;
 import org.exist.source.StringSource;
@@ -1323,7 +1324,7 @@ public class ImportModuleTest {
                 final XmldbURI moduleName = XmldbURI.create(module._1);
                 final byte[] moduleData = module._2.getBytes(UTF_8);
                 try (final ByteArrayInputStream bais = new ByteArrayInputStream(moduleData)) {
-                    collection.addBinaryResource(transaction, broker, moduleName, bais, "application/xquery", moduleData.length);
+                    collection.addBinaryResource(transaction, broker, moduleName, bais, MediaType.APPLICATION_XQUERY, moduleData.length);
                 }
             }
         }

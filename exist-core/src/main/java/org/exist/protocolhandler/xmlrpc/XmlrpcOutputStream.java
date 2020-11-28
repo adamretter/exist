@@ -27,6 +27,7 @@ import java.io.OutputStream;
 import java.net.MalformedURLException;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.exist.mediatype.MediaTypeResolver;
 import org.exist.protocolhandler.xmldb.XmldbURL;
 import org.exist.storage.io.BlockingInputStream;
 import org.exist.storage.io.BlockingOutputStream;
@@ -46,11 +47,11 @@ public class XmlrpcOutputStream extends OutputStream {
      * @param threadGroup the group for the threads created by this stream.
      * @param url         Location of document in database.
      */
-    public XmlrpcOutputStream(final ThreadGroup threadGroup, final XmldbURL url) {
+    public XmlrpcOutputStream(final ThreadGroup threadGroup, final XmldbURL url, final MediaTypeResolver mediaTypeResolver) {
         final BlockingInputStream bis = new BlockingInputStream();
         this.bos = bis.getOutputStream();
 
-        final Runnable runnable = new XmlrpcUploadRunnable(url, bis);
+        final Runnable runnable = new XmlrpcUploadRunnable(url, bis, mediaTypeResolver);
         final Thread thread = new Thread(threadGroup, runnable, threadGroup.getName() + ".xmlrpc.upload-" + uploadThreadId.getAndIncrement());
         thread.start();
     }

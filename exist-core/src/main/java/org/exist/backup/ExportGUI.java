@@ -22,19 +22,15 @@
 package org.exist.backup;
 
 import org.exist.EXistException;
+import org.exist.mediatype.MediaTypeResolver;
 import org.exist.security.PermissionDeniedException;
 import org.exist.storage.BrokerPool;
 import org.exist.storage.DBBroker;
 import org.exist.storage.txn.Txn;
-import org.exist.util.Configuration;
-import org.exist.util.MimeTable;
-import org.exist.util.MimeType;
-import org.exist.util.SystemExitCodes;
+import org.exist.util.*;
 import org.exist.xquery.TerminatedException;
 
 import javax.swing.*;
-import javax.swing.filechooser.FileFilter;
-import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.Files;
@@ -402,25 +398,8 @@ public class ExportGUI extends javax.swing.JFrame {
                 .orElse(dir.resolve("etc").resolve("conf.xml"))
                 .toFile());
         chooser.setCurrentDirectory(dir.resolve("etc").toFile());
-        chooser.setFileFilter(new FileFilter() {
-            public boolean accept(final File f) {
-                if (f.isDirectory()) {
-                    return (true);
-                }
-                final MimeType mime = MimeTable.getInstance().getContentTypeFor(f.getName());
-
-                if (mime == null) {
-                    return false;
-                }
-                return mime.isXMLType();
-            }
-
-
-            public String getDescription() {
-                return ("Database XML configuration file");
-            }
-
-        });
+        final MediaTypeResolver mediaTypeResolver = MimeTable.getInstance();
+        chooser.setFileFilter(new XMLFileFilter(mediaTypeResolver, "Database XML configuration file"));
 
         if (chooser.showDialog(this, "Select") == JFileChooser.APPROVE_OPTION) {
             dbConfig.setText(chooser.getSelectedFile().getAbsolutePath());

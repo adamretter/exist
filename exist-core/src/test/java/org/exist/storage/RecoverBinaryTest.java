@@ -43,6 +43,7 @@ import org.exist.collections.Collection;
 import org.exist.collections.triggers.TriggerException;
 import org.exist.dom.persistent.BinaryDocument;
 import org.exist.dom.persistent.DocumentImpl;
+import org.exist.mediatype.MediaType;
 import org.exist.security.PermissionDeniedException;
 import org.exist.storage.txn.Txn;
 import org.exist.util.FileInputSource;
@@ -94,7 +95,7 @@ public class RecoverBinaryTest extends AbstractRecoverTest {
         final Path file = ((FileInputSource)data).getFile();
 
         final byte[] content = Files.readAllBytes(file);
-        final BinaryDocument doc = collection.addBinaryResource(transaction, broker, XmldbURI.create(dbFilename), content, "application/octet-stream");
+        final BinaryDocument doc = collection.addBinaryResource(transaction, broker, XmldbURI.create(dbFilename), content, MediaType.APPLICATION_OCTET_STREAM);
 
         assertNotNull(doc);
         assertEquals(Files.size(file), doc.getContentLength());

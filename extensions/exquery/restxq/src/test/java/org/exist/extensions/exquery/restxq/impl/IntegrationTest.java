@@ -35,6 +35,7 @@ import org.apache.http.entity.ContentType;
 import org.apache.http.message.BasicHeader;
 import org.exist.TestUtils;
 import org.exist.collections.CollectionConfiguration;
+import org.exist.mediatype.MediaType;
 import org.exist.test.ExistWebServer;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
@@ -62,7 +63,7 @@ public class IntegrationTest {
 
     private static String TEST_COLLECTION = "/db/restxq/integration-test";
 
-    private static ContentType XQUERY_CONTENT_TYPE = ContentType.create("application/xquery", "UTF-8");
+    private static ContentType XQUERY_CONTENT_TYPE = ContentType.create(MediaType.APPLICATION_XQUERY, "UTF-8");
     private static String XQUERY1 =
             "xquery version \"3.0\";\n" +
             "\n" +
@@ -73,7 +74,7 @@ public class IntegrationTest {
             "declare\n" +
             "    %rest:GET\n" +
             "    %rest:path(\"/media-type-json1\")\n" +
-            "    %output:media-type(\"application/json\")\n" +
+            "    %output:media-type(\"" + MediaType.APPLICATION_JSON + "\")\n" +
             "    %output:method(\"json\")\n" +
             "function mod1:media-type-json1() {\n" +
             "    <success/>\n" +
@@ -128,7 +129,7 @@ public class IntegrationTest {
     public void mediaTypeJson1() throws IOException {
         final HttpResponse response = executor.execute(Request
                 .Get(getRestXqUri() + "/media-type-json1")
-                .addHeader(new BasicHeader("Accept", "application/json"))
+                .addHeader(new BasicHeader("Accept", MediaType.APPLICATION_JSON))
         ).returnResponse();
 
         assertEquals(HttpStatus.SC_OK, response.getStatusLine().getStatusCode());

@@ -27,6 +27,9 @@ import org.exist.collections.Collection;
 import org.exist.collections.IndexInfo;
 import org.exist.collections.triggers.TriggerException;
 import org.exist.dom.persistent.DocumentImpl;
+import org.exist.mediatype.MediaType;
+import org.exist.mediatype.MediaTypeResolver;
+import org.exist.mediatype.StorageType;
 import org.exist.security.Permission;
 import org.exist.security.PermissionDeniedException;
 import org.exist.storage.BrokerPool;
@@ -275,15 +278,13 @@ public class ExistCollection extends ExistResource {
         XmldbURI newNameUri = XmldbURI.create(newName);
 
         // Get mime, or NULL when not available
-        MimeType mime = MimeTable.getInstance().getContentTypeFor(newName);
-        if (mime == null) {
-            mime = MimeType.BINARY_TYPE;
-        }
+        final MediaTypeResolver mediaTypeResolver = brokerPool.getMediaTypeService().getMediaTypeResolver();
+        final MediaType mediaType = mediaTypeResolver.fromFileName(newName).orElseGet(mediaTypeResolver::forUnknown);
 
         // To support LockNullResource, a 0-byte XML document can be received. Since 0-byte
         // XML documents are not supported a small file will be created.
 
-        if(mime.isXMLType() && length == 0) {
+        if (mediaType.getStorageType() == StorageType.XML && length == 0) {
             if (LOG.isDebugEnabled()) {
                 LOG.debug(String.format("Creating dummy XML file for null resource lock '%s'", newNameUri));
             }
@@ -308,24 +309,25 @@ public class ExistCollection extends ExistResource {
 
             try(final FilterInputStreamCache cache = FilterInputStreamCacheFactory.getCacheInstance(() -> (String) brokerPool.getConfiguration().getProperty(Configuration.BINARY_CACHE_CLASS_PROPERTY), is);
                     final InputStream cfis = new CachingFilterInputStream(cache)) {
-                if (mime.isXMLType()) {
-                    if (LOG.isDebugEnabled())
-                        LOG.debug(String.format("Inserting XML document '%s'", mime.getName()));
+                if (mediaType.getStorageType() == StorageType.XML) {
+                    if (LOG.isDebugEnabled()) {
+                        LOG.debug(String.format("Inserting XML document '%s'", mediaType.getIdentifier()));
+                    }
 
                     // Stream into database
                     cfis.mark(Integer.MAX_VALUE);
                     final IndexInfo info = collection.validateXMLResource(txn, broker, newNameUri, new InputSource(cfis));
                     final DocumentImpl doc = info.getDocument();
-                    doc.setMimeType(mime.getName());
+                    doc.setMimeType(mediaType.getIdentifier());
                     cfis.reset();
                     collection.store(txn, broker, info, new InputSource(cfis));
                 } else {
                     if (LOG.isDebugEnabled()) {
-                        LOG.debug(String.format("Inserting BINARY document '%s'", mime.getName()));
+                        LOG.debug(String.format("Inserting BINARY document '%s'", mediaType.getIdentifier()));
                     }
 
                     // Stream into database
-                    collection.addBinaryResource(txn, broker, newNameUri, cfis, mime.getName(), length);
+                    collection.addBinaryResource(txn, broker, newNameUri, cfis, mediaType.getIdentifier(), length);
                 }
             }
 

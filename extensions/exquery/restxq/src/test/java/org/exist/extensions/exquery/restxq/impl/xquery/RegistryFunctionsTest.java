@@ -27,6 +27,7 @@
 package org.exist.extensions.exquery.restxq.impl.xquery;
 
 import org.exist.dom.memtree.MemTreeBuilder;
+import org.exist.mediatype.MediaType;
 import org.exquery.serialization.annotation.MediaTypeAnnotation;
 import org.exquery.serialization.annotation.MethodAnnotation;
 import org.exquery.serialization.annotation.SerializationAnnotationException;
@@ -62,7 +63,7 @@ public class RegistryFunctionsTest {
     public void outputMediaType() throws URISyntaxException, TransformerException, IOException, SAXException, SerializationAnnotationException {
 
         //test setup
-        final String internetMediaType = "application/octet-stream";
+        final String internetMediaType = MediaType.APPLICATION_OCTET_STREAM;
         final MediaTypeAnnotation mediaType = new MediaTypeAnnotation();
         mediaType.setName(SerializationAnnotationName.mediatype.getQName());
         mediaType.setLiterals(new Literal[] {

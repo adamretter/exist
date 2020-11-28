@@ -21,6 +21,7 @@
  */
 package org.exist.xquery;
 
+import org.exist.mediatype.MediaType;
 import org.exist.test.ExistXmldbEmbeddedServer;
 import org.junit.rules.TemporaryFolder;
 import org.xmldb.api.base.Resource;
@@ -82,7 +83,7 @@ public class StoredModuleTest {
 
     private void writeModule(Collection collection, String modulename, String module) throws XMLDBException {
         BinaryResource res = (BinaryResource) collection.createResource(modulename, "BinaryResource");
-        ((EXistResource) res).setMimeType("application/xquery");
+        ((EXistResource) res).setMimeType(MediaType.APPLICATION_XQUERY);
         res.setContent(module.getBytes());
         collection.storeResource(res);
         collection.close();

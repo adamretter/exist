@@ -34,6 +34,7 @@ import org.apache.http.HttpStatus;
 import org.apache.http.client.fluent.Request;
 import org.exist.http.RESTTest;
 import org.apache.commons.io.output.UnsynchronizedByteArrayOutputStream;
+import org.exist.mediatype.MediaType;
 import org.junit.Test;
 
 /**
@@ -48,7 +49,7 @@ public class StreamBinaryTest extends RESTTest {
 	public void testStreamBinary() throws IOException {
 		
 		final String testValue = "hello world";
-		final String xquery = "response:stream-binary(xs:base64Binary('" +  Base64.encodeBase64String(testValue.getBytes())  + "'), 'application/octet-stream', 'test.bin')";
+		final String xquery = "response:stream-binary(xs:base64Binary('" +  Base64.encodeBase64String(testValue.getBytes())  + "'), '" + MediaType.APPLICATION_OCTET_STREAM + "', 'test.bin')";
 
 		final Request get = Request.Get(getCollectionRootUri() + "?_query=" + URLEncoder.encode(xquery, "UTF-8") + "&_indent=no");
 

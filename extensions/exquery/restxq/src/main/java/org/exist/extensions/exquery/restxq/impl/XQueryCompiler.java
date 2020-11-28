@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.net.URI;
 import org.exist.dom.persistent.BinaryDocument;
 import org.exist.dom.persistent.DocumentImpl;
+import org.exist.mediatype.MediaType;
 import org.exist.security.Permission;
 import org.exist.security.PermissionDeniedException;
 import org.exist.source.DBSource;
@@ -44,8 +45,6 @@ import org.exist.xquery.XQueryContext;
  * @author <a href="mailto:adam.retter@googlemail.com">Adam Retter</a>
  */
 class XQueryCompiler {
-    
-    public final static String XQUERY_MIME_TYPE = "application/xquery";
     
     public static CompiledXQuery compile(final DBBroker broker, final URI xqueryLocation) throws RestXqServiceCompilationException {
         
@@ -64,8 +63,8 @@ class XQueryCompiler {
     public static CompiledXQuery compile(final DBBroker broker, final DocumentImpl document) throws RestXqServiceCompilationException {
         
         try {
-            if(document instanceof BinaryDocument) {
-                if(document.getMimeType().equals(XQUERY_MIME_TYPE)){
+            if (document instanceof BinaryDocument) {
+                if (document.getMimeType().equals(MediaType.APPLICATION_XQUERY)) {
             
                     //compile the query
                     final XQueryContext context = new XQueryContext(broker.getBrokerPool());

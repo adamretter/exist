@@ -22,30 +22,39 @@
 
 package org.exist.util;
 
+import org.exist.mediatype.MediaType;
+import org.exist.mediatype.MediaTypeResolver;
+import org.exist.mediatype.StorageType;
+
 import java.io.File;
 import java.io.FilenameFilter;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Optional;
 import java.util.function.Predicate;
 
-public class XQueryFilenameFilter implements FilenameFilter {
+import static org.exist.mediatype.MediaType.APPLICATION_XQUERY;
 
-    public static final String MEDIA_TYPE_APPLICATION_XQUERY = "application/xquery";
+public class XQueryFilenameFilter implements FilenameFilter {
+    private final MediaTypeResolver mediaTypeResolver;
+
+    public XQueryFilenameFilter(final MediaTypeResolver mediaTypeResolver) {
+        this.mediaTypeResolver = mediaTypeResolver;
+    }
 
     @Override
     public boolean accept(final File dir, final String name) {
-        final MimeTable mimetab = MimeTable.getInstance();
-        final MimeType mime = mimetab.getContentTypeFor(name);
-
-        return mime != null && !mime.isXMLType() && mime.getName().equals(MEDIA_TYPE_APPLICATION_XQUERY);
+        final Optional<MediaType> maybeMediaType = mediaTypeResolver.fromFileName(name);
+        return maybeMediaType.map(mt -> mt.getStorageType() == StorageType.BINARY && mt.getIdentifier().equals(APPLICATION_XQUERY))
+                .orElse(false);
     }
 
-    public static Predicate<Path> asPredicate() {
-        final MimeTable mimetab = MimeTable.getInstance();
+    public static Predicate<Path> asPredicate(final MediaTypeResolver mediaTypeResolver) {
         return path -> {
             if(!Files.isDirectory(path)) {
-                final MimeType mime = mimetab.getContentTypeFor(FileUtils.fileName(path));
-                return mime != null && !mime.isXMLType() && mime.getName().equals(MEDIA_TYPE_APPLICATION_XQUERY);
+                final Optional<MediaType> maybeMediaType = mediaTypeResolver.fromFileName(path);
+                return maybeMediaType.map(mt -> mt.getStorageType() == StorageType.BINARY && mt.getIdentifier().equals(APPLICATION_XQUERY))
+                        .orElse(false);
             }
             return false;
         };

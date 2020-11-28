@@ -30,16 +30,18 @@ import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Optional;
 import java.util.Properties;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import org.exist.dom.QName;
+import org.exist.mediatype.MediaType;
+import org.exist.mediatype.MediaTypeResolver;
+import org.exist.mediatype.StorageType;
 import org.exist.storage.serializers.EXistOutputKeys;
 import org.exist.util.FileUtils;
-import org.exist.util.MimeTable;
-import org.exist.util.MimeType;
 import org.exist.util.io.TemporaryFileManager;
 import org.exist.util.serializer.SAXSerializer;
 import org.exist.xmldb.EXistResource;
@@ -159,21 +161,23 @@ public class XMLDBStore extends XMLDBAbstractCollectionManipulator {
         }
 
         final Item item = args[2].itemAt(0);
-        String mimeType = MimeType.XML_TYPE.getName();
+        String mimeType = MediaType.APPLICATION_XML;
         boolean binary = !Type.subTypeOf(item.getType(), Type.NODE);
+
+        final MediaTypeResolver mediaTypeResolver = context.getBroker().getBrokerPool().getMediaTypeService().getMediaTypeResolver();
 
         if (getSignature().getArgumentCount() == 4) {
             mimeType = args[3].getStringValue();
-            final MimeType mime = MimeTable.getInstance().getContentType(mimeType);
-            if (mime != null) {
-                binary = !mime.isXMLType();
+            final Optional<MediaType> maybeMediaType = mediaTypeResolver.fromString(mimeType);
+            if (maybeMediaType.isPresent()) {
+                binary = maybeMediaType.get().getStorageType() != StorageType.XML;
             }
 
         } else if (docName != null) {
-            final MimeType mime = MimeTable.getInstance().getContentTypeFor(docName);
-            if (mime != null) {
-                mimeType = mime.getName();
-                binary = !mime.isXMLType();
+            final Optional<MediaType> maybeMediaType = mediaTypeResolver.fromFileName(docName);
+            if (maybeMediaType.isPresent()) {
+                mimeType = maybeMediaType.get().getIdentifier();
+                binary = maybeMediaType.get().getStorageType() != StorageType.XML;
             }
         }
 

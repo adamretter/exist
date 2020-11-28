@@ -24,6 +24,7 @@ package org.exist.protocolhandler.embedded;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Optional;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -31,6 +32,9 @@ import org.exist.EXistException;
 import org.exist.collections.Collection;
 import org.exist.collections.IndexInfo;
 import org.exist.dom.persistent.DocumentImpl;
+import org.exist.mediatype.MediaType;
+import org.exist.mediatype.MediaTypeResolver;
+import org.exist.mediatype.StorageType;
 import org.exist.protocolhandler.xmldb.XmldbURL;
 import org.exist.storage.BrokerPool;
 import org.exist.storage.DBBroker;
@@ -39,7 +43,6 @@ import org.exist.storage.lock.ManagedDocumentLock;
 import org.exist.storage.txn.TransactionManager;
 import org.exist.storage.txn.Txn;
 import org.exist.util.MimeTable;
-import org.exist.util.MimeType;
 import org.apache.commons.io.input.UnsynchronizedByteArrayInputStream;
 import org.apache.commons.io.output.UnsynchronizedByteArrayOutputStream;
 import org.exist.xmldb.XmldbURI;
@@ -120,17 +123,17 @@ public class InMemoryOutputStream extends OutputStream {
         if (collection.hasChildCollection(broker, documentUri)) {
           throw new IOException("Resource " + documentUri.toString() + " is a collection.");
         }
-
-        MimeType mime = MimeTable.getInstance().getContentTypeFor(documentUri);
-        String contentType = null;
-        if (mime != null) {
-          contentType = mime.getName();
+        final MediaTypeResolver mediaTypeResolver = db.getMediaTypeService().getMediaTypeResolver();
+        final Optional<MediaType> maybeMediaType = mediaTypeResolver.fromFileName(documentUri.lastSegmentString());
+        final String contentType;
+        if (maybeMediaType.isPresent()) {
+          contentType = maybeMediaType.get().getIdentifier();
         } else {
-          mime = MimeType.BINARY_TYPE;
+          contentType = null;
         }
 
         try(final ManagedDocumentLock lock = lockManager.acquireDocumentWriteLock(documentUri)) {
-          if (mime.isXMLType()) {
+          if (maybeMediaType.orElseGet(mediaTypeResolver::forUnknown).getStorageType() == StorageType.XML) {
             final InputSource inputsource = new InputSource(is);
             final IndexInfo info = collection.validateXMLResource(txn, broker, documentUri, inputsource);
             final DocumentImpl doc = info.getDocument();

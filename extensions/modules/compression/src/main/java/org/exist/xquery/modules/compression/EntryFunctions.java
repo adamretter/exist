@@ -26,12 +26,12 @@ import org.apache.logging.log4j.Logger;
 import org.exist.EXistException;
 import org.exist.collections.Collection;
 import org.exist.collections.triggers.TriggerException;
+import org.exist.mediatype.MediaTypeResolver;
 import org.exist.security.PermissionDeniedException;
 import org.exist.storage.lock.Lock;
 import org.exist.storage.txn.TransactionException;
 import org.exist.storage.txn.Txn;
 import org.exist.util.LockException;
-import org.exist.util.MimeTable;
 import org.exist.xmldb.XmldbURI;
 import org.exist.xquery.*;
 import org.exist.xquery.value.*;
@@ -282,7 +282,8 @@ public class EntryFunctions extends BasicFunction {
 
                             try (final Collection collection = context.getBroker().openCollection(destPath.removeLastSegment(), Lock.LockMode.WRITE_LOCK)) {
                                 final BinaryValue binaryValue = (BinaryValue) data.get();
-                                final String mediaType = MimeTable.getInstance().getContentTypeFor(destPath.lastSegment()).getName();
+                                final MediaTypeResolver mediaTypeResolver = context.getBroker().getBrokerPool().getMediaTypeService().getMediaTypeResolver();
+                                final String mediaType = mediaTypeResolver.fromFileName(destPath.lastSegmentString()).orElseGet(mediaTypeResolver::forUnknown).getIdentifier();
                                 try (final InputStream is = binaryValue.getInputStream()) {
                                     collection.addBinaryResource(transaction, context.getBroker(), destPath.lastSegment(), is, mediaType, -1);
                                 }

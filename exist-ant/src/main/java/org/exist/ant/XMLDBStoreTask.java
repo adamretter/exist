@@ -21,12 +21,16 @@
  */
 package org.exist.ant;
 
+import com.evolvedbinary.j8fu.lazy.LazyVal;
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.DirectoryScanner;
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.types.FileSet;
+
+import org.exist.mediatype.MediaType;
+import org.exist.mediatype.MediaTypeResolver;
+import org.exist.mediatype.StorageType;
 import org.exist.util.MimeTable;
-import org.exist.util.MimeType;
 import org.exist.xmldb.EXistResource;
 import org.exist.xmldb.XmldbURI;
 import org.exist.xquery.Constants;
@@ -39,6 +43,7 @@ import org.xmldb.api.modules.XMLResource;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Optional;
 
 
 /**
@@ -65,7 +70,7 @@ public class XMLDBStoreTask extends AbstractXMLDBTask {
     private String type = null;
     private String defaultMimeType = null;
     private String forceMimeType = null;
-    private MimeTable mtable = null;
+    private final LazyVal<MediaTypeResolver> mtable = new LazyVal<>(this::getMediaTypeResolver);
 
     @Override
     public void execute() throws BuildException {
@@ -131,50 +136,45 @@ public class XMLDBStoreTask extends AbstractXMLDBTask {
             if (srcFile != null) {
                 log("Storing " + srcFile.getName());
 
-                MimeType mime = getMimeTable().getContentTypeFor(srcFile.getName());
+                final MediaTypeResolver mediaTypeResolver = mtable.get();
                 final String baseMimeType;
-
                 if (forceMimeType != null) {
                     baseMimeType = forceMimeType;
-
-                } else if (mime != null) {
-                    baseMimeType = mime.getName();
-
                 } else {
-                    baseMimeType = defaultMimeType;
-                }
-
-                if (type != null) {
-
-                    if ("xml".equals(type)) {
-                        mime = (baseMimeType != null) ? (new MimeType(baseMimeType, MimeType.XML)) : MimeType.XML_TYPE;
-                    } else if ("binary".equals(type)) {
-                        mime = (baseMimeType != null) ? (new MimeType(baseMimeType, MimeType.BINARY)) : MimeType.BINARY_TYPE;
+                    final Optional<MediaType> mediaType = mediaTypeResolver.fromFileName(srcFile.getName());
+                    if (mediaType.isPresent()) {
+                        baseMimeType = mediaType.get().getIdentifier();
+                    } else if (defaultMimeType != null) {
+                        baseMimeType = defaultMimeType;
+                    } else {
+                        final String msg = "Cannot guess mime-type kind for " + srcFile.getName() + ". Treating it as a binary.";
+                        log(msg, Project.MSG_ERR);
+                        baseMimeType = mediaTypeResolver.forUnknown().getIdentifier();
                     }
                 }
 
-                // single file
-                if (mime == null) {
-                    final String msg = "Cannot guess mime-type kind for " + srcFile.getName() + ". Treating it as a binary.";
-                    log(msg, Project.MSG_ERR);
-                    mime = (baseMimeType != null) ? (new MimeType(baseMimeType, MimeType.BINARY)) : MimeType.BINARY_TYPE;
+                final StorageType storageType;
+                if (type != null) {
+                    storageType = StorageType.fromNameOrDefault(type);
+                } else {
+                    storageType = StorageType.forUnknown();
                 }
 
-                final String resourceType = mime.isXMLType() ? XMLResource.RESOURCE_TYPE : BinaryResource.RESOURCE_TYPE;
+                final String resourceType = storageType == StorageType.XML ? XMLResource.RESOURCE_TYPE : BinaryResource.RESOURCE_TYPE;
 
                 if (targetFile == null) {
                     targetFile = srcFile.getName();
                 }
 
                 try {
-                    log("Creating resource " + targetFile + " in collection " + col.getName() + " of type " + resourceType + " with mime-type: " + mime.getName(), Project.MSG_DEBUG);
+                    log("Creating resource " + targetFile + " in collection " + col.getName() + " of type " + resourceType + " with mime-type: " + baseMimeType, Project.MSG_DEBUG);
                     res = col.createResource(targetFile, resourceType);
 
                     if (srcFile.length() == 0) {
                         // note: solves bug id 2429889 when this task hits empty files
                     } else {
                         res.setContent(srcFile);
-                        ((EXistResource) res).setMimeType(mime.getName());
+                        ((EXistResource) res).setMimeType(baseMimeType);
                         col.storeResource(res);
                     }
 
@@ -274,40 +274,35 @@ public class XMLDBStoreTask extends AbstractXMLDBTask {
                                 col = root;
                             }
 
-                            MimeType currentMime = getMimeTable().getContentTypeFor(file.getName());
+                            final MediaTypeResolver mediaTypeResolver = mtable.get();
                             final String currentBaseMimeType;
-
                             if (forceMimeType != null) {
                                 currentBaseMimeType = forceMimeType;
-
-                            } else if (currentMime != null) {
-                                currentBaseMimeType = currentMime.getName();
-
                             } else {
-                                currentBaseMimeType = defaultMimeType;
-
-                            }
-
-                            if (type != null) {
-
-                                if ("xml".equals(type)) {
-                                    currentMime = (currentBaseMimeType != null) ? (new MimeType(currentBaseMimeType, MimeType.XML)) : MimeType.XML_TYPE;
-                                } else if ("binary".equals(type)) {
-                                    currentMime = (currentBaseMimeType != null) ? (new MimeType(currentBaseMimeType, MimeType.BINARY)) : MimeType.BINARY_TYPE;
+                                final Optional<MediaType> mediaType = mediaTypeResolver.fromFileName(file.getName());
+                                if (mediaType.isPresent()) {
+                                    currentBaseMimeType = mediaType.get().getIdentifier();
+                                } else if (defaultMimeType != null) {
+                                    currentBaseMimeType = defaultMimeType;
+                                } else {
+                                    final String msg = "Cannot guess mime-type kind for " + file.getName() + ". Treating it as a binary.";
+                                    log(msg, Project.MSG_ERR);
+                                    currentBaseMimeType = mediaTypeResolver.forUnknown().getIdentifier();
                                 }
                             }
 
-                            if (currentMime == null) {
-                                final String msg = "Cannot find mime-type kind for " + file.getName() + ". Treating it as a binary.";
-                                log(msg, Project.MSG_ERR);
-                                currentMime = (currentBaseMimeType != null) ? (new MimeType(currentBaseMimeType, MimeType.BINARY)) : MimeType.BINARY_TYPE;
+                            final StorageType currentStorageType;
+                            if (type != null) {
+                                currentStorageType = StorageType.fromNameOrDefault(type);
+                            } else {
+                                currentStorageType = StorageType.forUnknown();
                             }
 
-                            final String resourceType = currentMime.isXMLType() ? XMLResource.RESOURCE_TYPE : BinaryResource.RESOURCE_TYPE;
-                            log("Creating resource " + file.getName() + " in collection " + col.getName() + " of type " + resourceType + " with mime-type: " + currentMime.getName(), Project.MSG_DEBUG);
+                            final String resourceType = currentStorageType == StorageType.XML ? XMLResource.RESOURCE_TYPE : BinaryResource.RESOURCE_TYPE;
+                            log("Creating resource " + file.getName() + " in collection " + col.getName() + " of type " + resourceType + " with mime-type: " + currentBaseMimeType, Project.MSG_DEBUG);
                             res = col.createResource(file.getName(), resourceType);
                             res.setContent(file);
-                            ((EXistResource) res).setMimeType(currentMime.getName());
+                            ((EXistResource) res).setMimeType(currentBaseMimeType);
                             col.storeResource(res);
 
                             if (permissions != null) {
@@ -378,17 +373,13 @@ public class XMLDBStoreTask extends AbstractXMLDBTask {
         this.forceMimeType = mimeType;
     }
 
-    private MimeTable getMimeTable() throws BuildException {
-        if (mtable == null) {
-            if (mimeTypesFile != null && mimeTypesFile.exists()) {
-                log("Trying to use MIME Types file " + mimeTypesFile.getAbsolutePath(), Project.MSG_DEBUG);
-                mtable = MimeTable.getInstance(mimeTypesFile.toPath());
-            } else {
-                log("Using default MIME Types resources", Project.MSG_DEBUG);
-                mtable = MimeTable.getInstance();
-            }
+    private MediaTypeResolver getMediaTypeResolver() {
+        if (mimeTypesFile != null && mimeTypesFile.exists()) {
+            log("Trying to use MIME Types file " + mimeTypesFile.getAbsolutePath(), Project.MSG_DEBUG);
+            return MimeTable.getInstance(mimeTypesFile.toPath());
+        } else {
+            log("Using default MIME Types resources", Project.MSG_DEBUG);
+            return MimeTable.getInstance();
         }
-
-        return mtable;
     }
 }

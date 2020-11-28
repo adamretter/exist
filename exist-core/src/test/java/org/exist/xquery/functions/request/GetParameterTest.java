@@ -37,6 +37,7 @@ import org.apache.http.entity.mime.MultipartEntityBuilder;
 import org.apache.http.message.BasicNameValuePair;
 import org.exist.http.RESTTest;
 import org.apache.commons.io.output.UnsynchronizedByteArrayOutputStream;
+import org.exist.mediatype.MediaType;
 import org.exist.xmldb.EXistResource;
 import org.exist.xmldb.UserManagementService;
 import org.junit.AfterClass;
@@ -70,7 +71,7 @@ public class GetParameterTest extends RESTTest {
     public static void beforeClass() throws XMLDBException {
         root = DatabaseManager.getCollection("xmldb:exist://localhost:" + existWebServer.getPort() + "/xmlrpc/db", "admin", "");
         BinaryResource res = (BinaryResource)root.createResource(XQUERY_FILENAME, "BinaryResource");
-        ((EXistResource) res).setMimeType("application/xquery");
+        ((EXistResource) res).setMimeType(MediaType.APPLICATION_XQUERY);
         res.setContent(XQUERY);
         root.storeResource(res);
         UserManagementService ums = (UserManagementService)root.getService("UserManagementService", "1.0");

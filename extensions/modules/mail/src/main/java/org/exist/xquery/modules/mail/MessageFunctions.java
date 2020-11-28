@@ -41,6 +41,7 @@ import javax.xml.transform.stream.StreamSource;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.exist.dom.QName;
+import org.exist.mediatype.MediaType;
 import org.exist.xquery.BasicFunction;
 import org.exist.xquery.Cardinality;
 import org.exist.xquery.FunctionSignature;
@@ -322,13 +323,13 @@ public class MessageFunctions extends BasicFunction {
         String contentType = part.getContentType();
 
             // Check if plain
-        if (contentType.contains("text/plain")) {
+        if (contentType.contains(MediaType.TEXT_PLAIN)) {
             builder.startElement(new QName("text", MailModule.NAMESPACE_URI, MailModule.PREFIX), null);
             mimeParamsToAttributes(builder, part.getContentType());
             builder.characters(part.getContent().toString());
             builder.endElement();
 
-        } else if (contentType.contains("text/html")) {
+        } else if (contentType.contains(MediaType.TEXT_HTML)) {
             builder.startElement(new QName("xhtml", MailModule.NAMESPACE_URI, MailModule.PREFIX), null);
             mimeParamsToAttributes(builder, part.getContentType());
             // extract and clean up the html

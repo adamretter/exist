@@ -31,6 +31,7 @@ import org.apache.logging.log4j.Logger;
 import org.exist.EXistException;
 import org.exist.dom.QName;
 import org.exist.http.servlets.ResponseWrapper;
+import org.exist.mediatype.MediaType;
 import org.exist.storage.BrokerPool;
 import org.exist.storage.DBBroker;
 import org.exist.storage.serializers.Serializer;
@@ -89,7 +90,7 @@ public class Stream extends StrictResponseFunction {
             throw new XPathException(this, ErrorCodes.XPDY0002, signature.toString() + " can only be used within the EXistServlet or XQueryServlet");
         }
 
-        final String mediaType = serializeOptions.getProperty("media-type", "application/xml");
+        final String mediaType = serializeOptions.getProperty("media-type", MediaType.APPLICATION_XML);
         final String encoding = serializeOptions.getProperty("encoding", "UTF-8");
         if (mediaType != null) {
             response.setContentType(mediaType + "; charset=" + encoding);

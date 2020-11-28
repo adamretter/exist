@@ -32,9 +32,7 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Properties;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.swing.BorderFactory;
@@ -59,6 +57,7 @@ import javax.swing.SpinnerNumberModel;
 import javax.swing.border.BevelBorder;
 import javax.xml.transform.OutputKeys;
 
+import org.exist.mediatype.MediaType;
 import org.exist.security.PermissionDeniedException;
 import org.exist.xmldb.EXistXQueryService;
 import org.exist.xmldb.LocalCollection;
@@ -407,7 +406,8 @@ public class QueryDialog extends JFrame {
         chooser.setCurrentDirectory(Paths.get(workDir).toFile());
         chooser.setMultiSelectionEnabled(false);
         chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
-        chooser.addChoosableFileFilter(new MimeTypeFileFilter("application/xquery"));
+        final Optional<MediaType> maybeMediaType = client.getMediaTypeResolver().fromString(MediaType.APPLICATION_XQUERY);
+        maybeMediaType.ifPresent(mt -> chooser.addChoosableFileFilter(new MediaTypeFilter(mt)));
 
         if (chooser.showDialog(this, Messages.getString("QueryDialog.opendialog")) == JFileChooser.APPROVE_OPTION) {
             final Path selectedDir = chooser.getCurrentDirectory().toPath();
@@ -442,12 +442,18 @@ public class QueryDialog extends JFrame {
         chooser.setMultiSelectionEnabled(false);
         chooser.setCurrentDirectory(Paths.get(workDir).toFile());
         chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+        final String mediaTypeIdentifiers[];
         if ("result".equals(fileCategory)) {
-            chooser.addChoosableFileFilter(new MimeTypeFileFilter("application/xhtml+xml"));
-            chooser.addChoosableFileFilter(new MimeTypeFileFilter("application/xml"));
+            mediaTypeIdentifiers = new String[] { MediaType.APPLICATION_XHTML_XML, MediaType.APPLICATION_XML };
+
         } else {
-            chooser.addChoosableFileFilter(new MimeTypeFileFilter("application/xquery"));
+            mediaTypeIdentifiers = new String[] { MediaType.APPLICATION_XQUERY };
         }
+        for (final String mediaTypeIdentifier : mediaTypeIdentifiers) {
+            final Optional<MediaType> maybeMediaType = client.getMediaTypeResolver().fromString(mediaTypeIdentifier);
+            maybeMediaType.ifPresent(mt -> chooser.addChoosableFileFilter(new MediaTypeFilter(mt)));
+        }
+
         if (chooser.showDialog(this, Messages.getString("QueryDialog.savedialogpre") + " " + fileCategory + " " + Messages.getString("QueryDialog.savedialogpost"))
                 == JFileChooser.APPROVE_OPTION) {
             final Path selectedDir = chooser.getCurrentDirectory().toPath();

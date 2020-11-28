@@ -31,6 +31,7 @@ import org.exist.dom.QName;
 import org.exist.dom.persistent.*;
 import org.exist.management.Agent;
 import org.exist.management.AgentFactory;
+import org.exist.mediatype.MediaType;
 import org.exist.numbering.NodeId;
 import org.exist.security.ACLPermission;
 import org.exist.security.Permission;
@@ -546,10 +547,12 @@ public class SystemExport {
         }
 
         attr.addAttribute(Namespaces.EXIST_NS, "filename", "filename", "CDATA", Backup.encode(URIUtils.urlDecodeUtf8(doc.getFileURI())));
-        String mimeType = "application/xml";
 
+        final String mimeType;
         if (doc.getMimeType() != null) {
             mimeType = Backup.encode(doc.getMimeType());
+        } else {
+            mimeType = MediaType.APPLICATION_XML;
         }
         attr.addAttribute(Namespaces.EXIST_NS, "mimetype", "mimetype", "CDATA", mimeType);
 

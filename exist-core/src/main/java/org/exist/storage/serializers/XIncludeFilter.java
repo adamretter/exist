@@ -29,6 +29,7 @@ import org.exist.dom.persistent.BinaryDocument;
 import org.exist.dom.persistent.DocumentImpl;
 import org.exist.dom.QName;
 import org.exist.dom.memtree.SAXAdapter;
+import org.exist.mediatype.MediaType;
 import org.exist.security.Permission;
 import org.exist.security.PermissionDeniedException;
 import org.exist.source.DBSource;
@@ -324,7 +325,7 @@ public class XIncludeFilter implements Receiver {
 
             /* Check if the document is a stored XQuery */
             if (doc != null && doc.getResourceType() == DocumentImpl.BINARY_FILE) {
-                xqueryDoc = "application/xquery".equals(doc.getMimeType());
+                xqueryDoc = MediaType.APPLICATION_XQUERY.equals(doc.getMimeType());
             }
         }
         // The document could not be found: check if it points to an external resource

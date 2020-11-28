@@ -23,6 +23,8 @@ package org.exist.xquery.functions.request;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Optional;
+
 import org.apache.commons.io.input.CloseShieldInputStream;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -31,14 +33,15 @@ import org.exist.dom.QName;
 import org.exist.http.servlets.RequestWrapper;
 import org.exist.dom.memtree.DocumentBuilderReceiver;
 import org.exist.dom.memtree.MemTreeBuilder;
+import org.exist.mediatype.MediaType;
+import org.exist.mediatype.MediaTypeResolver;
+import org.exist.mediatype.StorageType;
 import org.exist.util.Configuration;
 import org.exist.util.MimeTable;
-import org.exist.util.MimeType;
 import org.exist.util.io.CachingFilterInputStream;
 import org.apache.commons.io.output.UnsynchronizedByteArrayOutputStream;
 import org.exist.util.io.FilterInputStreamCache;
 import org.exist.util.io.FilterInputStreamCacheFactory;
-import org.exist.util.io.FilterInputStreamCacheFactory.FilterInputStreamCacheConfiguration;
 import org.exist.xquery.*;
 import org.exist.xquery.value.*;
 import org.w3c.dom.Document;
@@ -96,8 +99,10 @@ public class GetData extends StrictRequestFunction {
                         contentType = contentType.substring(0, contentType.indexOf(';'));
                     }
 
-                    final MimeType mimeType = MimeTable.getInstance().getContentType(contentType);
-                    if (mimeType != null && !mimeType.isXMLType()) {
+                    final MediaTypeResolver mediaTypeResolver = context.getBroker().getBrokerPool().getMediaTypeService().getMediaTypeResolver();
+                    final Optional<MediaType> maybeMediaType = mediaTypeResolver.fromString(contentType);
+                    final boolean isNotXml = maybeMediaType.map(mt -> mt.getStorageType() != StorageType.XML).orElse(false);
+                    if (isNotXml) {
 
                         //binary data
                         result = BinaryValueFromInputStream.getInstance(context, new Base64BinaryValueType(), isRequest);

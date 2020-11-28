@@ -27,6 +27,7 @@ import org.exist.EXistException;
 import org.exist.collections.Collection;
 import org.exist.collections.triggers.TriggerException;
 import org.exist.dom.persistent.LockedDocument;
+import org.exist.mediatype.MediaType;
 import org.exist.security.PermissionDeniedException;
 import org.exist.storage.DBBroker;
 import org.exist.storage.lock.Lock;
@@ -132,8 +133,8 @@ public class AuditTrailSessionListenerTest {
                 final Txn transaction = existEmbeddedServer.getBrokerPool().getTransactionManager().beginTransaction()) {
 
             final Collection testCollection = broker.getOrCreateCollection(transaction, TEST_COLLECTION);
-            testCollection.addBinaryResource(transaction, broker, XmldbURI.create(CREATE_SCRIPT), "<create/>".getBytes(), "application/xquery");
-            testCollection.addBinaryResource(transaction, broker, XmldbURI.create(DESTROYED_SCRIPT), "</destroyed>".getBytes(), "application/xquery");
+            testCollection.addBinaryResource(transaction, broker, XmldbURI.create(CREATE_SCRIPT), "<create/>".getBytes(), MediaType.APPLICATION_XQUERY);
+            testCollection.addBinaryResource(transaction, broker, XmldbURI.create(DESTROYED_SCRIPT), "</destroyed>".getBytes(), MediaType.APPLICATION_XQUERY);
 
             transaction.commit();
         }

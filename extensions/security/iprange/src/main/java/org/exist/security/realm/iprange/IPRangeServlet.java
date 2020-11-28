@@ -23,6 +23,7 @@ package org.exist.security.realm.iprange;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.exist.mediatype.MediaType;
 import org.exist.http.servlets.ExistExtensionServlet;
 import org.exist.security.AbstractRealm;
 import org.exist.security.AuthenticationException;
@@ -112,7 +113,7 @@ public class IPRangeServlet extends HttpServlet implements ExistExtensionServlet
             throw new IOException(e.getMessage());
 
         } finally {
-            response.setContentType("application/json");
+            response.setContentType(MediaType.APPLICATION_JSON);
             final PrintWriter out = response.getWriter();
             out.print(jsonResponse);
             out.flush();

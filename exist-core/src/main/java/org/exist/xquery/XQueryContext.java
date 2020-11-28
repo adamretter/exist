@@ -70,6 +70,7 @@ import org.exist.interpreter.Context;
 import org.exist.dom.memtree.InMemoryXMLStreamReader;
 import org.exist.dom.memtree.MemTreeBuilder;
 import org.exist.dom.memtree.NodeImpl;
+import org.exist.mediatype.MediaType;
 import org.exist.numbering.NodeId;
 import org.exist.repo.ExistRepository;
 import org.exist.security.AuthenticationException;
@@ -2490,7 +2491,7 @@ public class XQueryContext implements BinaryValueManager, Context {
                         throw moduleLoadException("Module location hint URI '" + location + "' does not refer to anything.", location);
                     }
 
-                    if ((sourceDoc.getResourceType() != DocumentImpl.BINARY_FILE) || !"application/xquery".equals(sourceDoc.getMimeType())) {
+                    if ((sourceDoc.getResourceType() != DocumentImpl.BINARY_FILE) || !MediaType.APPLICATION_XQUERY.equals(sourceDoc.getMimeType())) {
                         throw moduleLoadException("Module location hint URI '" + location + "' does not refer to an XQuery.", location);
                     }
 

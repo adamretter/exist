@@ -31,6 +31,7 @@ import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
 import org.apache.http.client.fluent.Executor;
 import org.apache.http.client.fluent.Request;
+import org.exist.mediatype.MediaType;
 import org.exist.test.ExistWebServer;
 import org.apache.commons.io.output.UnsynchronizedByteArrayOutputStream;
 import org.junit.ClassRule;
@@ -141,7 +142,7 @@ public class RestApiSecurityTest extends AbstractApiSecurityTest {
         try {
             final HttpResponse resp = exec.execute(
                     Request.Put(getServerUri() + resourceUri)
-                    .addHeader("Content-Type", "application/xml")
+                    .addHeader("Content-Type", MediaType.APPLICATION_XML)
                     .bodyByteArray(content.getBytes())
             ).returnResponse();
             
@@ -159,7 +160,7 @@ public class RestApiSecurityTest extends AbstractApiSecurityTest {
         try {
             final HttpResponse resp = exec.execute(
                     Request.Put(getServerUri() + resourceUri)
-                    .addHeader("Content-Type", "application/octet-stream")
+                    .addHeader("Content-Type", MediaType.APPLICATION_OCTET_STREAM)
                     .bodyByteArray(content)
             ).returnResponse();
             

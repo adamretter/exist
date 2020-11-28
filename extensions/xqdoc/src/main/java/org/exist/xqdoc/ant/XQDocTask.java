@@ -32,6 +32,7 @@ import org.apache.tools.ant.DirectoryScanner;
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.types.FileSet;
 import org.exist.ant.AbstractXMLDBTask;
+import org.exist.mediatype.MediaType;
 import org.exist.source.Source;
 import org.exist.source.StringSource;
 import org.exist.util.FileUtils;
@@ -60,7 +61,7 @@ public class XQDocTask extends AbstractXMLDBTask {
         "let $moduleURI := $xml//xqdoc:module/xqdoc:uri\n" +
         "let $docName := concat(util:hash($moduleURI, 'MD5'), '.xml')\n" +
         "return\n" +
-        "   xdb:store($collection, $docName, $xml, 'application/xml')";
+        "   xdb:store($collection, $docName, $xml, '" + MediaType.APPLICATION_XML + "')";
 
     private String moduleURI = null;
     private boolean createCollection = false;

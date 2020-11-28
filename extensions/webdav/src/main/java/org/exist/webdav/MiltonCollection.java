@@ -24,6 +24,7 @@ package org.exist.webdav;
 import com.bradmcevoy.http.*;
 import com.bradmcevoy.http.exceptions.*;
 import org.exist.EXistException;
+import org.exist.mediatype.MediaType;
 import org.exist.security.PermissionDeniedException;
 import org.exist.security.Subject;
 import org.exist.storage.BrokerPool;
@@ -414,8 +415,8 @@ public class MiltonCollection extends MiltonResource
     }
 
     @Override
-    public String getContentType(String accepts) {
-        return "application/xml";
+    public String getContentType(final String accepts) {
+        return MediaType.APPLICATION_XML;
     }
 
     @Override

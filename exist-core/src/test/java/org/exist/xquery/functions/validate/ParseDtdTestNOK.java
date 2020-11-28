@@ -61,7 +61,7 @@ public class ParseDtdTestNOK {
         Collection conf = null;
         try {
             conf = existEmbeddedServer.createCollection(existEmbeddedServer.getRoot(), "system/config/db/hamlet");
-            ExistXmldbEmbeddedServer.storeResource(conf, DEFAULT_COLLECTION_CONFIG_FILE, noValidation.getBytes());
+            existEmbeddedServer.storeResource(conf, DEFAULT_COLLECTION_CONFIG_FILE, noValidation.getBytes());
         } finally {
             if(conf != null) {
                 conf.close();
@@ -76,7 +76,7 @@ public class ParseDtdTestNOK {
 
             for (final String dtdTestFile : dtdTestFiles) {
                 try (final InputStream is = SAMPLES.getSample("validation/dtd/" + dtdTestFile)) {
-                    ExistXmldbEmbeddedServer.storeResource(collection, dtdTestFile, InputStreamUtil.readAll(is));
+                    existEmbeddedServer.storeResource(collection, dtdTestFile, InputStreamUtil.readAll(is));
                 }
             }
         } finally {
@@ -89,7 +89,7 @@ public class ParseDtdTestNOK {
         try {
             collection1 = existEmbeddedServer.createCollection(existEmbeddedServer.getRoot(), "hamlet/dtd");
             try (final InputStream is = SAMPLES.getSample("validation/dtd/hamlet.dtd")) {
-                ExistXmldbEmbeddedServer.storeResource(collection1, "hamlet.dtd", InputStreamUtil.readAll(is));
+                existEmbeddedServer.storeResource(collection1, "hamlet.dtd", InputStreamUtil.readAll(is));
             }
         } finally {
             if(collection1 != null) {

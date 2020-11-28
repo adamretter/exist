@@ -54,13 +54,13 @@ import org.exist.dom.persistent.StoredNode;
 import org.exist.dom.persistent.XMLUtil;
 import org.exist.indexing.IndexController;
 import org.exist.indexing.MatchListener;
+import org.exist.mediatype.MediaType;
 import org.exist.numbering.NodeId;
 import org.exist.security.Permission;
 import org.exist.security.PermissionDeniedException;
 import org.exist.security.Subject;
 import org.exist.storage.DBBroker;
 import org.exist.util.Configuration;
-import org.exist.util.MimeType;
 import org.exist.util.serializer.AttrList;
 import org.exist.util.serializer.Receiver;
 import org.exist.util.serializer.ReceiverToSAX;
@@ -1128,7 +1128,7 @@ public abstract class Serializer implements XMLReader {
 				// found <?xml-stylesheet?>
 				xsl = ((ProcessingInstruction) node).getData();
 				type = XMLUtil.parseValue(xsl, "type");
-				if(type != null && (type.equals(MimeType.XML_TYPE.getName()) || type.equals(MimeType.XSL_TYPE.getName()) || type.equals(MimeType.XSLT_TYPE.getName()))) {
+				if(type != null && (type.equals(MediaType.APPLICATION_XML) || type.equals(MediaType.APPLICATION_XSLT_XML))) {
 					href = XMLUtil.parseValue(xsl, "href");
 					if (href == null)
 						{continue;}

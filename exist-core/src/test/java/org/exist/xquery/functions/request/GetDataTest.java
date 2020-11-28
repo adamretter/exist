@@ -26,6 +26,7 @@ import org.apache.http.HttpStatus;
 import org.apache.http.client.fluent.Request;
 import org.apache.http.entity.ContentType;
 import org.apache.commons.io.output.UnsynchronizedByteArrayOutputStream;
+import org.exist.mediatype.MediaType;
 import org.exist.xmldb.UserManagementService;
 import java.io.IOException;
 import org.exist.http.RESTTest;
@@ -62,7 +63,7 @@ public class GetDataTest extends RESTTest {
     public static void beforeClass() throws XMLDBException {
         root = DatabaseManager.getCollection("xmldb:exist://localhost:" + existWebServer.getPort() + "/xmlrpc/db", "admin", "");
         BinaryResource res = (BinaryResource)root.createResource(XQUERY_FILENAME, "BinaryResource");
-        ((EXistResource) res).setMimeType("application/xquery");
+        ((EXistResource) res).setMimeType(MediaType.APPLICATION_XQUERY);
         res.setContent(XQUERY);
         root.storeResource(res);
         UserManagementService ums = (UserManagementService)root.getService("UserManagementService", "1.0");
@@ -78,7 +79,7 @@ public class GetDataTest extends RESTTest {
     @Test
     public void retrieveEmpty() throws IOException {
         Request post = Request.Post(getCollectionRootUri() + "/" + XQUERY_FILENAME)
-            .addHeader("Content-Type", "application/octet-stream");
+            .addHeader("Content-Type", MediaType.APPLICATION_OCTET_STREAM);
 
         testRequest(post, wrapInElement("").getBytes());
     }

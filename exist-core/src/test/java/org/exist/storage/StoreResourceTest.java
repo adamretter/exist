@@ -29,6 +29,7 @@ import org.exist.collections.triggers.TriggerException;
 import org.exist.dom.persistent.BinaryDocument;
 import org.exist.dom.persistent.DocumentImpl;
 import org.exist.dom.persistent.LockedDocument;
+import org.exist.mediatype.MediaType;
 import org.exist.security.*;
 import org.exist.security.SecurityManager;
 import org.exist.security.internal.aider.GroupAider;
@@ -141,7 +142,7 @@ public class StoreResourceTest {
              final Collection col = broker.openCollection(uri.removeLastSegment(), Lock.LockMode.WRITE_LOCK)) {
 
             try (final UnsynchronizedByteArrayInputStream is = new UnsynchronizedByteArrayInputStream(data)) {
-                col.addBinaryResource(transaction, broker, uri.lastSegment(), is, "application/octet-stream", data.length);
+                col.addBinaryResource(transaction, broker, uri.lastSegment(), is, MediaType.APPLICATION_OCTET_STREAM, data.length);
             }
 
             transaction.commit();
@@ -228,7 +229,7 @@ public class StoreResourceTest {
             chgrp(broker, transaction, TEST_COLLECTION_URI.append(USER1_DOC1), GROUP1_NAME);
 
             final String u1d3bin = "bin3";
-            collection.addBinaryResource(transaction, broker, USER1_BIN_DOC1, u1d3bin.getBytes(UTF_8), "text/plain");
+            collection.addBinaryResource(transaction, broker, USER1_BIN_DOC1, u1d3bin.getBytes(UTF_8), MediaType.TEXT_PLAIN);
             chmod(broker, transaction, TEST_COLLECTION_URI.append(USER1_BIN_DOC1), USER1_BIN_DOC1_MODE);
             chgrp(broker, transaction, TEST_COLLECTION_URI.append(USER1_BIN_DOC1), GROUP1_NAME);
 

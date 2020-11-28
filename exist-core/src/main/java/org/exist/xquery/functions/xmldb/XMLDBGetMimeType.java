@@ -26,9 +26,9 @@ import org.apache.logging.log4j.Logger;
 
 import org.exist.dom.QName;
 import org.exist.dom.persistent.LockedDocument;
+import org.exist.mediatype.MediaType;
+import org.exist.mediatype.MediaTypeResolver;
 import org.exist.storage.lock.Lock.LockMode;
-import org.exist.util.MimeTable;
-import org.exist.util.MimeType;
 import org.exist.xmldb.XmldbURI;
 import org.exist.xquery.BasicFunction;
 import org.exist.xquery.Cardinality;
@@ -42,6 +42,8 @@ import org.exist.xquery.value.Sequence;
 import org.exist.xquery.value.SequenceType;
 import org.exist.xquery.value.StringValue;
 import org.exist.xquery.value.Type;
+
+import java.util.Optional;
 
 /**
  * @author <a href="mailto:adam.retter@devon.gov.uk">Adam Retter</a>
@@ -69,12 +71,12 @@ public class XMLDBGetMimeType extends BasicFunction {
 
 		final String path = new AnyURIValue(args[0].itemAt(0).getStringValue()).toString();
 		
-		if(path.matches("^[a-z]+://.*")) {
+		if (path.matches("^[a-z]+://.*")) {
 			//external
-			final MimeTable mimeTable = MimeTable.getInstance();
-			final MimeType mimeType = mimeTable.getContentTypeFor(path);
-			if(mimeType != null) {
-				return new StringValue(mimeType.getName());
+			final MediaTypeResolver mediaTypeResolver = context.getBroker().getBrokerPool().getMediaTypeService().getMediaTypeResolver();
+			final Optional<MediaType> maybeMediaType = mediaTypeResolver.fromFileName(path);
+			if(maybeMediaType.isPresent()) {
+				return new StringValue(maybeMediaType.get().getIdentifier());
             }
 		} else {
 			//database

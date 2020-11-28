@@ -22,8 +22,11 @@
 package org.exist.backup;
 
 import org.exist.client.Messages;
-import org.exist.client.MimeTypeFileFilter;
+import org.exist.client.MediaTypeFilter;
+import org.exist.mediatype.MediaType;
+import org.exist.mediatype.MediaTypeResolver;
 import org.exist.security.PermissionDeniedException;
+import org.exist.util.MimeTable;
 import org.exist.xmldb.XmldbURI;
 import org.xmldb.api.DatabaseManager;
 import org.xmldb.api.base.Collection;
@@ -34,6 +37,7 @@ import java.awt.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
+import java.util.Optional;
 import java.util.Vector;
 
 
@@ -147,7 +151,9 @@ public class CreateBackupDialog extends JPanel {
         final JFileChooser chooser = new JFileChooser();
         chooser.setMultiSelectionEnabled(false);
         chooser.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
-        chooser.addChoosableFileFilter(new MimeTypeFileFilter("application/zip"));
+        final MediaTypeResolver mediaTypeResolver = MimeTable.getInstance();
+        final Optional<MediaType> maybeMediaType = mediaTypeResolver.fromString(MediaType.APPLICATION_ZIP);
+        maybeMediaType.ifPresent(mt -> chooser.addChoosableFileFilter(new MediaTypeFilter(mt)));
         chooser.setSelectedFile(Paths.get("eXist-backup.zip").toFile());
         chooser.setCurrentDirectory(backupDir.toFile());
 

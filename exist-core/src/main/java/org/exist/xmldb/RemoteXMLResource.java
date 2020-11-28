@@ -28,9 +28,9 @@ import org.apache.xmlrpc.XmlRpcException;
 import org.apache.xmlrpc.client.XmlRpcClient;
 import org.exist.Namespaces;
 import org.exist.dom.persistent.DocumentTypeImpl;
+import org.exist.mediatype.MediaType;
 import org.exist.util.ExistSAXParserFactory;
 import org.exist.util.Leasable;
-import org.exist.util.MimeType;
 import org.exist.util.io.TemporaryFileManager;
 import org.exist.util.io.VirtualTempPath;
 import org.exist.util.serializer.DOMSerializer;
@@ -157,7 +157,7 @@ public class RemoteXMLResource
             final Optional<String> id,
             final Optional<String> type)
             throws XMLDBException {
-        super(parent, docId, MimeType.XML_TYPE.getName());
+        super(parent, docId, MediaType.APPLICATION_XML);
         this.handle = handle;
         this.pos = pos;
         this.id = id;

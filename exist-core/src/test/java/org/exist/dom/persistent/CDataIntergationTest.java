@@ -32,6 +32,7 @@ import org.apache.http.HttpResponse;
 import org.apache.http.client.fluent.Executor;
 import org.apache.http.client.fluent.Request;
 import org.exist.TestUtils;
+import org.exist.mediatype.MediaType;
 import org.exist.test.ExistWebServer;
 import org.apache.commons.io.input.UnsynchronizedByteArrayInputStream;
 import org.apache.commons.io.output.UnsynchronizedByteArrayOutputStream;
@@ -84,7 +85,7 @@ public class CDataIntergationTest {
         final HttpResponse storeResponse = executor.execute(
                 Request
                         .Put(docUri)
-                        .addHeader("Content-Type", "application/xml")
+                        .addHeader("Content-Type", MediaType.APPLICATION_XML)
                         .bodyByteArray(cdata_xml.getBytes(UTF_8))
                 ).returnResponse();
         assertEquals(SC_CREATED, storeResponse.getStatusLine().getStatusCode());

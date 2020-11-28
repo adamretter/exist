@@ -28,6 +28,7 @@ import java.net.URLStreamHandler;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.exist.mediatype.MediaTypeResolver;
 import org.exist.protocolhandler.Mode;
 
 /**
@@ -50,18 +51,20 @@ public class Handler extends URLStreamHandler {
     public static final String PATTERN      = "xmldb:[\\w]+:\\/\\/.*";
 
     private final Mode mode;
+    private final MediaTypeResolver mediaTypeResolver;
 
     /**
      * Creates a new instance of Handler
      *
      * @param mode Data buffer mode.
      */
-    public Handler(final Mode mode) {
+    public Handler(final Mode mode, final MediaTypeResolver mediaTypeResolver) {
         if (LOG.isDebugEnabled()) {
             LOG.debug("Setup \"xmldb:\" handler");
         }
 
         this.mode = mode;
+        this.mediaTypeResolver = mediaTypeResolver;
     }
     
     /**
@@ -111,9 +114,9 @@ public class Handler extends URLStreamHandler {
     protected URLConnection openConnection(final URL u) throws IOException {
         switch (mode) {
             case DISK:
-                return new EmbeddedURLConnection(threadGroup, u);
+                return new EmbeddedURLConnection(threadGroup, u, mediaTypeResolver);
             case MEMORY:
-                return new InMemoryURLConnection(threadGroup, u);
+                return new InMemoryURLConnection(threadGroup, u, mediaTypeResolver);
         }
         throw new IOException("unsupported mode "+mode);
     }

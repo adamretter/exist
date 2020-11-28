@@ -22,6 +22,7 @@
 package org.exist.xmldb;
 
 import org.apache.commons.io.input.UnsynchronizedByteArrayInputStream;
+import org.exist.mediatype.MediaType;
 import org.exist.xquery.util.URIUtils;
 import org.junit.After;
 import org.junit.Before;
@@ -69,7 +70,7 @@ public class RemoteCollectionTest extends RemoteDBTest {
     }
 
     @After
-    public void tearDown() {
+    public void tearDown() throws XMLDBException {
         removeCollection();
     }
 
@@ -151,7 +152,7 @@ public class RemoteCollectionTest extends RemoteDBTest {
         final Collection collection = getCollection();
         final String resourceName = "empty.dtd";
         final Resource resource = collection.createResource(resourceName, BinaryResource.RESOURCE_TYPE);
-        ((EXistResource) resource).setMimeType("application/xml-dtd");
+        ((EXistResource) resource).setMimeType(MediaType.APPLICATION_XML_DTD);
 
         final byte[] bin = new byte[0];
         try (final InputStream is = new UnsynchronizedByteArrayInputStream(bin)) {

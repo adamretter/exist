@@ -25,8 +25,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URISyntaxException;
 
+import org.exist.mediatype.MediaType;
 import org.exist.test.TestConstants;
-import org.exist.util.MimeType;
 import org.exist.util.io.InputStreamUtil;
 import org.exist.xmlrpc.XmlRpcTest;
 import org.junit.After;
@@ -121,7 +121,7 @@ public class RemoteQueryTest extends RemoteDBTest {
         assertNotNull(xmlrpcCollection);
 
         Resource br = xmlrpcCollection.createResource(TestConstants.TEST_MODULE_URI.toString(), "BinaryResource");
-        ((EXistResource) br).setMimeType(MimeType.XQUERY_TYPE.getName());
+        ((EXistResource) br).setMimeType(MediaType.APPLICATION_XQUERY);
         br.setContent(XmlRpcTest.MODULE_DATA);
         xmlrpcCollection.storeResource(br);
 	}

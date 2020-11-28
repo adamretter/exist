@@ -31,16 +31,14 @@ import org.exist.EXistException;
 import org.exist.collections.Collection;
 import org.exist.collections.IndexInfo;
 import org.exist.collections.triggers.TriggerException;
+import org.exist.mediatype.MediaTypeResolver;
 import org.exist.security.PermissionDeniedException;
 import org.exist.storage.lock.Lock.LockMode;
 import org.exist.storage.txn.TransactionManager;
 import org.exist.storage.txn.Txn;
 import org.exist.test.ExistEmbeddedServer;
 import org.exist.test.TestConstants;
-import org.exist.util.DatabaseConfigurationException;
-import org.exist.util.FileUtils;
-import org.exist.util.LockException;
-import org.exist.util.XMLFilenameFilter;
+import org.exist.util.*;
 import org.exist.xmldb.XmldbURI;
 import org.junit.After;
 import org.junit.Test;
@@ -89,7 +87,8 @@ public class RecoveryTest3 {
             assertNotNull(test2);
             broker.saveCollection(transaction, test2);
 
-            final List<Path> files = FileUtils.list(dir, XMLFilenameFilter.asPredicate());
+            final MediaTypeResolver mediaTypeResolver = pool.getMediaTypeService().getMediaTypeResolver();
+            final List<Path> files = FileUtils.list(dir, XMLFilenameFilter.asPredicate(mediaTypeResolver));
             assertNotNull(files);
 
             // store some documents.
@@ -138,7 +137,8 @@ public class RecoveryTest3 {
                     assertNotNull(test2);
                     broker.saveCollection(transaction, test2);
 
-                    final List<Path> files = FileUtils.list(dir, XMLFilenameFilter.asPredicate());
+                    final MediaTypeResolver mediaTypeResolver = pool.getMediaTypeService().getMediaTypeResolver();
+                    final List<Path> files = FileUtils.list(dir, XMLFilenameFilter.asPredicate(mediaTypeResolver));
 
                     // store some documents.
                     for (int i = 0; i < files.size() && i < RESOURCE_COUNT; i++) {

@@ -21,7 +21,6 @@
  */
 package org.exist.util;
 
-import java.lang.reflect.Field;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -29,6 +28,8 @@ import java.nio.file.Paths;
 import static org.junit.Assert.*;
 
 import com.googlecode.junittoolbox.ParallelRunner;
+import org.exist.mediatype.MediaType;
+import org.exist.mediatype.StorageType;
 import org.junit.*;
 import org.junit.runner.RunWith;
 
@@ -55,27 +56,25 @@ public class MimeTableTest  {
 		MimeTable mimeTable = new MimeTable(mimeTypes);
 		assertNotNull("Mime table not found", mimeTable);
 
-		MimeType mt;
-
-		mt = mimeTable.getContentTypeFor("test.xml");
+		MediaType mt = mimeTable.fromFileName("test.xml").orElse(null);
 		assertNotNull("Mime type not found for test.xml", mt);
-		assertEquals("Incorrect mime type", "application/xml", mt.getName());
-		assertEquals("Incorrect resource type", MimeType.XML, mt.getType());
+		assertEquals("Incorrect mime type", "application/xml", mt.getIdentifier());
+		assertEquals("Incorrect resource type", StorageType.XML, mt.getStorageType());
 
-		mt = mimeTable.getContentTypeFor("test.html");
+		mt = mimeTable.fromFileName("test.html").orElse(null);
 		assertNotNull("Mime type not found for test.html", mt);
-		assertEquals("Incorrect mime type", "text/html", mt.getName());
-		assertEquals("Incorrect resource type", MimeType.XML, mt.getType());
+		assertEquals("Incorrect mime type", "text/html", mt.getIdentifier());
+		assertEquals("Incorrect resource type", StorageType.XML, mt.getStorageType());
 
-		mt = mimeTable.getContentTypeFor("test.jpg");
+		mt = mimeTable.fromFileName("test.jpg").orElse(null);
 		assertNotNull("Mime type not found for test.jpg", mt);
-		assertEquals("Incorrect mime type", "image/jpeg", mt.getName());
-		assertEquals("Incorrect resource type", MimeType.BINARY, mt.getType());
+		assertEquals("Incorrect mime type", "image/jpeg", mt.getIdentifier());
+		assertEquals("Incorrect resource type", StorageType.BINARY, mt.getStorageType());
 
-		mt = mimeTable.getContentTypeFor("foo");
+		mt = mimeTable.fromFileName("foo").orElse(null);
 		assertNull("Should return null mime type for file without extension", mt);
 
-		mt = mimeTable.getContentTypeFor("foo.bar");
+		mt = mimeTable.fromFileName("foo.bar").orElse(null);
 		assertNull("Should return null mime type for file with extension not configured in mime-types.xml", mt);
 	}
 
@@ -90,32 +89,32 @@ public class MimeTableTest  {
 		MimeTable mimeTable = new MimeTable(mimeTypes);
 		assertNotNull("Mime table not found", mimeTable);
 
-		MimeType mt;
+		MediaType mt;
 
-		mt = mimeTable.getContentTypeFor("test.xml");
+		mt = mimeTable.fromFileName("test.xml").orElse(null);
 		assertNotNull("Mime type not found for test.xml", mt);
-		assertEquals("Incorrect mime type", "application/xml", mt.getName());
-		assertEquals("Incorrect resource type", MimeType.XML, mt.getType());
+		assertEquals("Incorrect mime type", "application/xml", mt.getIdentifier());
+		assertEquals("Incorrect resource type", StorageType.XML, mt.getStorageType());
 
-		mt = mimeTable.getContentTypeFor("test.html");
+		mt = mimeTable.fromFileName("test.html").orElse(null);
 		assertNotNull("Mime type not found for test.html", mt);
-		assertEquals("Incorrect mime type", "application/xml", mt.getName());
-		assertEquals("Incorrect resource type", MimeType.XML, mt.getType());
+		assertEquals("Incorrect mime type", "application/xml", mt.getIdentifier());
+		assertEquals("Incorrect resource type", StorageType.XML, mt.getStorageType());
 
-		mt = mimeTable.getContentTypeFor("test.jpg");
+		mt = mimeTable.fromFileName("test.jpg").orElse(null);
 		assertNotNull("Mime type not found for test.jpg", mt);
-		assertEquals("Incorrect mime type", "application/xml", mt.getName());
-		assertEquals("Incorrect resource type", MimeType.XML, mt.getType());
+		assertEquals("Incorrect mime type", "application/xml", mt.getIdentifier());
+		assertEquals("Incorrect resource type", StorageType.XML, mt.getStorageType());
 
-		mt = mimeTable.getContentTypeFor("foo");
+		mt = mimeTable.fromFileName("foo").orElse(null);
 		assertNotNull("Mime type not found for foo", mt);
-		assertEquals("Incorrect mime type", "application/xml", mt.getName());
-		assertEquals("Incorrect resource type", MimeType.XML, mt.getType());
+		assertEquals("Incorrect mime type", "application/xml", mt.getIdentifier());
+		assertEquals("Incorrect resource type", StorageType.XML, mt.getStorageType());
 
-		mt = mimeTable.getContentTypeFor("foo.bar");
+		mt = mimeTable.fromFileName("foo.bar").orElse(null);
 		assertNotNull("Mime type not found for test.jpg", mt);
-		assertEquals("Incorrect mime type", "application/xml", mt.getName());
-		assertEquals("Incorrect resource type", MimeType.XML, mt.getType());
+		assertEquals("Incorrect mime type", "application/xml", mt.getIdentifier());
+		assertEquals("Incorrect resource type", StorageType.XML, mt.getStorageType());
 	}
 
 	/**
@@ -129,31 +128,31 @@ public class MimeTableTest  {
 		MimeTable mimeTable = new MimeTable(mimeTypes);
 		assertNotNull("Mime table not found", mimeTable);
 
-		MimeType mt;
+		MediaType mt;
 
-		mt = mimeTable.getContentTypeFor("test.xml");
+		mt = mimeTable.fromFileName("test.xml").orElse(null);
 		assertNotNull("Mime type not found for test.xml", mt);
-		assertEquals("Incorrect mime type", "foo/bar", mt.getName());
-		assertEquals("Incorrect resource type", MimeType.BINARY, mt.getType());
+		assertEquals("Incorrect mime type", "foo/bar", mt.getIdentifier());
+		assertEquals("Incorrect resource type", StorageType.BINARY, mt.getStorageType());
 
-		mt = mimeTable.getContentTypeFor("test.html");
+		mt = mimeTable.fromFileName("test.html").orElse(null);
 		assertNotNull("Mime type not found for test.html", mt);
-		assertEquals("Incorrect mime type", "foo/bar", mt.getName());
-		assertEquals("Incorrect resource type", MimeType.BINARY, mt.getType());
+		assertEquals("Incorrect mime type", "foo/bar", mt.getIdentifier());
+		assertEquals("Incorrect resource type", StorageType.BINARY, mt.getStorageType());
 
-		mt = mimeTable.getContentTypeFor("test.jpg");
+		mt = mimeTable.fromFileName("test.jpg").orElse(null);
 		assertNotNull("Mime type not found for test.jpg", mt);
-		assertEquals("Incorrect mime type", "foo/bar", mt.getName());
-		assertEquals("Incorrect resource type", MimeType.BINARY, mt.getType());
+		assertEquals("Incorrect mime type", "foo/bar", mt.getIdentifier());
+		assertEquals("Incorrect resource type", StorageType.BINARY, mt.getStorageType());
 
-		mt = mimeTable.getContentTypeFor("foo");
+		mt = mimeTable.fromFileName("foo").orElse(null);
 		assertNotNull("Mime type not found for foo", mt);
-		assertEquals("Incorrect mime type", "foo/bar", mt.getName());
-		assertEquals("Incorrect resource type", MimeType.BINARY, mt.getType());
+		assertEquals("Incorrect mime type", "foo/bar", mt.getIdentifier());
+		assertEquals("Incorrect resource type", StorageType.BINARY, mt.getStorageType());
 
-		mt = mimeTable.getContentTypeFor("foo.bar");
+		mt = mimeTable.fromFileName("foo.bar").orElse(null);
 		assertNotNull("Mime type not found for test.jpg", mt);
-		assertEquals("Incorrect mime type", "foo/bar", mt.getName());
-		assertEquals("Incorrect resource type", MimeType.BINARY, mt.getType());
+		assertEquals("Incorrect mime type", "foo/bar", mt.getIdentifier());
+		assertEquals("Incorrect resource type", StorageType.BINARY, mt.getStorageType());
 	}
 }

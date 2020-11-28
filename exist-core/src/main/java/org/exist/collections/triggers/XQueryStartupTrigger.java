@@ -28,6 +28,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.exist.collections.Collection;
 import org.exist.dom.persistent.DocumentImpl;
+import org.exist.mediatype.MediaType;
 import org.exist.security.Permission;
 import org.exist.security.PermissionDeniedException;
 import org.exist.security.PermissionFactory;
@@ -78,7 +79,7 @@ public class XQueryStartupTrigger implements StartupTrigger {
     private static final String XQUERY = "xquery";
     private static final String AUTOSTART_COLLECTION = "/db/system/autostart";
     private static final String[] XQUERY_EXTENSIONS = {".xq", ".xquery", ".xqy"};
-    private static final String REQUIRED_MIMETYPE = "application/xquery";
+    private static final String REQUIRED_MIMETYPE = MediaType.APPLICATION_XQUERY;
 
     @Override
     public void execute(DBBroker broker, final Txn transaction, Map<String, List<? extends Object>> params) {

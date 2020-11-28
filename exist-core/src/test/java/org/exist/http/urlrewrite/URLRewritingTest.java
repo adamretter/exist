@@ -34,6 +34,7 @@ import org.apache.http.entity.ContentType;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.exist.TestUtils;
+import org.exist.mediatype.MediaType;
 import org.exist.test.ExistWebServer;
 import org.apache.commons.io.output.UnsynchronizedByteArrayOutputStream;
 import org.exist.xmldb.XmldbURI;
@@ -93,7 +94,7 @@ public class URLRewritingTest {
     public static void setup() throws IOException {
         final Request request = Request
                 .Put(getRestUri() + TEST_COLLECTION + "/" + XQUERY_CONTROLLER_FILENAME)
-                .bodyString(TEST_CONTROLLER, ContentType.create("application/xquery"));
+                .bodyString(TEST_CONTROLLER, ContentType.create(MediaType.APPLICATION_XQUERY));
 
         final int statusCode = withHttpExecutor(executor ->
                 executor.execute(request).returnResponse().getStatusLine().getStatusCode()

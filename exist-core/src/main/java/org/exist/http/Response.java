@@ -21,7 +21,7 @@
  */
 package org.exist.http;
 
-import org.exist.util.MimeType;
+import org.exist.mediatype.MediaType;
 
 import javax.servlet.http.HttpServletResponse;
 import java.io.DataOutputStream;
@@ -39,7 +39,7 @@ public class Response {
 	private String content = null;
 	private byte[] binaryContent = null;
 	private String encoding = "UTF-8";
-	private String contentType = MimeType.XML_TYPE.getName();
+	private String contentType = MediaType.APPLICATION_XML;
 	
 	public Response() {
 	}

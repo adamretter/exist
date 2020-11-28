@@ -24,10 +24,9 @@ package org.exist.client;
 import java.io.File;
 import java.util.Iterator;
 
-import java.util.List;
 import javax.swing.filechooser.FileFilter;
 
-import org.exist.util.MimeTable;
+import org.exist.mediatype.MediaType;
 
 
 /**
@@ -36,32 +35,28 @@ import org.exist.util.MimeTable;
  * 
  *  Java 6 API has a similar FileNameExtensionFilter
  */
-public class MimeTypeFileFilter extends FileFilter {
-    
-    private String description = null;	
-    private List<String> extensions = null;
+public class MediaTypeFilter extends FileFilter {
+    private final MediaType mediaType;
 
-    public MimeTypeFileFilter(String mimeType) {
-        description = MimeTable.getInstance().getContentType(mimeType).getDescription();
-        extensions = MimeTable.getInstance().getAllExtensions(mimeType);
+    public MediaTypeFilter(final MediaType mediaType) {
+        this.mediaType = mediaType;
     }
 	
     @Override
-    public boolean accept(File file) {
-        if(file.isDirectory()){ //permit directories to be viewed
+    public boolean accept(final File file) {
+        if (file.isDirectory()) { //permit directories to be viewed
             return true;
         }
 
         final int extensionOffset = file.getName().lastIndexOf('.');	//do-not allow files without an extension
-        if(extensionOffset == -1) {
+        if (extensionOffset == -1) {
             return false;
         }
 		
-        //check the extension is that of a file as defined in mime-types.xml
-        final String fileExtension = file.getName().substring(extensionOffset).toLowerCase();
-
-        for(final String extension : extensions) {
-            if(fileExtension.equals(extension)) {
+        // check the extension of the file is known for the MediaType
+        final String fileExtension = file.getName().substring(extensionOffset + 1).toLowerCase();
+        for (final String extension : mediaType.getKnownFileExtensions()) {
+            if (fileExtension.equals(extension)) {
                 return true;
             }
         }
@@ -71,18 +66,19 @@ public class MimeTypeFileFilter extends FileFilter {
     
     @Override
     public String getDescription() {
-        final StringBuilder description = new StringBuilder(this.description);
+        final StringBuilder description = new StringBuilder(mediaType.getIdentifier());
 
-        description.append(" (");
-
-        for(final Iterator<String> itExtensions = extensions.iterator(); itExtensions.hasNext();) {
-            description.append(itExtensions.next());
-            if(itExtensions.hasNext()) {
-                description.append(' ');
+        final String[] knownFileExtensions = mediaType.getKnownFileExtensions();
+        if (knownFileExtensions != null && knownFileExtensions.length > 0) {
+            description.append(" (");
+            for (int i = 0; i < knownFileExtensions.length; i++) {
+                description.append(knownFileExtensions[i]);
+                if (i + 1 < knownFileExtensions.length) {
+                    description.append(' ');
+                }
             }
+            description.append(")");
         }
-
-        description.append(")");
 
         return description.toString();
     }

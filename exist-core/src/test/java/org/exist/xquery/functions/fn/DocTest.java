@@ -26,6 +26,7 @@ import org.exist.EXistException;
 import org.exist.Namespaces;
 import org.exist.dom.memtree.DocumentImpl;
 import org.exist.dom.memtree.SAXAdapter;
+import org.exist.mediatype.MediaType;
 import org.exist.security.PermissionDeniedException;
 import org.exist.storage.BrokerPool;
 import org.exist.storage.DBBroker;
@@ -93,9 +94,9 @@ public class DocTest {
         test = cms.createCollection("test");
         assertNotNull(test);
 
-        storeResource(test, "test.xq", "BinaryResource", "application/xquery", "doc('test.xml')");
-        storeResource(test, "test1.xq", "BinaryResource", "application/xquery", "doc('/test.xml')");
-        storeResource(test, "test2.xq", "BinaryResource", "application/xquery", "doc('/db/test.xml')");
+        storeResource(test, "test.xq", "BinaryResource", MediaType.APPLICATION_XQUERY, "doc('test.xml')");
+        storeResource(test, "test1.xq", "BinaryResource", MediaType.APPLICATION_XQUERY, "doc('/test.xml')");
+        storeResource(test, "test2.xq", "BinaryResource", MediaType.APPLICATION_XQUERY, "doc('/db/test.xml')");
 
         storeResource(existEmbeddedServer.getRoot(), "test.xml", "XMLResource", null, "<x/>");
         storeResource(test, "test.xml", "XMLResource", null, "<y/>");
