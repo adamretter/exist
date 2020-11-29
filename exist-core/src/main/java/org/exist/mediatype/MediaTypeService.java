@@ -32,10 +32,20 @@
  */
 package org.exist.mediatype;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.exist.storage.BrokerPoolService;
 import org.exist.storage.BrokerPoolServiceException;
 import org.exist.util.Configuration;
-import org.exist.util.MimeTable;
+
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.ServiceLoader;
 
 /**
  * Service for accessing the Media Type Resolver.
@@ -43,12 +53,63 @@ import org.exist.util.MimeTable;
  * @author <a href="mailto:adam@evolvedbinary.com">Adam Retter</a>
  */
 public class MediaTypeService implements BrokerPoolService {
+    private static final Logger LOG = LogManager.getLogger(MediaTypeService.class);
 
-    private MimeTable mediaTypeResolver;
+    private MediaTypeResolver mediaTypeResolver;
 
     @Override
     public void configure(final Configuration configuration) throws BrokerPoolServiceException {
-        this.mediaTypeResolver = MimeTable.getInstance();
+        final ServiceLoader<MediaTypeResolverFactory> serviceloader =
+                ServiceLoader.load(MediaTypeResolverFactory.class);
+
+        List<Path> configDirsList = null;
+
+        // 1. config from application's `etc/` folder
+        final Path applicationConfigDir = configuration.getConfigFilePath().map(Path::getParent).orElse(null);
+        if (applicationConfigDir != null) {
+            if (configDirsList == null) {
+                configDirsList = new ArrayList<>();
+            }
+            configDirsList.add(applicationConfigDir);
+        }
+
+        // 2. default config from classpath
+        final URL mediaTypeMappingsFileUrl = getClass().getResource("media-type-mappings.xml");
+        if (mediaTypeMappingsFileUrl != null) {
+            try {
+                final Path defaultFromClasspathDir = Paths.get(mediaTypeMappingsFileUrl.toURI()).getParent();
+                if (configDirsList == null) {
+                    configDirsList = new ArrayList<>();
+                }
+                configDirsList.add(defaultFromClasspathDir);
+            } catch (final URISyntaxException e) {
+                LOG.error(e.getMessage(), e);
+            }
+        }
+
+        if (configDirsList == null) {
+            throw new BrokerPoolServiceException("Unable to find media-type-mappings.xml");
+        }
+        final Path[] configDirs = configDirsList.toArray(new Path[configDirsList.size()]);
+
+        for (final Iterator<MediaTypeResolverFactory> it = serviceloader.iterator(); it.hasNext(); ) {
+            final MediaTypeResolverFactory mediaTypeResolverFactory = it.next();
+            MediaTypeResolver mediaTypeResolver = null;
+            try {
+                mediaTypeResolver = mediaTypeResolverFactory.newMediaTypeResolver(configDirs);
+            } catch (final MediaTypeResolverFactory.InstantiationException e) {
+                LOG.error(e.getMessage(), e);
+            }
+
+            if (mediaTypeResolver != null) {
+                this.mediaTypeResolver = mediaTypeResolver;
+                break;  // NOTE: at present there is only one implementation provided by Elemental.
+            }
+        }
+
+        if (this.mediaTypeResolver == null) {
+            throw new BrokerPoolServiceException("Unable to find a suitable implementation of MediaTypeResolverFactory");
+        }
     }
 
     /**
